@@ -2,7 +2,13 @@ import { getPublicKey, sign, utils } from '@noble/ed25519';
 import { describe, expect, it } from 'vitest';
 
 import { TOKEN_PREFIX } from '@/modules/scanner/data';
-import { parseToken, validateOffline } from '@/modules/scanner/lib';
+import {
+  isDenialReason,
+  isDuplicateScan,
+  parseToken,
+  toScanResult,
+  validateOffline,
+} from '@/modules/scanner/lib';
 import type { OfflineContext, TokenPayload } from '@/modules/scanner/types';
 
 const NOW = 1755540000;
@@ -257,5 +263,76 @@ describe('densidad del payload', () => {
       }),
     );
     expect(worstCase.length).toBeLessThan(300);
+  });
+});
+
+describe('isDuplicateScan', () => {
+  const previous = { token: 'SP1.abc.def', at: 1000 };
+
+  it('ignora el mismo token dentro de la ventana de 3 s', () => {
+    expect(isDuplicateScan(previous, 'SP1.abc.def', 3999)).toBe(true);
+  });
+
+  it('acepta el mismo token fuera de la ventana', () => {
+    expect(isDuplicateScan(previous, 'SP1.abc.def', 4000)).toBe(false);
+  });
+
+  it('acepta un token distinto dentro de la ventana', () => {
+    expect(isDuplicateScan(previous, 'SP1.otro.def', 1500)).toBe(false);
+  });
+
+  it('acepta el primer escaneo', () => {
+    expect(isDuplicateScan(null, 'SP1.abc.def', 1500)).toBe(false);
+  });
+});
+
+describe('isDenialReason', () => {
+  it('reconoce los motivos del enum', () => {
+    expect(isDenialReason('REVOKED')).toBe(true);
+    expect(isDenialReason('LOT_SUSPENDED')).toBe(true);
+  });
+
+  it('rechaza valores desconocidos', () => {
+    expect(isDenialReason('garbage')).toBe(false);
+    expect(isDenialReason(42)).toBe(false);
+    expect(isDenialReason(null)).toBe(false);
+  });
+});
+
+describe('toScanResult', () => {
+  it('mapea ALLOWED con invitado y lote', () => {
+    const result = toScanResult({
+      result: 'ALLOWED',
+      guest: { name: 'Maria Lopez' },
+      lot: { code: 'M4-L12' },
+    });
+    expect(result).toEqual({
+      status: 'allowed',
+      guestName: 'Maria Lopez',
+      lotCode: 'M4-L12',
+    });
+  });
+
+  it('mapea ALLOWED sin invitado con nulls (offline no tiene nombre)', () => {
+    expect(toScanResult({ result: 'ALLOWED' })).toEqual({
+      status: 'allowed',
+      guestName: null,
+      lotCode: null,
+    });
+  });
+
+  it('mapea DENIED con motivo conocido y mensaje', () => {
+    const result = toScanResult({ result: 'DENIED', reason: 'ALREADY_USED' });
+    expect(result).toMatchObject({ status: 'denied', reason: 'ALREADY_USED' });
+    expect(result).toHaveProperty('message');
+  });
+
+  it('mapea DENIED con motivo desconocido a UNKNOWN', () => {
+    const result = toScanResult({ result: 'DENIED', reason: 'otra-cosa' });
+    expect(result).toMatchObject({ status: 'denied', reason: 'UNKNOWN' });
+  });
+
+  it('devuelve null para respuestas sin decision', () => {
+    expect(toScanResult({})).toBeNull();
   });
 });

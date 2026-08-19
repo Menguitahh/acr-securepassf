@@ -50,3 +50,7 @@ export type OfflineContext = {
 export type AccessDecision =
   | { status: 'allowed' }
   | { status: 'denied'; reason: DenialReason; message: string };
+
+export type ScanResult =
+  | { status: 'allowed'; guestName: string | null; lotCode: string | null }
+  | { status: 'denied'; reason: DenialReason; message: string };

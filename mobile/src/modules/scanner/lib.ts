@@ -1,17 +1,21 @@
 import * as ed from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha2.js';
 
-// @noble/ed25519 v3 no incluye implementacion de hash: se configura una vez.
-ed.hashes.sha512 = sha512;
+import type { components } from '@securepass/contracts';
 
-import { DENIAL_MESSAGES, TOKEN_PREFIX } from '@/modules/scanner/data';
+import { DENIAL_MESSAGES, DUPLICATE_WINDOW_MS, TOKEN_PREFIX } from '@/modules/scanner/data';
 import type {
   AccessDecision,
+  DenialReason,
   OfflineContext,
   OfflineDenialReason,
   ParsedToken,
+  ScanResult,
   TokenPayload,
 } from '@/modules/scanner/types';
+
+// @noble/ed25519 v3 no incluye implementacion de hash: se configura una vez.
+ed.hashes.sha512 = sha512;
 
 const TIME_PATTERN = /^\d{2}:\d{2}$/;
 
@@ -154,4 +158,46 @@ export function validateOffline(token: string, ctx: OfflineContext): AccessDecis
   // Fail-closed: el default es denegar. El costo de un falso permitido es
   // un desconocido adentro; el de un falso denegado, un registro manual.
   return denied('UNKNOWN');
+}
+
+const DENIAL_REASONS: DenialReason[] = [
+  'INVALID_SIGNATURE',
+  'NOT_YET_VALID',
+  'EXPIRED',
+  'ALREADY_USED',
+  'REVOKED',
+  'OUT_OF_SCHEDULE',
+  'LOT_SUSPENDED',
+  'REPLAY',
+  'UNKNOWN',
+];
+
+export function isDenialReason(value: unknown): value is DenialReason {
+  return typeof value === 'string' && DENIAL_REASONS.some((reason) => reason === value);
+}
+
+export function isDuplicateScan(
+  previous: { token: string; at: number } | null,
+  token: string,
+  now: number,
+): boolean {
+  if (!previous) return false;
+  return previous.token === token && now - previous.at < DUPLICATE_WINDOW_MS;
+}
+
+export function toScanResult(
+  response: components['schemas']['ValidateAccessResponse'],
+): ScanResult | null {
+  if (response.result === 'ALLOWED') {
+    return {
+      status: 'allowed',
+      guestName: response.guest?.name ?? null,
+      lotCode: response.lot?.code ?? null,
+    };
+  }
+  if (response.result === 'DENIED') {
+    const reason = isDenialReason(response.reason) ? response.reason : 'UNKNOWN';
+    return { status: 'denied', reason, message: DENIAL_MESSAGES[reason] };
+  }
+  return null;
 }

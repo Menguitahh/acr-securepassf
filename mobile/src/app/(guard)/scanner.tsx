@@ -1,16 +1,26 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { LogoutButton } from '@/common/components/logout-button';
-import { useSessionStore } from '@/modules/auth/session-store';
+import { Spinner } from '@/common/components/spinner';
+import { QrCamera } from '@/modules/scanner/components/qr-camera';
+import { ScanResultOverlay } from '@/modules/scanner/components/scan-result-overlay';
+import { useQrScanner } from '@/modules/scanner/hooks';
 
 export default function ScannerScreen() {
-  const user = useSessionStore((state) => state.user);
+  const { result, isPending, onScan, dismiss } = useQrScanner();
 
   return (
-    <View className="flex-1 items-center justify-center gap-6 bg-bg-base p-6">
-      <Text className="text-xl font-semibold text-text-primary">Escaner de QR</Text>
-      {user ? <Text className="text-sm text-text-muted">{user.fullName}</Text> : null}
-      <LogoutButton />
+    <View className="flex-1 bg-bg-base">
+      {result === null && !isPending ? <QrCamera onScan={onScan} /> : null}
+      {isPending ? (
+        <View className="absolute inset-0 items-center justify-center bg-bg-base/80">
+          <Spinner />
+        </View>
+      ) : null}
+      {result !== null ? <ScanResultOverlay result={result} onDismiss={dismiss} /> : null}
+      <View className="absolute right-4 top-12">
+        <LogoutButton />
+      </View>
     </View>
   );
 }
