@@ -35,7 +35,11 @@ export default function ResidentHomeScreen() {
     return (
       <View className="flex-1 bg-bg-base">
         <HomeHeader name={user?.fullName} />
-        <EmptyState title="No tenés pases activos." />
+        <EmptyState
+          title="No tenés pases activos."
+          actionLabel="Crear invitación"
+          onAction={() => router.push('/(resident)/create')}
+        />
       </View>
     );
   }
@@ -67,6 +71,10 @@ export default function ResidentHomeScreen() {
             ) : null}
           </Card>
         )}
+      />
+      <Button
+        label="Crear invitación"
+        onPress={() => router.push('/(resident)/create')}
       />
       <Button
         label="Mi QR"
