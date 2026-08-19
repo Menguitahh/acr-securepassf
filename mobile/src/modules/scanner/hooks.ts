@@ -3,6 +3,8 @@ import { useCallback, useRef, useState } from 'react';
 
 import { api, authRequest } from '@/common/api/client';
 import { getDb } from '@/common/db/database';
+import { useOfflineStore } from '@/modules/offline/offline-store';
+import { enqueueOutboxEvent } from '@/modules/offline/outbox';
 import { GATE_ID } from '@/modules/scanner/data';
 import { isDuplicateScan, parseToken, toScanResult, validateOffline } from '@/modules/scanner/lib';
 import type { OfflineContext, ScanResult } from '@/modules/scanner/types';
@@ -36,7 +38,9 @@ function recordLocalUse(jti: string, context: OfflineContext): void {
   );
 }
 
-async function validateScannedToken(token: string): Promise<ScanResult> {
+async function validateScannedToken(token: string, clientEventId: string): Promise<ScanResult> {
+  const capturedAt = new Date().toISOString();
+
   if (GATE_ID) {
     const gateId = GATE_ID;
     try {
@@ -46,8 +50,8 @@ async function validateScannedToken(token: string): Promise<ScanResult> {
             token,
             gateId,
             direction: 'IN',
-            capturedAt: new Date().toISOString(),
-            clientEventId: Crypto.randomUUID(),
+            capturedAt,
+            clientEventId,
           },
         }),
       );
@@ -71,6 +75,20 @@ async function validateScannedToken(token: string): Promise<ScanResult> {
   if (decision.status === 'allowed') {
     const parsed = parseToken(token);
     if (parsed) recordLocalUse(parsed.payload.j, context);
+  }
+
+  enqueueOutboxEvent({
+    clientEventId,
+    token,
+    gateId: GATE_ID ?? null,
+    direction: 'IN',
+    companions: null,
+    capturedAt,
+    localDecision: decision.status === 'allowed' ? 'ALLOWED' : 'DENIED',
+  });
+  useOfflineStore.getState().refreshPendingCount();
+
+  if (decision.status === 'allowed') {
     // Offline no conoce nombre ni lote: el QR no lleva PII (spec 5.1).
     return { status: 'allowed', guestName: null, lotCode: null };
   }
@@ -91,7 +109,7 @@ export function useQrScanner() {
     pendingRef.current = true;
     setIsPending(true);
     try {
-      const outcome = await validateScannedToken(token);
+      const outcome = await validateScannedToken(token, Crypto.randomUUID());
       setResult(outcome);
     } finally {
       pendingRef.current = false;
