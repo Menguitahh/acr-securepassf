@@ -12,6 +12,19 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Tokens de spec.md seccion 9.1 */
+@theme {
+  --color-bg-base: #09090b;
+  --color-bg-surface: #121212;
+  --color-bg-elevated: #1a1a1d;
+  --color-border: #27272a;
+  --color-text-primary: #fafafa;
+  --color-text-muted: #a1a1aa;
+  --color-allow: #16a34a;
+  --color-deny: #dc2626;
+  --color-warn: #d97706;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
