@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   formatWindow,
   remainingUses,
+  shareLines,
+  truncateShareLine,
   validateInvitationForm,
   type InvitationFormValues,
 } from '@/modules/invitation/lib';
@@ -169,5 +171,36 @@ describe('validateInvitationForm', () => {
       expect(result.payload.companions).toBe(3);
       expect(result.payload.guestDocument).toBe('30123456');
     }
+  });
+});
+
+describe('shareLines', () => {
+  it('arma las lineas de la tarjeta: invitado, lote con ventana y link', () => {
+    const lines = shareLines(
+      {
+        guestName: 'Maria Lopez',
+        shareUrl: 'https://securepass.app/i/abc123',
+        validFrom: '2026-08-20T18:00:00Z',
+        validUntil: '2026-08-20T23:59:00Z',
+      },
+      'M4-L12',
+    );
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toBe('Maria Lopez');
+    expect(lines[1]).toContain('Lote M4-L12');
+    expect(lines[2]).toBe('https://securepass.app/i/abc123');
+  });
+
+  it('omite lineas sin datos', () => {
+    expect(shareLines({}, null)).toEqual([]);
+    expect(shareLines({ guestName: 'Juan' }, null)).toEqual(['Juan']);
+  });
+
+  it('trunca lineas largas', () => {
+    const long = 'a'.repeat(60);
+    const truncated = truncateShareLine(long);
+    expect(truncated.length).toBeLessThan(long.length);
+    expect(truncated.endsWith('…')).toBe(true);
+    expect(truncateShareLine('corto')).toBe('corto');
   });
 });
