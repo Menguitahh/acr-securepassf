@@ -195,7 +195,7 @@ describe('validateOffline - permitido', () => {
 
     // Si se agrega una condicion nueva al token, entra aca: ninguna falla
     // parcial puede caer en allowed.
-    const failingCases: Array<{ name: string; token: string; ctx: OfflineContext }> = [
+    const failingCases: { name: string; token: string; ctx: OfflineContext }[] = [
       {
         name: 'firma',
         token: `${valid.slice(0, -1)}${valid.endsWith('A') ? 'B' : 'A'}`,

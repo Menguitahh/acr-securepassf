@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { LogoutButton } from '@/common/components/logout-button';
 import { Spinner } from '@/common/components/spinner';
 import { QrCamera } from '@/modules/scanner/components/qr-camera';
-import { ScanResultOverlay } from '@/modules/scanner/components/scan-result-overlay';
+import { ScanResultScreen } from '@/modules/scanner/components/scan-result-screen';
 import { useQrScanner } from '@/modules/scanner/hooks';
 
 export default function ScannerScreen() {
@@ -17,7 +17,7 @@ export default function ScannerScreen() {
           <Spinner />
         </View>
       ) : null}
-      {result !== null ? <ScanResultOverlay result={result} onDismiss={dismiss} /> : null}
+      {result !== null ? <ScanResultScreen result={result} onDismiss={dismiss} /> : null}
       <View className="absolute right-4 top-12">
         <LogoutButton />
       </View>
