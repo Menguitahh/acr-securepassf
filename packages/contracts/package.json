@@ -1,0 +1,12 @@
+{
+  "name": "@securepass/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "types": "./src/openapi.d.ts",
+  "scripts": {
+    "generate": "openapi-typescript ../../../securepassb/openapi.json -o src/openapi.d.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.8.0"
+  }
+}

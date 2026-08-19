@@ -1,0 +1,13 @@
+{
+  "name": "securepassf",
+  "private": true,
+  "workspaces": [
+    "mobile",
+    "web",
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  }
+}
