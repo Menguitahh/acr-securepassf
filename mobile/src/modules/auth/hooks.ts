@@ -2,7 +2,8 @@ import { useCallback, useState } from 'react';
 
 import { api, authRequest } from '@/common/api/client';
 import { isProblemDetail } from '@/common/api/problem';
-import { toSessionUser } from '@/modules/auth/lib';
+import { wipeLocalDatabase } from '@/common/db/database';
+import { hasRole, toSessionUser } from '@/modules/auth/lib';
 import { useSessionStore } from '@/modules/auth/session-store';
 import {
   clearSession,
@@ -69,6 +70,10 @@ export function useLogout() {
       } catch {
         // El logout local avanza aunque el server no responda.
       }
+    }
+    const user = useSessionStore.getState().user;
+    if (user && hasRole(user, 'GUARD')) {
+      wipeLocalDatabase();
     }
     await clearSession();
     useSessionStore.getState().signOut();
