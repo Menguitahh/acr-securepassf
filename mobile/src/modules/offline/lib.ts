@@ -1,3 +1,5 @@
+import type { components } from '@securepass/contracts';
+
 import { BACKOFF_SCHEDULE_MS } from '@/modules/offline/data';
 import type { OutboxEvent } from '@/modules/offline/types';
 
@@ -54,4 +56,21 @@ export async function runSyncCycle(
   }
   deps.remove(events.map((event) => event.clientEventId));
   return 'synced';
+}
+
+// Un evento sin garita no se puede sincronizar: se queda en la cola hasta
+// que el dispositivo tenga garita configurada (EXPO_PUBLIC_GATE_ID).
+export function toSyncEvent(
+  event: OutboxEvent,
+): components['schemas']['Event'] | null {
+  if (!event.gateId) return null;
+  return {
+    clientEventId: event.clientEventId,
+    token: event.token,
+    gateId: event.gateId,
+    direction: event.direction,
+    capturedAt: event.capturedAt,
+    localDecision: event.localDecision,
+    ...(event.companions !== null ? { companions: event.companions } : {}),
+  };
 }

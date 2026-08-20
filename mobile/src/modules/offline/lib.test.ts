@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { backoffDelayFor, isOutboxEvent, runSyncCycle } from '@/modules/offline/lib';
+import {
+  backoffDelayFor,
+  isOutboxEvent,
+  runSyncCycle,
+  toSyncEvent,
+} from '@/modules/offline/lib';
 import type { SyncCycleDeps } from '@/modules/offline/lib';
 import type { OutboxEvent } from '@/modules/offline/types';
 
@@ -119,5 +124,29 @@ describe('isOutboxEvent', () => {
     expect(isOutboxEvent({ ...event('e1'), direction: 'SIDEWAYS' })).toBe(false);
     expect(isOutboxEvent({ ...event('e1'), localDecision: 'MAYBE' })).toBe(false);
     expect(isOutboxEvent({ clientEventId: 'e1' })).toBe(false);
+  });
+});
+
+describe('toSyncEvent', () => {
+  it('mapea el evento de la cola al contrato de sync', () => {
+    const mapped = toSyncEvent({ ...event('e1'), companions: 2 });
+    expect(mapped).toEqual({
+      clientEventId: 'e1',
+      token: 'SP1.abc.def',
+      gateId: 'g1',
+      direction: 'IN',
+      capturedAt: '2026-08-19T18:00:00.000Z',
+      localDecision: 'ALLOWED',
+      companions: 2,
+    });
+  });
+
+  it('omite companions cuando es null', () => {
+    const mapped = toSyncEvent(event('e1'));
+    expect(mapped).not.toHaveProperty('companions');
+  });
+
+  it('devuelve null sin garita configurada: el evento se queda en la cola', () => {
+    expect(toSyncEvent({ ...event('e1'), gateId: null })).toBeNull();
   });
 });

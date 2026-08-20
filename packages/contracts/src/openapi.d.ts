@@ -100,6 +100,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/access/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invitations/{id}": {
         parameters: {
             query?: never;
@@ -187,6 +203,9 @@ export interface components {
             id?: string;
             /** Format: uuid */
             lotId?: string;
+            /** Format: uuid */
+            neighborhoodId?: string;
+            neighborhoodName?: string;
             /** @enum {string} */
             type?: "SINGLE" | "EVENT" | "RECURRING";
             /** @enum {string} */
@@ -285,6 +304,39 @@ export interface components {
             guest?: components["schemas"]["GuestDetail"];
             lot?: components["schemas"]["LotDetail"];
             invitation?: components["schemas"]["InvitationDetail"];
+        };
+        Event: {
+            /** Format: uuid */
+            clientEventId: string;
+            token: string;
+            /** Format: uuid */
+            gateId: string;
+            /** @enum {string} */
+            direction: "IN" | "OUT";
+            /** Format: int32 */
+            companions?: number;
+            /** Format: date-time */
+            capturedAt: string;
+            localDecision?: string;
+        };
+        SyncAccessRequest: {
+            /** Format: uuid */
+            deviceId: string;
+            events: components["schemas"]["Event"][];
+        };
+        Conflict: {
+            /** Format: uuid */
+            clientEventId?: string;
+            serverResult?: string;
+            reason?: string;
+            /** Format: uuid */
+            logId?: string;
+            clockSkew?: boolean;
+        };
+        SyncAccessResponse: {
+            /** Format: int32 */
+            accepted?: number;
+            conflicts?: components["schemas"]["Conflict"][];
         };
         PagedInvitationsResponse: {
             items?: components["schemas"]["InvitationResponse"][];
@@ -474,6 +526,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ValidateAccessResponse"];
+                };
+            };
+        };
+    };
+    sync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SyncAccessResponse"];
                 };
             };
         };
