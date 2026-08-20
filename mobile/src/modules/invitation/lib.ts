@@ -1,5 +1,7 @@
 import type { components } from '@securepass/contracts';
 
+import { isProblemDetail } from '@/common/api/problem';
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function formatDateTime(iso: string): string {
@@ -112,6 +114,19 @@ export function validateInvitationForm(
         : {}),
     },
   };
+}
+
+// Mensaje legible para el rechazo del server al crear una invitacion.
+// BR-03 (lote suspendido) tiene texto propio: es un estado del lote que
+// el usuario no puede resolver desde la app, no un error de formulario.
+export function createInvitationErrorMessage(raw: unknown): string {
+  if (!isProblemDetail(raw)) {
+    return 'El server rechazó la invitación. Revisá los datos.';
+  }
+  if (raw.rule === 'BR-03') {
+    return 'El lote esta suspendido por mora y no acepta invitaciones. Comunicate con la administración del barrio.';
+  }
+  return raw.detail ?? 'El server rechazó la invitación. Revisá los datos.';
 }
 
 function parseBoundedInt(raw: string, min: number, max: number): number | null {

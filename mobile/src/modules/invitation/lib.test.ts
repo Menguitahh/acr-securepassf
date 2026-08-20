@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  createInvitationErrorMessage,
   formatWindow,
   remainingUses,
   shareLines,
@@ -55,6 +56,23 @@ function baseValues(): InvitationFormValues {
     dailyUntil: new Date('2026-08-20T18:00:00Z'),
   };
 }
+
+describe('createInvitationErrorMessage', () => {
+  it('BR-03 tiene mensaje de lote suspendido', () => {
+    expect(createInvitationErrorMessage({ status: 422, type: 'business-rule-violation', rule: 'BR-03' }))
+      .toContain('suspendido');
+  });
+
+  it('usa el detail del server para otros rechazos', () => {
+    expect(
+      createInvitationErrorMessage({ status: 422, type: 'business-rule-violation', rule: 'BR-01', detail: 'usuario sin permiso para invitar en este lote' }),
+    ).toBe('usuario sin permiso para invitar en este lote');
+  });
+
+  it('sin problem detail cae al mensaje generico', () => {
+    expect(createInvitationErrorMessage('caida de red')).toContain('Revisá los datos');
+  });
+});
 
 describe('validateInvitationForm', () => {
   it('exige documento del invitado (D-08)', () => {

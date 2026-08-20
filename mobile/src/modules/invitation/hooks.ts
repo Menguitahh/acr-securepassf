@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { components } from '@securepass/contracts';
 
 import { api, authRequest } from '@/common/api/client';
+import { createInvitationErrorMessage } from '@/modules/invitation/lib';
 
 export function useActiveInvitations() {
   return useQuery({
@@ -54,7 +55,7 @@ export function useCreateInvitation() {
         api.POST('/api/v1/invitations', { body: payload }),
       );
       if (error || !data) {
-        throw new Error('El server rechazó la invitación. Revisá los datos.');
+        throw new Error(createInvitationErrorMessage(error));
       }
       return data;
     },

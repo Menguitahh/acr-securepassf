@@ -3,6 +3,7 @@ export type ProblemDetail = {
   type?: string;
   title?: string;
   detail?: string;
+  rule?: string;
 };
 
 export function isProblemDetail(value: unknown): value is ProblemDetail {
