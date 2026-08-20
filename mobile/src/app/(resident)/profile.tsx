@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 
 import { LogoutButton } from '@/common/components/logout-button';
@@ -9,6 +10,7 @@ import { useSessionStore } from '@/modules/auth/session-store';
 
 export default function ProfileScreen() {
   const user = useSessionStore((state) => state.user);
+  const router = useRouter();
 
   if (!user) return null;
 
@@ -44,14 +46,28 @@ export default function ProfileScreen() {
             <Text className="text-body leading-[22px] text-text-muted">Sin lote asignado.</Text>
           ) : (
             user.lots.map((lot) => (
-              <View key={lot.id ?? lot.code} className="flex-row items-center justify-between">
-                <Text className="text-body leading-[22px] text-text-primary">
-                  {lot.code ?? lot.id}
-                </Text>
-                <Text className="text-footnote leading-[18px] text-text-muted">
-                  {lot.isOwner ? 'Titular' : 'Miembro'}
-                </Text>
-              </View>
+              <Pressable
+                key={lot.id ?? lot.code}
+                accessibilityRole="button"
+                accessibilityLabel={`Unidad familiar del lote ${lot.code ?? ''}`}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(resident)/family/[lotId]',
+                    params: { lotId: lot.id ?? '' },
+                  })
+                }
+                className="flex-row items-center justify-between active:opacity-70"
+              >
+                <View className="flex-row items-baseline gap-2">
+                  <Text className="text-body leading-[22px] text-text-primary">
+                    {lot.code ?? lot.id}
+                  </Text>
+                  <Text className="text-footnote leading-[18px] text-text-muted">
+                    {lot.isOwner ? 'Titular' : 'Miembro'}
+                  </Text>
+                </View>
+                <Text className="text-body leading-[22px] text-text-muted">{'>'}</Text>
+              </Pressable>
             ))
           )}
         </View>
