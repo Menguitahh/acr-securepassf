@@ -7,10 +7,10 @@ type InputProps = TextInputProps & {
 export function Input({ label, ...props }: InputProps) {
   return (
     <View className="gap-2">
-      {label ? <Text className="text-sm text-text-muted">{label}</Text> : null}
+      {label ? <Text className="text-footnote font-medium text-text-muted">{label}</Text> : null}
       <TextInput
-        placeholderTextColor="#a1a1aa"
-        className="min-h-12 rounded-xl border border-border bg-bg-elevated px-4 text-base text-text-primary"
+        placeholderTextColor="#71717a"
+        className="min-h-12 rounded-xl border border-border bg-bg-elevated px-4 text-body leading-[22px] text-text-primary"
         {...props}
       />
     </View>

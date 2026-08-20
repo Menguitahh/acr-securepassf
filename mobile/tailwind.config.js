@@ -4,6 +4,14 @@ module.exports = {
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
+      fontSize: {
+        // Escala tipografica de spec 9: jerarquia marcada, no tres tamanos
+        // parecidos. large-title = iOS Large Title, footnote = label gris.
+        'large-title': '34px',
+        title: '22px',
+        body: '17px',
+        footnote: '13px',
+      },
       colors: {
         'bg-base': '#09090b',
         'bg-surface': '#121212',

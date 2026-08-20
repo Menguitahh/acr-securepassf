@@ -13,5 +13,5 @@ export default function ResidentLayout() {
     return <Redirect href="/login" />;
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }} />;
 }

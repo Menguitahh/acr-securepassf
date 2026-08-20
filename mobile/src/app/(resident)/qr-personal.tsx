@@ -1,21 +1,23 @@
-import { useRouter } from 'expo-router';
 import { Text, View } from 'react-native';
 
-import { Button } from '@/common/components/button';
+import { ScreenHeader } from '@/common/components/screen-header';
 
 // ponytail: espera el endpoint del pase personal (backend WBS-21). Cuando
-// exista, reemplazar este mensaje por el QR del pase del residente.
+// exista, reemplazar este placeholder por el QR del pase del residente,
+// con la misma jerarquia de la pantalla de pase: QR grande centrado.
 export default function PersonalQrScreen() {
-  const router = useRouter();
-
   return (
-    <View className="flex-1 items-center justify-center gap-4 bg-bg-base p-6">
-      <Text className="text-xl font-semibold text-text-primary">Mi QR</Text>
-      <Text className="text-center text-base text-text-muted">
-        Tu pase personal todavia no esta disponible. Lo vas a encontrar aca
-        cuando se active.
-      </Text>
-      <Button label="Volver" onPress={() => router.back()} />
+    <View className="flex-1 bg-bg-base">
+      <ScreenHeader title="Mi QR" back />
+      <View className="flex-1 items-center justify-center gap-3 px-8">
+        <Text className="text-center text-title font-semibold leading-[28px] text-text-primary">
+          Tu pase personal todavia no esta disponible.
+        </Text>
+        <Text className="max-w-[300px] text-center text-body leading-[22px] text-text-muted">
+          Lo vas a encontrar aca cuando se active. Por ahora, los invitados entran con los
+          pases que creas.
+        </Text>
+      </View>
     </View>
   );
 }
