@@ -24,12 +24,13 @@ export default function ResidentHomeScreen() {
   if (isError) {
     return (
       <View className="flex-1 bg-bg-base">
-        <ScreenHeader title="Invitaciones" subtitle={user?.fullName} right={<LogoutButton />} />
+        <ScreenHeader title="Invitaciones" subtitle={user?.fullName} />
         <ErrorState
           message={`${error instanceof Error ? error.message : 'No se pudo cargar la lista de pases.'} Reintentá en unos segundos.`}
         />
-        <View className="px-8 pb-8">
+        <View className="gap-3 px-8 pb-8">
           <Button label="Reintentar" onPress={() => void refetch()} variant="primary" />
+          <LogoutButton />
         </View>
       </View>
     );
@@ -38,20 +39,23 @@ export default function ResidentHomeScreen() {
   if (!data?.length) {
     return (
       <View className="flex-1 bg-bg-base">
-        <ScreenHeader title="Invitaciones" subtitle={user?.fullName} right={<LogoutButton />} />
+        <ScreenHeader title="Invitaciones" subtitle={user?.fullName} />
         <EmptyState
           title="No tenés pases activos."
           description="Creá un pase para un invitado y compartile el QR para entrar al barrio."
           actionLabel="Crear invitación"
           onAction={() => router.push('/(resident)/create')}
         />
+        <View className="px-8 pb-10">
+          <LogoutButton />
+        </View>
       </View>
     );
   }
 
   return (
     <View className="flex-1 bg-bg-base">
-      <ScreenHeader title="Invitaciones" subtitle={user?.fullName} right={<LogoutButton />} />
+      <ScreenHeader title="Invitaciones" subtitle={user?.fullName} />
       <FlatList
         data={data}
         keyExtractor={(item) => item.id ?? ''}
@@ -64,6 +68,7 @@ export default function ResidentHomeScreen() {
               variant="primary"
             />
             <Button label="Mi QR" onPress={() => router.push('/(resident)/qr-personal')} />
+            <LogoutButton />
           </View>
         }
         renderItem={({ item, index }) => (
