@@ -13,6 +13,12 @@ import type { OfflineContext, TokenPayload } from '@/modules/scanner/types';
 
 const NOW = 1755540000;
 
+function corruptCharAt(value: string, index: number): string {
+  const current = value.charAt(index);
+  const replacement = current === 'A' ? 'B' : 'A';
+  return value.slice(0, index) + replacement + value.slice(index + 1);
+}
+
 function toBase64Url(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -198,7 +204,10 @@ describe('validateOffline - permitido', () => {
     const failingCases: { name: string; token: string; ctx: OfflineContext }[] = [
       {
         name: 'firma',
-        token: `${valid.slice(0, -1)}${valid.endsWith('A') ? 'B' : 'A'}`,
+        // Corrompe un byte significativo de la firma: el ultimo caracter
+        // base64url solo codifica bits de padding y a veces decodifica
+        // a la misma firma (el test era flaky).
+        token: corruptCharAt(valid, valid.length - 40),
         ctx: context,
       },
       {

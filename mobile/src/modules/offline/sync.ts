@@ -5,8 +5,7 @@ import type { components } from '@securepass/contracts';
 
 import { api, authRequest } from '@/common/api/client';
 import { SYNC_BATCH_SIZE } from '@/modules/offline/data';
-import { runSyncCycle, toSyncEvent } from '@/modules/offline/lib';
-import { backoffDelayFor } from '@/modules/offline/lib';
+import { backoffDelayFor, runSyncCycle, toSyncEvent } from '@/modules/offline/lib';
 import {
   markSyncFailure,
   maxSyncAttempts,

@@ -5,14 +5,23 @@ import { useOfflineStore } from '@/modules/offline/offline-store';
 
 export function QueueStatus() {
   const pendingCount = useOfflineStore((state) => state.pendingCount);
+  const isOffline = useOfflineStore((state) => state.isOffline);
 
-  if (pendingCount === 0) return null;
+  if (!isOffline && pendingCount === 0) return null;
 
   return (
     <View className="absolute left-4 top-12 items-start gap-2 pr-4">
-      <View className="rounded-full border border-border bg-bg-surface px-3 py-1">
-        <Text className="text-sm text-text-primary">En cola: {pendingCount}</Text>
-      </View>
+      {isOffline ? (
+        <View className="rounded-full border border-border bg-bg-surface px-3 py-1">
+          <Text className="text-sm text-text-primary">
+            Sin conexión{isOffline && pendingCount > 0 ? ` · En cola: ${pendingCount}` : ''}
+          </Text>
+        </View>
+      ) : (
+        <View className="rounded-full border border-border bg-bg-surface px-3 py-1">
+          <Text className="text-sm text-text-primary">En cola: {pendingCount}</Text>
+        </View>
+      )}
       {pendingCount > QUEUE_ALERT_THRESHOLD ? (
         <View className="rounded-lg border border-border bg-bg-surface p-3">
           <Text className="text-sm leading-snug text-text-primary">

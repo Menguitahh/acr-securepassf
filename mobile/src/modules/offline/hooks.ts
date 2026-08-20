@@ -1,9 +1,14 @@
 import * as Network from 'expo-network';
 import { useEffect, useRef } from 'react';
 
+import { syncAccessCache } from '@/modules/offline/access-cache';
 import { SYNC_INTERVAL_MS } from '@/modules/offline/data';
 import { useOfflineStore } from '@/modules/offline/offline-store';
 import { retryDelayMs, syncOutbox } from '@/modules/offline/sync';
+
+function isOnline(state: Network.NetworkState): boolean {
+  return state.isConnected === true && state.isInternetReachable !== false;
+}
 
 export function useOutboxSync() {
   const refreshPendingCount = useOfflineStore((state) => state.refreshPendingCount);
@@ -32,7 +37,8 @@ export function useOutboxSync() {
 
     const interval = setInterval(() => void attemptSync(), SYNC_INTERVAL_MS);
     const subscription = Network.addNetworkStateListener((state) => {
-      if (state.isConnected && state.isInternetReachable !== false) {
+      useOfflineStore.getState().setIsOffline(!isOnline(state));
+      if (isOnline(state)) {
         void attemptSync();
       }
     });
@@ -45,4 +51,16 @@ export function useOutboxSync() {
       subscription.remove();
     };
   }, [refreshPendingCount]);
+}
+
+// Baja claves publicas y revocados para la validacion offline (spec 8.2).
+// Se refresca al montar y cada vez que vuelve la red.
+export function useAccessCacheSync() {
+  useEffect(() => {
+    void syncAccessCache();
+    const subscription = Network.addNetworkStateListener((state) => {
+      if (isOnline(state)) void syncAccessCache();
+    });
+    return () => subscription.remove();
+  }, []);
 }
