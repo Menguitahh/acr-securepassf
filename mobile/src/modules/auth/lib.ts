@@ -12,6 +12,23 @@ export function isResident(user: SessionUser): boolean {
   );
 }
 
+// Roles con UI en la app mobile. Un usuario sin ninguno de estos roles
+// (por ejemplo ADMIN, que solo usa el dashboard) no tiene pantalla de
+// destino: mandarlo a /login es el unico estado terminal del flujo de
+// redirects. Sin eso, index -> (resident) -> /login -> index cicla sin fin.
+export function hasMobileRole(user: SessionUser): boolean {
+  return hasRole(user, 'GUARD') || isResident(user);
+}
+
+export type HomeRoute = '/(guard)/scanner' | '/(resident)' | '/login';
+
+export function homeRouteFor(user: SessionUser | null): HomeRoute {
+  if (!user) return '/login';
+  if (hasRole(user, 'GUARD')) return '/(guard)/scanner';
+  if (isResident(user)) return '/(resident)';
+  return '/login';
+}
+
 export function toSessionUser(
   payload: components['schemas']['UserPayload'],
 ): SessionUser | null {

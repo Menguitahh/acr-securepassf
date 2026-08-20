@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { hasRole, isResident, isSessionUser, toSessionUser } from '@/modules/auth/lib';
+import {
+  hasMobileRole,
+  hasRole,
+  homeRouteFor,
+  isResident,
+  isSessionUser,
+  toSessionUser,
+} from '@/modules/auth/lib';
 import type { SessionUser } from '@/modules/auth/types';
 
 const baseUser: SessionUser = {
@@ -33,6 +40,36 @@ describe('isResident', () => {
   it('rechaza guardias y admins', () => {
     expect(isResident({ ...baseUser, roles: ['GUARD'] })).toBe(false);
     expect(isResident({ ...baseUser, roles: ['ADMIN'] })).toBe(false);
+  });
+});
+
+describe('hasMobileRole', () => {
+  it('acepta guardias y residentes', () => {
+    expect(hasMobileRole({ ...baseUser, roles: ['GUARD'] })).toBe(true);
+    expect(hasMobileRole(baseUser)).toBe(true);
+  });
+
+  it('rechaza admins y roles vacios', () => {
+    expect(hasMobileRole({ ...baseUser, roles: ['ADMIN'] })).toBe(false);
+    expect(hasMobileRole({ ...baseUser, roles: [] })).toBe(false);
+  });
+});
+
+describe('homeRouteFor', () => {
+  it('manda al guardia al scanner', () => {
+    expect(homeRouteFor({ ...baseUser, roles: ['GUARD'] })).toBe('/(guard)/scanner');
+  });
+
+  it('manda al residente a su home', () => {
+    expect(homeRouteFor(baseUser)).toBe('/(resident)');
+  });
+
+  it('manda al login a la sesion sin rol mobile para cortar el ciclo de redirects', () => {
+    expect(homeRouteFor({ ...baseUser, roles: ['ADMIN'] })).toBe('/login');
+  });
+
+  it('manda al login cuando no hay sesion', () => {
+    expect(homeRouteFor(null)).toBe('/login');
   });
 });
 
