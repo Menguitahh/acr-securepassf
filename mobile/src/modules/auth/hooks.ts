@@ -28,7 +28,7 @@ export function useLogin() {
           const problem = isProblemDetail(rawError) ? rawError : null;
           setError(
             problem?.status === 401
-              ? 'Credenciales incorrectas.'
+              ? 'Credenciales incorrectas. Revisá el email y la contraseña.'
               : 'No se pudo conectar con el servidor. Revisá tu conexion.',
           );
           return false;

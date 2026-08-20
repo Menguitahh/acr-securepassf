@@ -18,7 +18,7 @@ api.use({
 
 export class SessionExpiredError extends Error {
   constructor() {
-    super('La sesion expiro.');
+    super('La sesion expiro. Volvé a iniciar sesion.');
   }
 }
 

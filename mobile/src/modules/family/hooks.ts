@@ -42,7 +42,9 @@ export function useAddFamilyMember(lotId: string) {
         }),
       );
       if (error || !data) {
-        throw new Error(serverDetail(error, 'No se pudo agregar el miembro.'));
+        throw new Error(
+          serverDetail(error, 'No se pudo agregar el miembro. Revisá el email o telefono e intentá de nuevo.'),
+        );
       }
       return data;
     },
@@ -66,7 +68,7 @@ export function useUpdateFamilyMember(lotId: string) {
         }),
       );
       if (error || !data) {
-        throw new Error(serverDetail(error, 'No se pudo actualizar el miembro.'));
+        throw new Error(serverDetail(error, 'No se pudo actualizar el miembro. Intentá de nuevo.'));
       }
       return data;
     },
