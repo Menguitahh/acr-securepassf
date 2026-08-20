@@ -175,25 +175,27 @@ describe('validateInvitationForm', () => {
 });
 
 describe('shareLines', () => {
-  it('arma las lineas de la tarjeta: invitado, lote con ventana y link', () => {
+  it('arma las lineas de la tarjeta: invitado, barrio y lote, ventana y link', () => {
     const lines = shareLines(
       {
         guestName: 'Maria Lopez',
+        neighborhoodName: 'Barrio Las Acacias',
         shareUrl: 'https://securepass.app/i/abc123',
         validFrom: '2026-08-20T18:00:00Z',
         validUntil: '2026-08-20T23:59:00Z',
       },
       'M4-L12',
+      'Barrio Las Acacias',
     );
-    expect(lines).toHaveLength(3);
+    expect(lines).toHaveLength(4);
     expect(lines[0]).toBe('Maria Lopez');
-    expect(lines[1]).toContain('Lote M4-L12');
-    expect(lines[2]).toBe('https://securepass.app/i/abc123');
+    expect(lines[1]).toBe('Barrio Las Acacias - Lote M4-L12');
+    expect(lines[3]).toBe('https://securepass.app/i/abc123');
   });
 
   it('omite lineas sin datos', () => {
-    expect(shareLines({}, null)).toEqual([]);
-    expect(shareLines({ guestName: 'Juan' }, null)).toEqual(['Juan']);
+    expect(shareLines({}, null, null)).toEqual([]);
+    expect(shareLines({ guestName: 'Juan' }, null, null)).toEqual(['Juan']);
   });
 
   it('trunca lineas largas', () => {

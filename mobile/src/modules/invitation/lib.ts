@@ -122,16 +122,22 @@ export function truncateShareLine(value: string): string {
   return `${value.slice(0, MAX_SHARE_LINE_CHARS - 1)}…`;
 }
 
-// Lineas de la tarjeta que se comparte (spec US-11): invitado, lote con
-// ventana y el link del pase. El nombre del barrio no esta en ninguna
-// respuesta de la API todavia.
+// Lineas de la tarjeta que se comparte (spec US-11): invitado, barrio,
+// lote con ventana y el link del pase.
 export function shareLines(
   invitation: components['schemas']['InvitationResponse'],
   lotCode: string | null,
+  neighborhoodName: string | null,
 ): string[] {
   const lines: string[] = [];
   if (invitation.guestName) lines.push(truncateShareLine(invitation.guestName));
-  if (lotCode) lines.push(truncateShareLine(`Lote ${lotCode} - ${formatWindow(invitation.validFrom, invitation.validUntil)}`));
+  if (neighborhoodName || lotCode) {
+    const parts = [neighborhoodName, lotCode ? `Lote ${lotCode}` : null];
+    lines.push(truncateShareLine(parts.filter((part) => part !== null).join(' - ')));
+  }
+  if (invitation.validFrom && invitation.validUntil) {
+    lines.push(truncateShareLine(formatWindow(invitation.validFrom, invitation.validUntil)));
+  }
   if (invitation.shareUrl) lines.push(truncateShareLine(invitation.shareUrl));
   return lines;
 }

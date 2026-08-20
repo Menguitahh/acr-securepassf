@@ -14,11 +14,8 @@ import { useInvitation } from '@/modules/invitation/hooks';
 import { shareLines } from '@/modules/invitation/lib';
 
 const CARD_WIDTH = 300;
-const CARD_HEIGHT = 380;
+const CARD_HEIGHT = 400;
 
-// ponytail: la tarjeta no incluye el nombre del barrio porque ninguna
-// respuesta de la API lo trae (solo neighborhoodId). Sumar la linea cuando
-// un endpoint lo exponga.
 function toPngBytes(dataUrl: string): Uint8Array {
   const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
   const binary = atob(base64);
@@ -50,7 +47,7 @@ export default function InvitationDetailScreen() {
   }
   if (isLoading) return <View className="flex-1 bg-bg-base"><Spinner /></View>;
 
-  const lines = shareLines(data ?? {}, lotCode);
+  const lines = shareLines(data ?? {}, lotCode, data?.neighborhoodName ?? null);
 
   const share = () => {
     const svg = svgRef.current;
