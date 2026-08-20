@@ -1,4 +1,5 @@
 import { Text, View } from 'react-native';
+import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 
 import { Button } from '@/common/components/button';
 
@@ -11,7 +12,10 @@ type EmptyStateProps = {
 
 export function EmptyState({ title, description, actionLabel, onAction }: EmptyStateProps) {
   return (
-    <View className="flex-1 items-center justify-center gap-3 px-8">
+    <Animated.View
+      entering={FadeInDown.duration(350).reduceMotion(ReduceMotion.System)}
+      className="flex-1 items-center justify-center gap-3 px-8"
+    >
       <Text className="text-center text-title font-semibold leading-[28px] text-text-primary">
         {title}
       </Text>
@@ -25,6 +29,6 @@ export function EmptyState({ title, description, actionLabel, onAction }: EmptyS
           <Button label={actionLabel} onPress={onAction} variant="primary" />
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }

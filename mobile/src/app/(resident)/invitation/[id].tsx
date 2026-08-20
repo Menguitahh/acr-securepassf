@@ -4,6 +4,7 @@ import * as Sharing from 'expo-sharing';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
+import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import QRCode from 'react-native-qrcode-svg';
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 
@@ -75,6 +76,10 @@ export default function InvitationDetailScreen() {
       <View className="flex-1 items-center justify-center gap-6 px-6">
         {isActive && data.qrToken ? (
           <>
+            <Animated.View
+              entering={FadeInDown.duration(450).reduceMotion(ReduceMotion.System)}
+              className="items-center gap-6"
+            >
             <Svg
               ref={svgRef}
               width={CARD_WIDTH}
@@ -116,6 +121,7 @@ export default function InvitationDetailScreen() {
                 variant="primary"
               />
             </View>
+            </Animated.View>
           </>
         ) : (
           <>

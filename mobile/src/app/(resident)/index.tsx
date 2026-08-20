@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/common/components/button';
@@ -68,7 +68,7 @@ export default function ResidentHomeScreen() {
         }
         renderItem={({ item, index }) => (
           <Animated.View
-            entering={FadeInDown.delay(Math.min(index * 60, 300))}
+            entering={FadeInDown.delay(Math.min(index * 60, 300)).reduceMotion(ReduceMotion.System)}
           >
             <Card onPress={() => router.push({ pathname: '/(resident)/invitation/[id]', params: { id: item.id ?? '' } })}>
               <View className="flex-row items-start justify-between gap-2">

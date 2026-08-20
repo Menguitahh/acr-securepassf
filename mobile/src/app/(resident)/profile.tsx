@@ -1,4 +1,5 @@
 import { Text, View } from 'react-native';
+import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 
 import { LogoutButton } from '@/common/components/logout-button';
 import { ScreenHeader } from '@/common/components/screen-header';
@@ -16,7 +17,10 @@ export default function ProfileScreen() {
   return (
     <View className="flex-1 bg-bg-base">
       <ScreenHeader title="Perfil" back />
-      <View className="flex-1 gap-8 px-6 pt-4">
+      <Animated.View
+        entering={FadeInDown.duration(300).reduceMotion(ReduceMotion.System)}
+        className="flex-1 gap-8 px-6 pt-4"
+      >
         <View className="items-center gap-3 pt-2">
           <View className="h-16 w-16 items-center justify-center rounded-full border border-border bg-bg-elevated">
             <Text className="text-title font-semibold leading-[28px] text-text-primary">
@@ -55,7 +59,7 @@ export default function ProfileScreen() {
         <View className="mt-auto pb-10">
           <LogoutButton />
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
