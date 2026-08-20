@@ -45,7 +45,7 @@ function baseValues(): InvitationFormValues {
     lotId: 'lot-1',
     type: 'SINGLE',
     guestName: 'Maria Lopez',
-    guestDocument: '',
+    guestDocument: '30123456',
     companions: '',
     validFrom: new Date('2026-08-20T18:00:00Z'),
     validUntil: new Date('2026-08-20T23:59:00Z'),
@@ -57,6 +57,23 @@ function baseValues(): InvitationFormValues {
 }
 
 describe('validateInvitationForm', () => {
+  it('exige documento del invitado (D-08)', () => {
+    expect(validateInvitationForm({ ...baseValues(), guestDocument: '' })).toMatchObject({
+      ok: false,
+      error: 'Poné el documento del invitado.',
+    });
+    expect(validateInvitationForm({ ...baseValues(), guestDocument: '123456' })).toMatchObject({
+      ok: false,
+      error: 'El documento va de 7 a 8 digitos.',
+    });
+    expect(validateInvitationForm({ ...baseValues(), guestDocument: '123456789' })).toMatchObject({
+      ok: false,
+    });
+    expect(validateInvitationForm({ ...baseValues(), guestDocument: 'abc12345' })).toMatchObject({
+      ok: false,
+    });
+  });
+
   it('valida un pase SINGLE con cupo forzado en 1', () => {
     const result = validateInvitationForm(baseValues());
     expect(result.ok).toBe(true);

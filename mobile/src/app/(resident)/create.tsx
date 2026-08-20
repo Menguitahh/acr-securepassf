@@ -150,7 +150,7 @@ export default function CreateInvitationScreen() {
             editable={!isPending}
           />
           <Input
-            label="Documento (opcional)"
+            label="Documento"
             value={values.guestDocument}
             onChangeText={(guestDocument) => setValue('guestDocument', guestDocument)}
             keyboardType="number-pad"

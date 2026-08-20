@@ -51,6 +51,13 @@ export function validateInvitationForm(
   if (!values.lotId) return { ok: false, error: 'Elegí un lote.' };
   const guestName = values.guestName.trim();
   if (!guestName) return { ok: false, error: 'Poné el nombre del invitado.' };
+  const guestDocument = values.guestDocument.trim();
+  if (!guestDocument) {
+    return { ok: false, error: 'Poné el documento del invitado.' };
+  }
+  if (!/^\d{7,8}$/.test(guestDocument)) {
+    return { ok: false, error: 'El documento va de 7 a 8 digitos.' };
+  }
   if (!values.validFrom || !values.validUntil) {
     return { ok: false, error: 'Elegí la ventana de validez.' };
   }
@@ -85,17 +92,16 @@ export function validateInvitationForm(
     }
   }
 
-  const guestDocument = values.guestDocument.trim();
   return {
     ok: true,
     payload: {
       lotId: values.lotId,
       type: values.type,
       guestName,
+      guestDocument,
       validFrom: values.validFrom.toISOString(),
       validUntil: values.validUntil.toISOString(),
       maxUses,
-      ...(guestDocument ? { guestDocument } : {}),
       ...(companions !== null ? { companions } : {}),
       ...(values.type === 'RECURRING' && values.dailyFrom && values.dailyUntil
         ? {

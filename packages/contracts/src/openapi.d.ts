@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/family/lots/{lotId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_1"];
+        put?: never;
+        post: operations["add"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -84,6 +100,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/lots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_2"];
+        put?: never;
+        post: operations["create_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/lots/{id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["members"];
+        put?: never;
+        post: operations["addMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/access/validate": {
         parameters: {
             query?: never;
@@ -110,6 +158,54 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["sync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/family/lots/{lotId}/members/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["update"];
+        trace?: never;
+    };
+    "/api/v1/admin/lots/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["update_1"];
+        trace?: never;
+    };
+    "/api/v1/me/passes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["passes"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -174,7 +270,7 @@ export interface components {
             /** @enum {string} */
             type: "SINGLE" | "EVENT" | "RECURRING";
             guestName: string;
-            guestDocument?: string;
+            guestDocument: string;
             /** Format: int32 */
             companions?: number;
             notes?: string;
@@ -229,6 +325,22 @@ export interface components {
             qrToken?: string;
             shareUrl?: string;
         };
+        AddFamilyMemberRequest: {
+            identifier: string;
+            canInvite?: boolean;
+            relation?: string;
+        };
+        FamilyMemberResponse: {
+            /** Format: uuid */
+            userId?: string;
+            fullName?: string;
+            email?: string;
+            phone?: string;
+            relation?: string;
+            isOwner?: boolean;
+            canInvite?: boolean;
+            active?: boolean;
+        };
         RefreshRequest: {
             refreshToken: string;
         };
@@ -264,6 +376,47 @@ export interface components {
             neighborhoodId?: string;
             roles?: string[];
             lots?: components["schemas"]["LotPayload"][];
+        };
+        CreateLotRequest: {
+            code: string;
+            street?: string;
+            number?: string;
+        };
+        LotResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            neighborhoodId?: string;
+            code?: string;
+            street?: string;
+            number?: string;
+            /** @enum {string} */
+            status?: "ACTIVE" | "SUSPENDED" | "VACANT";
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        AddLotMemberRequest: {
+            /** Format: uuid */
+            userId: string;
+            relation?: string;
+            isOwner?: boolean;
+            canInvite?: boolean;
+        };
+        LotMemberResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            lotId?: string;
+            /** Format: uuid */
+            userId?: string;
+            relation?: string;
+            isOwner?: boolean;
+            canInvite?: boolean;
+            active?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
         };
         ValidateAccessRequest: {
             token: string;
@@ -337,6 +490,27 @@ export interface components {
             /** Format: int32 */
             accepted?: number;
             conflicts?: components["schemas"]["Conflict"][];
+        };
+        UpdateFamilyMemberRequest: {
+            canInvite?: boolean;
+            active?: boolean;
+        };
+        UpdateLotRequest: {
+            /** @enum {string} */
+            status?: "ACTIVE" | "SUSPENDED" | "VACANT";
+            street?: string;
+            number?: string;
+        };
+        PassResponse: {
+            /** Format: uuid */
+            lotId?: string;
+            lotCode?: string;
+            neighborhoodName?: string;
+            qrToken?: string;
+            kid?: string;
+        };
+        PassesResponse: {
+            passes?: components["schemas"]["PassResponse"][];
         };
         PagedInvitationsResponse: {
             items?: components["schemas"]["InvitationResponse"][];
@@ -436,6 +610,54 @@ export interface operations {
             };
         };
     };
+    list_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["FamilyMemberResponse"][];
+                };
+            };
+        };
+    };
+    add: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddFamilyMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["FamilyMemberResponse"];
+                };
+            };
+        };
+    };
     refresh: {
         parameters: {
             query?: never;
@@ -506,6 +728,100 @@ export interface operations {
             };
         };
     };
+    list_2: {
+        parameters: {
+            query?: {
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LotResponse"][];
+                };
+            };
+        };
+    };
+    create_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLotRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LotResponse"];
+                };
+            };
+        };
+    };
+    members: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LotMemberResponse"][];
+                };
+            };
+        };
+    };
+    addMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddLotMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LotMemberResponse"];
+                };
+            };
+        };
+    };
     validate: {
         parameters: {
             query?: never;
@@ -550,6 +866,79 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SyncAccessResponse"];
+                };
+            };
+        };
+    };
+    update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: string;
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFamilyMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["FamilyMemberResponse"];
+                };
+            };
+        };
+    };
+    update_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLotRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LotResponse"];
+                };
+            };
+        };
+    };
+    passes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PassesResponse"];
                 };
             };
         };

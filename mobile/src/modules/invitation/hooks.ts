@@ -19,6 +19,19 @@ export function useActiveInvitations() {
   });
 }
 
+export function useMyPasses() {
+  return useQuery({
+    queryKey: ['passes', 'me'],
+    queryFn: async () => {
+      const { data, error } = await authRequest(() => api.GET('/api/v1/me/passes'));
+      if (error || !data) {
+        throw new Error('No se pudo cargar tu pase personal.');
+      }
+      return data.passes ?? [];
+    },
+  });
+}
+
 export function useInvitation(id: string | undefined) {
   return useQuery({
     queryKey: ['invitation', id],
