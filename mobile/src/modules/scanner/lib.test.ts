@@ -266,6 +266,35 @@ describe('densidad del payload', () => {
   });
 });
 
+describe('token real emitido por el backend', () => {
+  // Generado con QrTokenIssuer del backend (securepassb, commit f00ce91)
+  // para un pase RECURRING con w/df/du: valida el formato real de Jackson
+  // contra el parser del frontend, no un fixture armado a mano.
+  const realToken =
+    'SP1.eyJ2IjoxLCJrIjoiYWJjZDEyMzQiLCJqIjoiYjhlNWI3MzMtYjc5Yy00M2YzLWFkMTMtOTY5MGZjMGEzYjg5IiwibiI6ImYzZjAyN2U5LTdjZmYtNDkwMC1hNjdlLTlmNTMwNTlkNWRkZCIsImwiOiI3ZWFkZWQ4YS0wMDMzLTQxYTYtOWU4Zi02NzA2ZTI3NTI1N2QiLCJpIjoiOTUzOWQ2NjAtZDdiZS00NzUyLTlkMGEtOWFlZjhkYzRkMjk0IiwidCI6IlIiLCJmIjoxNzY3MjI1NjAwLCJ1IjoxNzk4NzYxNjAwLCJtIjoyMDAsInciOlsxLDIsMyw0LDUsNiw3XSwiZGYiOiIwMDowMCIsImR1IjoiMjM6NTkifQ.ufobC1Jp8tREZAu0B84ln7Y3pXlnkMaKoFX1zS24ql6feLauQM0-aozSW-03potyykZgr8RFo2e0584swwN-Cg';
+  const realPublicKey = 'kC45ctdGfJ8w9djBDcwc3OCKC_OnsvcbKVmMYAlnzhA';
+
+  it('parsea el payload recurrente y verifica la firma con la clave real', () => {
+    const parsed = parseToken(realToken);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.payload.t).toBe('R');
+    expect(parsed?.payload.w).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(parsed?.payload.df).toBe('00:00');
+    expect(parsed?.payload.du).toBe('23:59');
+    expect(parsed?.payload.m).toBe(200);
+  });
+
+  it('valida offline el token real dentro de su ventana', () => {
+    const decision = validateOffline(realToken, {
+      now: 1780272000, // 2026-06-01, dentro de la ventana del token
+      keys: { abcd1234: realPublicKey },
+      revoked: new Set(),
+      localUses: () => 0,
+    });
+    expect(decision).toEqual({ status: 'allowed' });
+  });
+});
+
 describe('isDuplicateScan', () => {
   const previous = { token: 'SP1.abc.def', at: 1000 };
 
