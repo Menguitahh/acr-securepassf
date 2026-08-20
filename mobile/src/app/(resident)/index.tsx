@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { FlatList, Text, View } from 'react-native';
+import { FlatList, Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,12 +7,12 @@ import { Button } from '@/common/components/button';
 import { Card } from '@/common/components/card';
 import { EmptyState } from '@/common/components/empty-state';
 import { ErrorState } from '@/common/components/error-state';
-import { LogoutButton } from '@/common/components/logout-button';
 import { ScreenHeader } from '@/common/components/screen-header';
 import { Spinner } from '@/common/components/spinner';
 import { TYPE_LABELS } from '@/modules/invitation/data';
 import { useActiveInvitations } from '@/modules/invitation/hooks';
 import { formatWindow, remainingUses } from '@/modules/invitation/lib';
+import { initials } from '@/modules/auth/lib';
 import { useSessionStore } from '@/modules/auth/session-store';
 
 export default function ResidentHomeScreen() {
@@ -24,13 +24,12 @@ export default function ResidentHomeScreen() {
   if (isError) {
     return (
       <View className="flex-1 bg-bg-base">
-        <ScreenHeader title="Invitaciones" subtitle={user?.fullName} />
+        <ScreenHeader title="Invitaciones" subtitle={user?.fullName} right={<ProfileButton />} />
         <ErrorState
           message={`${error instanceof Error ? error.message : 'No se pudo cargar la lista de pases.'} Reintentá en unos segundos.`}
         />
-        <View className="gap-3 px-8 pb-8">
+        <View className="px-8 pb-8">
           <Button label="Reintentar" onPress={() => void refetch()} variant="primary" />
-          <LogoutButton />
         </View>
       </View>
     );
@@ -39,23 +38,20 @@ export default function ResidentHomeScreen() {
   if (!data?.length) {
     return (
       <View className="flex-1 bg-bg-base">
-        <ScreenHeader title="Invitaciones" subtitle={user?.fullName} />
+        <ScreenHeader title="Invitaciones" subtitle={user?.fullName} right={<ProfileButton />} />
         <EmptyState
           title="No tenés pases activos."
           description="Creá un pase para un invitado y compartile el QR para entrar al barrio."
           actionLabel="Crear invitación"
           onAction={() => router.push('/(resident)/create')}
         />
-        <View className="px-8 pb-10">
-          <LogoutButton />
-        </View>
       </View>
     );
   }
 
   return (
     <View className="flex-1 bg-bg-base">
-      <ScreenHeader title="Invitaciones" subtitle={user?.fullName} />
+      <ScreenHeader title="Invitaciones" subtitle={user?.fullName} right={<ProfileButton />} />
       <FlatList
         data={data}
         keyExtractor={(item) => item.id ?? ''}
@@ -68,7 +64,6 @@ export default function ResidentHomeScreen() {
               variant="primary"
             />
             <Button label="Mi QR" onPress={() => router.push('/(resident)/qr-personal')} />
-            <LogoutButton />
           </View>
         }
         renderItem={({ item, index }) => (
@@ -100,5 +95,23 @@ export default function ResidentHomeScreen() {
         style={{ flex: 1, paddingBottom: insets.bottom }}
       />
     </View>
+  );
+}
+
+function ProfileButton() {
+  const router = useRouter();
+  const user = useSessionStore((state) => state.user);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Abrir perfil"
+      onPress={() => router.push('/(resident)/profile')}
+      className="h-12 w-12 items-center justify-center rounded-full border border-border bg-bg-elevated active:opacity-70"
+    >
+      <Text className="text-footnote font-semibold leading-[18px] text-text-primary">
+        {user ? initials(user.fullName) : ''}
+      </Text>
+    </Pressable>
   );
 }

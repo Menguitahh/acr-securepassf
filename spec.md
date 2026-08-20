@@ -1190,6 +1190,7 @@ Formato: `US-<n>` → issue. Prioridad: **P0** bloqueante del MVP, **P1** necesa
 | US-02 | Como usuario quiero permanecer logueado sin reingresar la contraseña cada vez. | P0 | Refresh rota en cada uso; reutilizar un refresh viejo invalida toda la familia; tokens en Keychain/Keystore. |
 | US-03 | Como admin quiero dar de alta guardias y residentes con su rol. | P0 | Alta genera contraseña temporal; el usuario debe cambiarla en el primer login; el email/teléfono duplicado devuelve 409. |
 | US-04 | Como usuario quiero cerrar sesión en el dispositivo. | P1 | Logout invalida el refresh y borra la DB local si el rol es GUARD. |
+| US-44 | Como residente quiero ver mi perfil con mi nombre, mi lote y mi rol, y cerrar sesión desde ahí. | P1 | El perfil muestra nombre completo, rol con etiqueta legible y lotes con su condición (titular/miembro); el acceso a cerrar sesión vive en el perfil, no en el header de invitaciones; el perfil se abre desde el header del home. |
 
 ### Épica B — Padrón catastral
 

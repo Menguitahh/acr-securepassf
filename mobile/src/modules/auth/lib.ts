@@ -6,6 +6,15 @@ export function hasRole(user: SessionUser, role: string): boolean {
   return user.roles.includes(role);
 }
 
+export function initials(fullName: string): string {
+  return fullName
+    .split(' ')
+    .filter((word) => word.length > 0)
+    .slice(0, 2)
+    .map((word) => word.charAt(0).toUpperCase())
+    .join('');
+}
+
 export function isResident(user: SessionUser): boolean {
   return user.roles.some(
     (role) => role === 'RESIDENT_OWNER' || role === 'RESIDENT_MEMBER',

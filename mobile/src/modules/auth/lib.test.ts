@@ -4,6 +4,7 @@ import {
   hasMobileRole,
   hasRole,
   homeRouteFor,
+  initials,
   isResident,
   isSessionUser,
   toSessionUser,
@@ -70,6 +71,18 @@ describe('homeRouteFor', () => {
 
   it('manda al login cuando no hay sesion', () => {
     expect(homeRouteFor(null)).toBe('/login');
+  });
+});
+
+describe('initials', () => {
+  it('toma las iniciales de las dos primeras palabras', () => {
+    expect(initials('Juan Perez')).toBe('JP');
+    expect(initials('Maria del Carmen')).toBe('MD');
+    expect(initials('  juan  perez ')).toBe('JP');
+  });
+
+  it('una sola palabra devuelve una inicial', () => {
+    expect(initials('Guardia')).toBe('G');
   });
 });
 
