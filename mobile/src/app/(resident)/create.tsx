@@ -150,12 +150,16 @@ export default function CreateInvitationScreen() {
             editable={!isPending}
           />
           <Input
-            label="Documento"
+            label="DNI"
             value={values.guestDocument}
             onChangeText={(guestDocument) => setValue('guestDocument', guestDocument)}
             keyboardType="number-pad"
             editable={!isPending}
           />
+          <Text className="text-footnote text-text-muted">
+            El invitado va a tener que mostrar el DNI en garita la primera
+            vez que entra: el guardia lo verifica contra este numero.
+          </Text>
           <Input
             label="Acompanantes (0 a 20)"
             value={values.companions}

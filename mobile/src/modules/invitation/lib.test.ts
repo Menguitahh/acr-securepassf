@@ -75,14 +75,14 @@ describe('createInvitationErrorMessage', () => {
 });
 
 describe('validateInvitationForm', () => {
-  it('exige documento del invitado (D-08)', () => {
+  it('exige DNI del invitado (D-08)', () => {
     expect(validateInvitationForm({ ...baseValues(), guestDocument: '' })).toMatchObject({
       ok: false,
-      error: 'Poné el documento del invitado.',
+      error: 'Poné el DNI del invitado.',
     });
     expect(validateInvitationForm({ ...baseValues(), guestDocument: '123456' })).toMatchObject({
       ok: false,
-      error: 'El documento va de 7 a 8 digitos.',
+      error: 'El DNI va de 7 a 8 digitos.',
     });
     expect(validateInvitationForm({ ...baseValues(), guestDocument: '123456789' })).toMatchObject({
       ok: false,
@@ -90,6 +90,17 @@ describe('validateInvitationForm', () => {
     expect(validateInvitationForm({ ...baseValues(), guestDocument: 'abc12345' })).toMatchObject({
       ok: false,
     });
+  });
+
+  it('normaliza puntos, espacios y guiones antes de validar y enviar', () => {
+    // Los formatos que un residente copia del celular ("30.123.456",
+    // "30 123 456") no deberian rechazarse: se sacan separadores y se
+    // valida solo digitos, igual que el backend.
+    for (const raw of ['30.123.456', '30 123 456', '30-123-456', ' 30123456 ']) {
+      const result = validateInvitationForm({ ...baseValues(), guestDocument: raw });
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.payload.guestDocument).toBe('30123456');
+    }
   });
 
   it('valida un pase SINGLE con cupo forzado en 1', () => {

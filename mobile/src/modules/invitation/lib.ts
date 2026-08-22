@@ -53,12 +53,15 @@ export function validateInvitationForm(
   if (!values.lotId) return { ok: false, error: 'Elegí un lote.' };
   const guestName = values.guestName.trim();
   if (!guestName) return { ok: false, error: 'Poné el nombre del invitado.' };
-  const guestDocument = values.guestDocument.trim();
+  // Se normaliza igual que el backend: puntos, espacios y guiones se
+  // sacan antes de validar. Un residente que copia "30.123.456" desde
+  // el celular no deberia comerse un error por formato.
+  const guestDocument = values.guestDocument.replace(/[.\s-]/g, '');
   if (!guestDocument) {
-    return { ok: false, error: 'Poné el documento del invitado.' };
+    return { ok: false, error: 'Poné el DNI del invitado.' };
   }
   if (!/^\d{7,8}$/.test(guestDocument)) {
-    return { ok: false, error: 'El documento va de 7 a 8 digitos.' };
+    return { ok: false, error: 'El DNI va de 7 a 8 digitos.' };
   }
   if (!values.validFrom || !values.validUntil) {
     return { ok: false, error: 'Elegí la ventana de validez.' };
