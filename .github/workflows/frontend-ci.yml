@@ -26,6 +26,12 @@ jobs:
       - name: install
         run: npm ci
 
+      - name: generate expo router types
+        working-directory: mobile
+        env:
+          CI: '1'
+        run: npx expo customize tsconfig.json
+
       - name: tsc
         run: npm run typecheck --workspaces --if-present
 

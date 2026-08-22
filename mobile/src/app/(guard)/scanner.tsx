@@ -1,5 +1,7 @@
+import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
+import { Button } from '@/common/components/button';
 import { LogoutButton } from '@/common/components/logout-button';
 import { Spinner } from '@/common/components/spinner';
 import { QueueStatus } from '@/modules/offline/components/queue-status';
@@ -10,6 +12,7 @@ import { ScanResultScreen } from '@/modules/scanner/components/scan-result-scree
 import { useQrScanner } from '@/modules/scanner/hooks';
 
 export default function ScannerScreen() {
+  const router = useRouter();
   const {
     result,
     isPending,
@@ -33,7 +36,8 @@ export default function ScannerScreen() {
           onSubmit={submitEnrollment}
           onCancel={cancelEnrollment}
         />
-        <View className="absolute right-4 top-12">
+        <View className="absolute right-4 top-12 flex-row gap-2">
+          <Button label="Presentes" onPress={() => router.push('/(guard)/stays')} />
           <LogoutButton />
         </View>
       </View>
