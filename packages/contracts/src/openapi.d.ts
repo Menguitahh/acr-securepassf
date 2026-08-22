@@ -4,6 +4,70 @@
  */
 
 export interface paths {
+    "/api/v1/stays/{id}/notify-resident": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["notify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stays/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shifts/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["open"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shifts/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["close_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invitations": {
         parameters: {
             query?: never;
@@ -11,7 +75,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list"];
+        get: operations["list_1"];
         put?: never;
         post: operations["create"];
         delete?: never;
@@ -36,6 +100,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/invitations/{id}/extend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["extend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/family/lots/{lotId}/members": {
         parameters: {
             query?: never;
@@ -43,7 +123,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_1"];
+        get: operations["list_2"];
         put?: never;
         post: operations["add"];
         delete?: never;
@@ -107,7 +187,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_2"];
+        get: operations["list_3"];
         put?: never;
         post: operations["create_1"];
         delete?: never;
@@ -164,6 +244,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/access/manual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["manual"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["enroll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/family/lots/{lotId}/members/{userId}": {
         parameters: {
             query?: never;
@@ -194,6 +306,54 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["update_1"];
+        trace?: never;
+    };
+    "/api/v1/stays/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["open_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shifts/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["current"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/me/passes": {
@@ -260,10 +420,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/access-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_4"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        NotifyResidentResponse: {
+            /** Format: uuid */
+            stayId?: string;
+            /** Format: date-time */
+            notifiedAt?: string;
+            /** Format: int64 */
+            minutesRemaining?: number;
+        };
+        CloseStayRequest: {
+            /** Format: uuid */
+            gateId: string;
+        };
+        ClosedStayResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            exitLogId?: string;
+            /** Format: date-time */
+            exitedAt?: string;
+            closedManually?: boolean;
+            /** Format: uuid */
+            closedBy?: string;
+        };
+        OpenShiftRequest: {
+            /** Format: uuid */
+            gateId: string;
+            handoverNotes?: string;
+        };
+        ShiftResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            neighborhoodId?: string;
+            /** Format: uuid */
+            gateId?: string;
+            /** Format: uuid */
+            guardId?: string;
+            /** Format: date-time */
+            startedAt?: string;
+            /** Format: date-time */
+            endedAt?: string;
+            handoverNotes?: string;
+        };
+        CloseShiftRequest: {
+            handoverNotes?: string;
+        };
         CreateInvitationRequest: {
             /** Format: uuid */
             lotId: string;
@@ -324,6 +546,16 @@ export interface components {
             usedCount?: number;
             qrToken?: string;
             shareUrl?: string;
+        };
+        ExtendInvitationResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            validUntil?: string;
+            /** Format: int32 */
+            extensionCount?: number;
+            /** Format: int32 */
+            maxExtensions?: number;
         };
         AddFamilyMemberRequest: {
             identifier: string;
@@ -454,6 +686,8 @@ export interface components {
             /** Format: uuid */
             logId?: string;
             reason?: string;
+            /** Format: uuid */
+            invitationId?: string;
             guest?: components["schemas"]["GuestDetail"];
             lot?: components["schemas"]["LotDetail"];
             invitation?: components["schemas"]["InvitationDetail"];
@@ -491,6 +725,51 @@ export interface components {
             accepted?: number;
             conflicts?: components["schemas"]["Conflict"][];
         };
+        ManualAccessRequest: {
+            subjectName: string;
+            subjectDocument: string;
+            /** Format: uuid */
+            lotId: string;
+            /** Format: uuid */
+            gateId: string;
+            /** Format: uuid */
+            clientEventId: string;
+            /** Format: date-time */
+            capturedAt?: string;
+        };
+        ManualAccessResponse: {
+            /** Format: uuid */
+            logId?: string;
+            /** Format: uuid */
+            lotId?: string;
+            subjectName?: string;
+            subjectDocument?: string;
+            /** Format: date-time */
+            capturedAt?: string;
+        };
+        EnrollRequest: {
+            token: string;
+            documentNumber: string;
+            /** Format: uuid */
+            gateId: string;
+            /** Format: uuid */
+            clientEventId: string;
+            /** Format: date-time */
+            capturedAt?: string;
+        };
+        EnrollResponse: {
+            result?: string;
+            reason?: string;
+            /** Format: date-time */
+            enrolledAt?: string;
+            /** Format: uuid */
+            enrollmentId?: string;
+            guest?: components["schemas"]["Guest"];
+        };
+        Guest: {
+            name?: string;
+            document?: string;
+        };
         UpdateFamilyMemberRequest: {
             canInvite?: boolean;
             active?: boolean;
@@ -500,6 +779,22 @@ export interface components {
             status?: "ACTIVE" | "SUSPENDED" | "VACANT";
             street?: string;
             number?: string;
+        };
+        Item: {
+            /** Format: uuid */
+            id?: string;
+            subjectName?: string;
+            lotCode?: string;
+            /** Format: date-time */
+            enteredAt?: string;
+            /** Format: date-time */
+            expectedUntil?: string;
+            /** Format: int64 */
+            minutesRemaining?: number;
+            warned?: boolean;
+        };
+        OpenStaysResponse: {
+            stays?: components["schemas"]["Item"][];
         };
         PassResponse: {
             /** Format: uuid */
@@ -531,6 +826,15 @@ export interface components {
             kid?: string;
             publicKey?: string;
         };
+        AccessLogsResponse: {
+            items?: components["schemas"]["Item"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            total?: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -540,7 +844,103 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    list: {
+    notify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["NotifyResidentResponse"];
+                };
+            };
+        };
+    };
+    close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseStayRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ClosedStayResponse"];
+                };
+            };
+        };
+    };
+    open: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenShiftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ShiftResponse"];
+                };
+            };
+        };
+    };
+    close_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseShiftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ShiftResponse"];
+                };
+            };
+        };
+    };
+    list_1: {
         parameters: {
             query?: {
                 lotId?: string;
@@ -610,7 +1010,29 @@ export interface operations {
             };
         };
     };
-    list_1: {
+    extend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExtendInvitationResponse"];
+                };
+            };
+        };
+    };
+    list_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -728,7 +1150,7 @@ export interface operations {
             };
         };
     };
-    list_2: {
+    list_3: {
         parameters: {
             query?: {
                 page?: number;
@@ -870,6 +1292,54 @@ export interface operations {
             };
         };
     };
+    manual: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ManualAccessResponse"];
+                };
+            };
+        };
+    };
+    enroll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnrollRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EnrollResponse"];
+                };
+            };
+        };
+    };
     update: {
         parameters: {
             query?: never;
@@ -919,6 +1389,70 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["LotResponse"];
+                };
+            };
+        };
+    };
+    open_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["OpenStaysResponse"];
+                };
+            };
+        };
+    };
+    list: {
+        parameters: {
+            query?: {
+                gateId?: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ShiftResponse"][];
+                };
+            };
+        };
+    };
+    current: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ShiftResponse"];
                 };
             };
         };
@@ -1003,6 +1537,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PublicKeyResponse"][];
+                };
+            };
+        };
+    };
+    list_4: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                lotId?: string;
+                result?: string;
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AccessLogsResponse"];
                 };
             };
         };

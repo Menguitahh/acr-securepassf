@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 
 import { api, authRequest } from '@/common/api/client';
 import { getDb } from '@/common/db/database';
+import { isInvitationEnrolled } from '@/modules/offline/enrollments-cache';
 import { useOfflineStore } from '@/modules/offline/offline-store';
 import { enqueueOutboxEvent } from '@/modules/offline/outbox';
 import { GATE_ID } from '@/modules/scanner/data';
@@ -27,7 +28,13 @@ function buildOfflineContext(): OfflineContext {
     );
     return row?.count ?? 0;
   };
-  return { now: Math.floor(Date.now() / 1000), keys, revoked, localUses };
+  return {
+    now: Math.floor(Date.now() / 1000),
+    keys,
+    revoked,
+    localUses,
+    isEnrolled: isInvitationEnrolled,
+  };
 }
 
 function recordLocalUse(jti: string, context: OfflineContext): void {
@@ -72,6 +79,14 @@ async function validateScannedToken(token: string, clientEventId: string): Promi
 
   const context = buildOfflineContext();
   const decision = validateOffline(token, context);
+
+  if (decision.status === 'needs_enrollment') {
+    // El scanner encara el flujo de DNI + POST /access/enroll; no se
+    // registra ingreso todavia. Se pospone el enqueue del outbox hasta
+    // que la decision real (allowed o denied) exista.
+    return { status: 'needs_enrollment', invitationId: decision.invitationId, token };
+  }
+
   if (decision.status === 'allowed') {
     const parsed = parseToken(token);
     if (parsed) recordLocalUse(parsed.payload.j, context);

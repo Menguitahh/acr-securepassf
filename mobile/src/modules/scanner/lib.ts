@@ -143,6 +143,13 @@ export function validateOffline(token: string, ctx: OfflineContext): AccessDecis
   if (ctx.localUses(parsed.payload.j) >= parsed.payload.m) {
     return denied('ALREADY_USED');
   }
+  // Sin enrolamiento previo el guardia debe capturar el DNI antes de
+  // permitir el ingreso: US-36. Es un guard clause posterior al resto
+  // porque si el pase esta vencido/revocado/sin cupo no vale la pena
+  // enrolar a nadie.
+  if (!ctx.isEnrolled(parsed.payload.i)) {
+    return { status: 'needs_enrollment', invitationId: parsed.payload.i };
+  }
 
   // Allowed explicito: espeja las condiciones de los guards. Si una
   // condicion nueva se agrega al token y se olvida el guard, no entra aca.
@@ -151,7 +158,8 @@ export function validateOffline(token: string, ctx: OfflineContext): AccessDecis
   const enFranja =
     parsed.payload.t !== 'R' || withinDailySlot(parsed.payload, ctx.now);
   const cupoDisponible = ctx.localUses(parsed.payload.j) < parsed.payload.m;
-  if (noRevocado && dentroDeVentana && enFranja && cupoDisponible) {
+  const enrolado = ctx.isEnrolled(parsed.payload.i);
+  if (noRevocado && dentroDeVentana && enFranja && cupoDisponible && enrolado) {
     return { status: 'allowed' };
   }
 

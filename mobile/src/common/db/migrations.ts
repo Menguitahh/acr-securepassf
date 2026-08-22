@@ -28,4 +28,11 @@ export const MIGRATIONS: string[] = [
     synced_at   TEXT NOT NULL
   );
   `,
+  `
+  CREATE TABLE enrollments_cache (
+    invitation_id TEXT PRIMARY KEY,
+    document      TEXT NOT NULL,
+    enrolled_at   TEXT NOT NULL
+  );
+  `,
 ];

@@ -45,12 +45,15 @@ export type OfflineContext = {
   keys: Record<string, string>;
   revoked: ReadonlySet<string>;
   localUses: (jti: string) => number;
+  isEnrolled: (invitationId: string) => boolean;
 };
 
 export type AccessDecision =
   | { status: 'allowed' }
+  | { status: 'needs_enrollment'; invitationId: string }
   | { status: 'denied'; reason: DenialReason; message: string };
 
 export type ScanResult =
   | { status: 'allowed'; guestName: string | null; lotCode: string | null }
+  | { status: 'needs_enrollment'; invitationId: string; token: string }
   | { status: 'denied'; reason: DenialReason; message: string };

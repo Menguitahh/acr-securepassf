@@ -12,34 +12,49 @@ type ScanResultScreenProps = {
 };
 
 export function ScanResultScreen({ result, onDismiss }: ScanResultScreenProps) {
-  const allowed = result.status === 'allowed';
+  const feedback =
+    result.status === 'allowed'
+      ? Haptics.NotificationFeedbackType.Success
+      : Haptics.NotificationFeedbackType.Warning;
 
   useEffect(() => {
-    void Haptics.notificationAsync(
-      allowed
-        ? Haptics.NotificationFeedbackType.Success
-        : Haptics.NotificationFeedbackType.Error,
-    );
+    void Haptics.notificationAsync(feedback);
     const timer = setTimeout(onDismiss, AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
-  }, [allowed, onDismiss]);
+  }, [feedback, onDismiss]);
+
+  const background =
+    result.status === 'allowed'
+      ? 'bg-allow'
+      : result.status === 'denied'
+        ? 'bg-deny'
+        : 'bg-warn';
 
   return (
     <Pressable
       onPress={onDismiss}
       accessibilityRole="button"
       accessibilityLabel="Cerrar resultado"
-      className={`flex-1 items-center justify-center gap-3 p-8 ${allowed ? 'bg-allow' : 'bg-deny'}`}
+      className={`flex-1 items-center justify-center gap-3 p-8 ${background}`}
     >
       <Text className="text-center text-[32px] font-semibold leading-tight text-bg-base">
-        {allowed ? (result.guestName ?? 'Ingreso autorizado') : 'Acceso denegado'}
+        {result.status === 'allowed'
+          ? (result.guestName ?? 'Ingreso autorizado')
+          : result.status === 'needs_enrollment'
+            ? 'Falta enrolar DNI'
+            : 'Acceso denegado'}
       </Text>
-      {allowed && result.lotCode ? (
+      {result.status === 'allowed' && result.lotCode ? (
         <Text className="text-xl text-bg-base">{result.lotCode}</Text>
       ) : null}
-      {!allowed ? (
+      {result.status === 'denied' ? (
         <Text className="text-center text-xl leading-snug text-bg-base">
           {result.message}
+        </Text>
+      ) : null}
+      {result.status === 'needs_enrollment' ? (
+        <Text className="text-center text-xl leading-snug text-bg-base">
+          Escaneá el DNI del invitado para completar el ingreso.
         </Text>
       ) : null}
     </Pressable>

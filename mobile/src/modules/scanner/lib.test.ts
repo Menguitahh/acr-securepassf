@@ -62,6 +62,10 @@ function makeContext(overrides: Partial<OfflineContext> = {}): OfflineContext {
     keys: {},
     revoked: new Set(),
     localUses: () => 0,
+    // Default enrolado: los tests preexistentes verifican otras condiciones
+    // sin preocuparse por el enrolamiento. Los tests de needs_enrollment
+    // sobreescriben esta funcion.
+    isEnrolled: () => true,
     ...overrides,
   };
 }
@@ -164,6 +168,111 @@ describe('validateOffline - motivos de denegacion', () => {
     });
     expect(validateOffline(token, exhausted)).toMatchObject({ reason: 'ALREADY_USED' });
   });
+});
+
+describe('validateOffline - needs_enrollment', () => {
+  const secretKey = utils.randomSecretKey();
+  const publicKey = toBase64Url(getPublicKey(secretKey));
+  const keys = { a1b2c3d4: publicKey };
+
+  it('devuelve needs_enrollment con el invitationId cuando el pase es valido pero el invitado nunca fue enrolado', () => {
+    const payload = basePayload();
+    const token = makeToken(payload, secretKey);
+    const ctx = makeContext({ keys, isEnrolled: () => false });
+    expect(validateOffline(token, ctx)).toEqual({
+      status: 'needs_enrollment',
+      invitationId: payload.i,
+    });
+  });
+
+  it('permite en scans posteriores del mismo invitationId', () => {
+    const payload = basePayload();
+    const token = makeToken(payload, secretKey);
+    const ctx = makeContext({
+      keys,
+      isEnrolled: (invitationId) => invitationId === payload.i,
+    });
+    expect(validateOffline(token, ctx)).toEqual({ status: 'allowed' });
+  });
+
+  // Blindaje de orden: cada motivo de denegacion offline con isEnrolled=false.
+  // Si un guard nuevo se cuela antes de la firma o del resto de checks,
+  // needs_enrollment se filtra donde no debe y este bloque lo detecta.
+  const revokedJti = '8f3c9a2e-1111-4222-8333-444455556666';
+  const otherWeekday = (() => {
+    const weekday = ((new Date(NOW * 1000).getDay() + 6) % 7) + 1;
+    return [1, 2, 3, 4, 5, 6, 7].filter((day) => day !== weekday);
+  })();
+
+  const guardCases: {
+    name: string;
+    token: string;
+    ctx: OfflineContext;
+    expected: { status: 'denied'; reason: string };
+  }[] = [
+    {
+      name: 'INVALID_SIGNATURE - token malformado',
+      token: 'garbage',
+      ctx: makeContext({ keys, isEnrolled: () => false }),
+      expected: { status: 'denied', reason: 'INVALID_SIGNATURE' },
+    },
+    {
+      name: 'INVALID_SIGNATURE - kid desconocido',
+      token: makeToken(basePayload({ k: 'ffffffff' }), secretKey),
+      ctx: makeContext({ keys, isEnrolled: () => false }),
+      expected: { status: 'denied', reason: 'INVALID_SIGNATURE' },
+    },
+    {
+      name: 'INVALID_SIGNATURE - RECURRING sin franja',
+      token: makeToken(basePayload({ t: 'R' }), secretKey),
+      ctx: makeContext({ keys, isEnrolled: () => false }),
+      expected: { status: 'denied', reason: 'INVALID_SIGNATURE' },
+    },
+    {
+      name: 'REVOKED',
+      token: makeToken(basePayload({ j: revokedJti }), secretKey),
+      ctx: makeContext({
+        keys,
+        isEnrolled: () => false,
+        revoked: new Set([revokedJti]),
+      }),
+      expected: { status: 'denied', reason: 'REVOKED' },
+    },
+    {
+      name: 'NOT_YET_VALID',
+      token: makeToken(basePayload({ f: NOW + 60 }), secretKey),
+      ctx: makeContext({ keys, isEnrolled: () => false }),
+      expected: { status: 'denied', reason: 'NOT_YET_VALID' },
+    },
+    {
+      name: 'EXPIRED',
+      token: makeToken(basePayload({ u: NOW - 60 }), secretKey),
+      ctx: makeContext({ keys, isEnrolled: () => false }),
+      expected: { status: 'denied', reason: 'EXPIRED' },
+    },
+    {
+      name: 'OUT_OF_SCHEDULE',
+      token: makeToken(
+        basePayload({ t: 'R', w: otherWeekday, df: '00:00', du: '23:59' }),
+        secretKey,
+      ),
+      ctx: makeContext({ keys, isEnrolled: () => false }),
+      expected: { status: 'denied', reason: 'OUT_OF_SCHEDULE' },
+    },
+    {
+      name: 'ALREADY_USED',
+      token: makeToken(basePayload({ m: 1 }), secretKey),
+      ctx: makeContext({ keys, isEnrolled: () => false, localUses: () => 1 }),
+      expected: { status: 'denied', reason: 'ALREADY_USED' },
+    },
+  ];
+
+  it.each(guardCases)(
+    'con isEnrolled=false, $name gana sobre needs_enrollment',
+    ({ token, ctx, expected }) => {
+      expect(validateOffline(token, ctx)).toMatchObject(expected);
+    },
+  );
 });
 
 describe('validateOffline - permitido', () => {
@@ -299,6 +408,7 @@ describe('token real emitido por el backend', () => {
       keys: { abcd1234: realPublicKey },
       revoked: new Set(),
       localUses: () => 0,
+      isEnrolled: () => true,
     });
     expect(decision).toEqual({ status: 'allowed' });
   });
