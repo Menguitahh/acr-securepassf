@@ -3,12 +3,14 @@ import { useCallback, useRef, useState } from 'react';
 
 import { api, authRequest } from '@/common/api/client';
 import { getDb } from '@/common/db/database';
-import { isInvitationEnrolled } from '@/modules/offline/enrollments-cache';
+import { isInvitationEnrolled, recordEnrollment } from '@/modules/offline/enrollments-cache';
 import { useOfflineStore } from '@/modules/offline/offline-store';
 import { enqueueOutboxEvent } from '@/modules/offline/outbox';
 import { GATE_ID } from '@/modules/scanner/data';
 import { isDuplicateScan, parseToken, toScanResult, validateOffline } from '@/modules/scanner/lib';
 import type { OfflineContext, ScanResult } from '@/modules/scanner/types';
+
+type EnrollmentContext = { invitationId: string; token: string };
 
 function buildOfflineContext(): OfflineContext {
   const db = getDb();
@@ -113,6 +115,9 @@ async function validateScannedToken(token: string, clientEventId: string): Promi
 export function useQrScanner() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [enrollment, setEnrollment] = useState<EnrollmentContext | null>(null);
+  const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
+  const [isEnrolling, setIsEnrolling] = useState(false);
   const pendingRef = useRef(false);
   const lastScanRef = useRef<{ token: string; at: number } | null>(null);
 
@@ -125,14 +130,91 @@ export function useQrScanner() {
     setIsPending(true);
     try {
       const outcome = await validateScannedToken(token, Crypto.randomUUID());
-      setResult(outcome);
+      if (outcome.status === 'needs_enrollment') {
+        setEnrollment({ invitationId: outcome.invitationId, token: outcome.token });
+        setEnrollmentError(null);
+      } else {
+        setResult(outcome);
+      }
     } finally {
       pendingRef.current = false;
       setIsPending(false);
     }
   }, []);
 
+  const submitEnrollment = useCallback(
+    async (documentNumber: string) => {
+      if (!enrollment) return;
+      const gateId = GATE_ID;
+      if (!gateId) {
+        setEnrollmentError('Falta la garita configurada en este dispositivo.');
+        return;
+      }
+      setIsEnrolling(true);
+      setEnrollmentError(null);
+      try {
+        const { data, error } = await authRequest(() =>
+          api.POST('/api/v1/access/enroll', {
+            body: {
+              token: enrollment.token,
+              documentNumber,
+              gateId,
+              clientEventId: Crypto.randomUUID(),
+              capturedAt: new Date().toISOString(),
+            },
+          }),
+        );
+        if (error || !data) {
+          setEnrollmentError(
+            'No se pudo enrolar. Revisá la conexion e intentá de nuevo, o registrá el ingreso manualmente.',
+          );
+          return;
+        }
+        if (data.result === 'ALLOWED') {
+          recordEnrollment(enrollment.invitationId, documentNumber);
+          setEnrollment(null);
+          setResult({
+            status: 'allowed',
+            guestName: data.guest?.name ?? null,
+            lotCode: null,
+          });
+          return;
+        }
+        // El backend rechazo el enrolamiento (documento invalido,
+        // invitacion en otro estado, etc.). Se muestra el motivo del server
+        // si vino; si no, un mensaje generico con que hacer.
+        setEnrollmentError(
+          data.reason
+            ? `Enrolamiento rechazado: ${data.reason}. Registrá el ingreso manualmente.`
+            : 'Enrolamiento rechazado. Registrá el ingreso manualmente.',
+        );
+      } catch {
+        setEnrollmentError(
+          'Sin conexion. Intentá de nuevo cuando vuelva la red o registrá el ingreso manualmente.',
+        );
+      } finally {
+        setIsEnrolling(false);
+      }
+    },
+    [enrollment],
+  );
+
+  const cancelEnrollment = useCallback(() => {
+    setEnrollment(null);
+    setEnrollmentError(null);
+  }, []);
+
   const dismiss = useCallback(() => setResult(null), []);
 
-  return { result, isPending, onScan, dismiss };
+  return {
+    result,
+    isPending,
+    enrollment,
+    enrollmentError,
+    isEnrolling,
+    onScan,
+    submitEnrollment,
+    cancelEnrollment,
+    dismiss,
+  };
 }
