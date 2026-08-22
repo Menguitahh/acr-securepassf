@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { Button } from '@/common/components/button';
 import { Input } from '@/common/components/input';
 import { Spinner } from '@/common/components/spinner';
+import { DniCamera } from '@/modules/scanner/components/dni-camera';
+import { parseArgentineDni } from '@/modules/scanner/lib';
 
 type EnrollmentScreenProps = {
   isSubmitting: boolean;
@@ -12,16 +14,59 @@ type EnrollmentScreenProps = {
   onCancel: () => void;
 };
 
-// PDF417 llega en WBS-63: por ahora captura manual. La pantalla es
-// intencionalmente sin nombre del invitado; la identidad se confirma
-// recien despues del POST /access/enroll.
+const CAMERA_FALLBACK_MS = 5000;
+
+// Modos: scanning (PDF417) → manual (input). Si en 5 s el lector no
+// atrapa nada, se pasa a manual solo (los pases mal impresos o el
+// telefono viejo no bloquean al guardia). Si el lector funciona, el
+// DNI parseado prellena el input y se muestra para revisar antes de
+// registrar el ingreso.
 export function EnrollmentScreen({
   isSubmitting,
   error,
   onSubmit,
   onCancel,
 }: EnrollmentScreenProps) {
+  const [mode, setMode] = useState<'scanning' | 'manual'>('scanning');
   const [document, setDocument] = useState('');
+  const [scanError, setScanError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (mode !== 'scanning') return;
+    const timer = setTimeout(() => setMode('manual'), CAMERA_FALLBACK_MS);
+    return () => clearTimeout(timer);
+  }, [mode]);
+
+  const handleDniScan = (raw: string) => {
+    const parsed = parseArgentineDni(raw);
+    if (!parsed) {
+      setScanError(
+        'No se pudo leer el DNI. Verificá el codigo o cargá el numero manualmente.',
+      );
+      setMode('manual');
+      return;
+    }
+    setScanError(null);
+    setDocument(parsed.document);
+    setMode('manual');
+  };
+
+  if (mode === 'scanning') {
+    return (
+      <View className="flex-1 bg-bg-base">
+        <DniCamera onScan={handleDniScan} />
+        <View className="absolute inset-x-0 top-12 items-center px-6">
+          <Text className="rounded-md bg-bg-elevated/90 px-4 py-2 text-body text-text-primary">
+            Enfocá el codigo PDF417 del DNI
+          </Text>
+        </View>
+        <View className="absolute inset-x-0 bottom-8 px-6">
+          <Button label="Cargar DNI manualmente" onPress={() => setMode('manual')} />
+        </View>
+      </View>
+    );
+  }
+
   const trimmed = document.trim();
   const canSubmit = trimmed.length > 0 && !isSubmitting;
 
@@ -44,6 +89,9 @@ export function EnrollmentScreen({
           autoFocus
           editable={!isSubmitting}
         />
+        {scanError ? (
+          <Text className="text-body text-warn">{scanError}</Text>
+        ) : null}
         {error ? (
           <Text className="text-body text-deny">{error}</Text>
         ) : null}

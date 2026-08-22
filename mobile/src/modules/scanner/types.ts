@@ -57,3 +57,11 @@ export type ScanResult =
   | { status: 'allowed'; guestName: string | null; lotCode: string | null }
   | { status: 'needs_enrollment'; invitationId: string; token: string }
   | { status: 'denied'; reason: DenialReason; message: string };
+
+export type DniData = {
+  document: string;
+  lastName: string;
+  firstName: string;
+  gender: 'M' | 'F' | null;
+  birthDate: string | null;
+};

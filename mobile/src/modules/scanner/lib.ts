@@ -7,6 +7,7 @@ import { DENIAL_MESSAGES, DUPLICATE_WINDOW_MS, TOKEN_PREFIX } from '@/modules/sc
 import type {
   AccessDecision,
   DenialReason,
+  DniData,
   OfflineContext,
   OfflineDenialReason,
   ParsedToken,
@@ -208,4 +209,44 @@ export function toScanResult(
     return { status: 'denied', reason, message: DENIAL_MESSAGES[reason] };
   }
   return null;
+}
+
+const DATE_PATTERN = /^\d{2}\/\d{2}\/\d{4}$/;
+
+// PDF417 del DNI argentino. Existen dos formatos que circulan:
+//
+//   Nuevo (tarjeta 2009+):
+//     tramite @ apellido @ nombres @ sexo @ dni @ ejemplar @ fecNac @ fecEmision [ @ CUIL ]
+//
+//   Viejo (previo al tramite): sin campo tramite al frente:
+//     apellido @ nombres @ sexo @ dni @ ejemplar @ fecNac @ fecEmision
+//
+// El sexo (M/F) es la marca posicional confiable: apellido y nombres
+// siempre estan antes, DNI siempre esta despues. Se ubica su indice y
+// se derivan los demas relativos a el. Asi la funcion es indiferente
+// al formato y a los @ vacios que algunos lectores agregan al frente.
+export function parseArgentineDni(raw: string): DniData | null {
+  if (typeof raw !== 'string' || raw.length === 0) return null;
+  const parts = raw
+    .split('@')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+
+  const genderIndex = parts.findIndex((part) => part === 'M' || part === 'F');
+  if (genderIndex < 2) return null;
+
+  const lastName = parts[genderIndex - 2];
+  const firstName = parts[genderIndex - 1];
+  const document = parts[genderIndex + 1];
+  if (!lastName || !firstName || !document) return null;
+  if (!/^\d{6,9}$/.test(document)) return null;
+
+  const gender = parts[genderIndex] === 'M' ? 'M' : 'F';
+  const birthDateCandidate = parts[genderIndex + 3];
+  const birthDate =
+    birthDateCandidate && DATE_PATTERN.test(birthDateCandidate)
+      ? birthDateCandidate
+      : null;
+
+  return { document, lastName, firstName, gender, birthDate };
 }

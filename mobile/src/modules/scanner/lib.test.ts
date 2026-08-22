@@ -5,6 +5,7 @@ import { TOKEN_PREFIX } from '@/modules/scanner/data';
 import {
   isDenialReason,
   isDuplicateScan,
+  parseArgentineDni,
   parseToken,
   toScanResult,
   validateOffline,
@@ -482,5 +483,77 @@ describe('toScanResult', () => {
 
   it('devuelve null para respuestas sin decision', () => {
     expect(toScanResult({})).toBeNull();
+  });
+});
+
+describe('parseArgentineDni', () => {
+  it('parsea el formato Nueva DNI con @ inicial', () => {
+    const raw = '@00434320@GONZALEZ@MARIA LAURA@F@23456789@A@15/10/1985@21/03/2015@CUIL';
+    expect(parseArgentineDni(raw)).toEqual({
+      document: '23456789',
+      lastName: 'GONZALEZ',
+      firstName: 'MARIA LAURA',
+      gender: 'F',
+      birthDate: '15/10/1985',
+    });
+  });
+
+  it('parsea el formato sin @ inicial', () => {
+    const raw = '00434320@PEREZ@JUAN@M@12345678@A@01/01/1990@01/01/2020';
+    expect(parseArgentineDni(raw)).toMatchObject({
+      document: '12345678',
+      lastName: 'PEREZ',
+      firstName: 'JUAN',
+      gender: 'M',
+      birthDate: '01/01/1990',
+    });
+  });
+
+  it('parsea el formato viejo, sin nro de tramite al frente', () => {
+    // Tarjeta previa al 2009: no tiene el campo nro de tramite; el DNI
+    // cae en indice 3 en vez de 4. El parser tiene que usar el sexo
+    // como ancla posicional para funcionar en ambas versiones.
+    const raw = 'DIAZ@ROBERTO@M@25999888@A@10/07/1975@10/07/2000';
+    expect(parseArgentineDni(raw)).toEqual({
+      document: '25999888',
+      lastName: 'DIAZ',
+      firstName: 'ROBERTO',
+      gender: 'M',
+      birthDate: '10/07/1975',
+    });
+  });
+
+  it('tolera espacios y separadores raros del lector', () => {
+    const raw = ' 00434320 @  RODRIGUEZ @ ANA MARIA @ F @ 30111222 @ A @ 10/05/1980 ';
+    expect(parseArgentineDni(raw)?.document).toBe('30111222');
+    expect(parseArgentineDni(raw)?.lastName).toBe('RODRIGUEZ');
+  });
+
+  it('deja null la fecha si viene fuera de formato pero mantiene los demas datos', () => {
+    const raw = '00434320@LOPEZ@JOSE@M@12345678@A@1990-01-01@01/01/2020';
+    expect(parseArgentineDni(raw)).toMatchObject({
+      document: '12345678',
+      gender: 'M',
+      birthDate: null,
+    });
+  });
+
+  it('rechaza si el sexo no es M ni F, para caer al ingreso manual', () => {
+    // El sexo es el ancla posicional del parser. Sin ancla no se puede
+    // decidir donde esta el DNI y devolver algo seria mandar basura al
+    // backend: mejor null y cae a manual.
+    const raw = '00434320@LOPEZ@JOSE@X@12345678@A@01/01/1990@01/01/2020';
+    expect(parseArgentineDni(raw)).toBeNull();
+  });
+
+  it('rechaza si el documento no parece numerico', () => {
+    const raw = '00434320@LOPEZ@JOSE@M@ABCDE@A@01/01/1990@01/01/2020';
+    expect(parseArgentineDni(raw)).toBeNull();
+  });
+
+  it('rechaza payloads con muy pocos campos', () => {
+    expect(parseArgentineDni('')).toBeNull();
+    expect(parseArgentineDni('@LOPEZ@JOSE')).toBeNull();
+    expect(parseArgentineDni('random qr content')).toBeNull();
   });
 });

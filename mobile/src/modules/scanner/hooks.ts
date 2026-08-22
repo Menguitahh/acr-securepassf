@@ -180,14 +180,22 @@ export function useQrScanner() {
           });
           return;
         }
-        // El backend rechazo el enrolamiento (documento invalido,
-        // invitacion en otro estado, etc.). Se muestra el motivo del server
-        // si vino; si no, un mensaje generico con que hacer.
-        setEnrollmentError(
-          data.reason
-            ? `Enrolamiento rechazado: ${data.reason}. Registrá el ingreso manualmente.`
-            : 'Enrolamiento rechazado. Registrá el ingreso manualmente.',
-        );
+        // Mismatch = el DNI no coincide con el que espera la invitacion.
+        // Se distingue de un "denied" generico porque el guardia tiene que
+        // decidir si el invitado dio mal el numero o si realmente no es
+        // quien dice ser.
+        const reason = data.reason ?? '';
+        if (/MISMATCH/i.test(reason)) {
+          setEnrollmentError(
+            'El DNI no coincide con el que espera la invitacion. Verificá el numero o registrá el ingreso manualmente.',
+          );
+        } else {
+          setEnrollmentError(
+            reason
+              ? `Enrolamiento rechazado: ${reason}. Registrá el ingreso manualmente.`
+              : 'Enrolamiento rechazado. Registrá el ingreso manualmente.',
+          );
+        }
       } catch {
         setEnrollmentError(
           'Sin conexion. Intentá de nuevo cuando vuelva la red o registrá el ingreso manualmente.',
