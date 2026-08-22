@@ -7,3 +7,8 @@ build/
 .expo/
 .next/
 dist/
+
+# Config local del harness de agentes (Claude Code + skills externas).
+# skills-lock.json SI se commitea: es el lockfile de versiones.
+.agents/
+.claude/
