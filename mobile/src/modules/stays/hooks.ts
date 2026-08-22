@@ -1,8 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 
 import { api, authRequest } from '@/common/api/client';
 import { GATE_ID } from '@/modules/scanner/data';
 import { STAYS_REFRESH_MS } from '@/modules/stays/data';
+import { syncStayWarnings } from '@/modules/stays/notifications';
+import type { Stay } from '@/modules/stays/types';
+import { forgetWarning } from '@/modules/stays/warnings-store';
+import * as Notifications from 'expo-notifications';
 
 export function useOpenStays() {
   return useQuery({
@@ -34,10 +39,26 @@ export function useCloseStay() {
         }),
       );
       if (error || !data) throw new Error('No se pudo cerrar la estadia. Reintentá cuando vuelva la red.');
-      return data;
+      return { stayId, data };
     },
-    onSuccess: () => {
+    onSuccess: ({ stayId }) => {
+      // Cerrada la estadia, no tiene sentido que dispare el aviso.
+      const notifId = forgetWarning(stayId);
+      if (notifId) {
+        void Notifications.cancelScheduledNotificationAsync(notifId).catch(() => {});
+      }
       void queryClient.invalidateQueries({ queryKey: ['stays', 'open'] });
     },
   });
+}
+
+// Cada vez que cambia la lista de stays abiertos, se reconcilian las
+// notificaciones locales: se programan las que faltan y se cancelan
+// las de stays que ya no estan abiertos. No depende de red: el trigger
+// vive en el dispositivo.
+export function useSyncStayWarnings(stays: readonly Stay[] | undefined): void {
+  useEffect(() => {
+    if (!stays) return;
+    void syncStayWarnings(stays, Date.now());
+  }, [stays]);
 }

@@ -1,5 +1,43 @@
-import { NEAR_EXPIRY_MINUTES } from '@/modules/stays/data';
+import { NEAR_EXPIRY_MINUTES, WARNING_LEAD_MINUTES } from '@/modules/stays/data';
 import type { Stay } from '@/modules/stays/types';
+
+const MINUTE_MS = 60_000;
+
+export type WarningSchedule =
+  | { action: 'schedule'; fireAt: number }
+  | { action: 'fireNow' }
+  | { action: 'skip'; reason: 'no-expected-until' | 'already-warned' | 'already-past' };
+
+// Decide que hacer con una estadia respecto al aviso local. Pura,
+// testeable sin expo-notifications.
+//
+// - Ya avisado (server o local): skip.
+// - expected_until - lead ya paso pero la estadia sigue abierta y
+//   dentro de una ventana razonable (lead adicional): dispara ya.
+// - fireAt en el futuro: schedule.
+export function computeWarningSchedule(
+  stay: Stay,
+  now: number,
+  locallyWarned: boolean,
+): WarningSchedule {
+  if (stay.warned === true || locallyWarned) {
+    return { action: 'skip', reason: 'already-warned' };
+  }
+  if (!stay.expectedUntil) {
+    return { action: 'skip', reason: 'no-expected-until' };
+  }
+  const expected = Date.parse(stay.expectedUntil);
+  if (Number.isNaN(expected)) return { action: 'skip', reason: 'no-expected-until' };
+
+  const fireAt = expected - WARNING_LEAD_MINUTES * MINUTE_MS;
+  if (fireAt <= now) {
+    if (expected + WARNING_LEAD_MINUTES * MINUTE_MS < now) {
+      return { action: 'skip', reason: 'already-past' };
+    }
+    return { action: 'fireNow' };
+  }
+  return { action: 'schedule', fireAt };
+}
 
 // Presentes ordenados por hora de ingreso descendente: el ultimo que
 // entro va arriba. Los que no tienen enteredAt se ubican al final para

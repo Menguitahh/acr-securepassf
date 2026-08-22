@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { NEAR_EXPIRY_MINUTES } from '@/modules/stays/data';
-import { isNearExpiry, sortByEnteredAtDesc } from '@/modules/stays/lib';
+import { NEAR_EXPIRY_MINUTES, WARNING_LEAD_MINUTES } from '@/modules/stays/data';
+import {
+  computeWarningSchedule,
+  isNearExpiry,
+  sortByEnteredAtDesc,
+} from '@/modules/stays/lib';
 import type { Stay } from '@/modules/stays/types';
 
 function stay(overrides: Stay = {}): Stay {
@@ -56,5 +60,54 @@ describe('isNearExpiry', () => {
     const s = stay({ warned: false });
     delete s.minutesRemaining;
     expect(isNearExpiry(s)).toBe(false);
+  });
+});
+
+describe('computeWarningSchedule', () => {
+  const NOW = Date.parse('2026-08-22T15:00:00Z');
+  const inMinutes = (mins: number): string => new Date(NOW + mins * 60_000).toISOString();
+
+  it('programa el aviso a expected_until - lead cuando el momento esta en el futuro', () => {
+    const s = stay({ expectedUntil: inMinutes(WARNING_LEAD_MINUTES + 30) });
+    const result = computeWarningSchedule(s, NOW, false);
+    expect(result).toEqual({ action: 'schedule', fireAt: NOW + 30 * 60_000 });
+  });
+
+  it('dispara ya si el momento del aviso ya paso pero la estadia sigue en ventana razonable', () => {
+    const s = stay({ expectedUntil: inMinutes(5) });
+    expect(computeWarningSchedule(s, NOW, false)).toEqual({ action: 'fireNow' });
+  });
+
+  it('salta si ya fue marcada warned por el server', () => {
+    const s = stay({ warned: true, expectedUntil: inMinutes(30) });
+    expect(computeWarningSchedule(s, NOW, false)).toEqual({
+      action: 'skip',
+      reason: 'already-warned',
+    });
+  });
+
+  it('salta si ya fue marcada warned localmente', () => {
+    const s = stay({ warned: false, expectedUntil: inMinutes(30) });
+    expect(computeWarningSchedule(s, NOW, true)).toEqual({
+      action: 'skip',
+      reason: 'already-warned',
+    });
+  });
+
+  it('salta si expected_until ya paso hace demasiado (permanencia excedida, no aviso)', () => {
+    const s = stay({ expectedUntil: inMinutes(-(WARNING_LEAD_MINUTES + 5)) });
+    expect(computeWarningSchedule(s, NOW, false)).toEqual({
+      action: 'skip',
+      reason: 'already-past',
+    });
+  });
+
+  it('salta si no hay expected_until', () => {
+    const s = stay();
+    delete s.expectedUntil;
+    expect(computeWarningSchedule(s, NOW, false)).toEqual({
+      action: 'skip',
+      reason: 'no-expected-until',
+    });
   });
 });

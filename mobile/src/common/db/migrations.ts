@@ -35,4 +35,11 @@ export const MIGRATIONS: string[] = [
     enrolled_at   TEXT NOT NULL
   );
   `,
+  `
+  CREATE TABLE stay_warnings (
+    stay_id      TEXT PRIMARY KEY,
+    warned_at    TEXT NOT NULL,
+    notification_id TEXT
+  );
+  `,
 ];

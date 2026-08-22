@@ -4,13 +4,15 @@ import { Button } from '@/common/components/button';
 import { EmptyState } from '@/common/components/empty-state';
 import { ErrorState } from '@/common/components/error-state';
 import { Spinner } from '@/common/components/spinner';
-import { useCloseStay, useOpenStays } from '@/modules/stays/hooks';
+import { useCloseStay, useOpenStays, useSyncStayWarnings } from '@/modules/stays/hooks';
 import { formatEnteredAt, isNearExpiry, sortByEnteredAtDesc } from '@/modules/stays/lib';
+import { isLocallyWarned } from '@/modules/stays/notifications';
 import type { Stay } from '@/modules/stays/types';
 
 export function StaysView() {
   const { data, isLoading, isError, error, refetch } = useOpenStays();
   const close = useCloseStay();
+  useSyncStayWarnings(data);
 
   const askClose = (stay: Stay) => {
     const name = stay.subjectName ?? 'este ingreso';
@@ -76,7 +78,8 @@ export function StaysView() {
       keyExtractor={(item) => item.id ?? ''}
       contentContainerClassName="gap-3 px-6 pb-6"
       renderItem={({ item }) => {
-        const near = isNearExpiry(item);
+        const locallyWarned = item.id ? isLocallyWarned(item.id) : false;
+        const near = locallyWarned || isNearExpiry(item);
         return (
           <Pressable
             accessibilityRole="button"
