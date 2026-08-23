@@ -1378,3 +1378,4 @@ Se lista explícitamente para que nadie lo implemente "por las dudas":
 - Multi-barrio para un mismo residente en una sola sesión.
 - Reconocimiento facial.
 - Panel de cámaras de seguridad.
+- Push remoto (FCM/APNs) al residente. Desde Expo SDK 53 `expo-notifications` dejó de soportar push remoto en Expo Go: sólo funcionan las notificaciones locales del propio dispositivo. Los pushes que la spec cita (US-25 aviso de ingreso, US-40 aviso de permanencia, US-42 push accionable al residente) requieren build custom (`expo prebuild` + FCM/APNs), lo que rompe la restricción dura de Expo Go definida en la sección 6.4. Mientras el stack se mantenga en Expo Go, los avisos que dependen del server se resuelven con polling en primer plano dentro de la app (no hay banner del OS si la app está cerrada). Los avisos que puede calcular el propio dispositivo (permanencia por vencer en garita) usan notificaciones locales, que sí funcionan en Expo Go.
