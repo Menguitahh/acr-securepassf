@@ -5,6 +5,7 @@ import * as Notifications from 'expo-notifications';
 import { useEffect } from 'react';
 
 import { useSessionStore } from '@/modules/auth/session-store';
+import { useRegisterDeviceOnSignIn } from '@/modules/devices/hooks';
 
 import '../global.css';
 
@@ -23,6 +24,7 @@ Notifications.setNotificationHandler({
 
 export default function RootLayout() {
   const restore = useSessionStore((state) => state.restore);
+  useRegisterDeviceOnSignIn();
 
   useEffect(() => {
     void restore();
