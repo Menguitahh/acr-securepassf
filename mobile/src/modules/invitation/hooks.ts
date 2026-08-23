@@ -64,3 +64,53 @@ export function useCreateInvitation() {
     },
   });
 }
+
+export function useExtendInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (invitationId: string) => {
+      const { data, error } = await authRequest(() =>
+        api.POST('/api/v1/invitations/{id}/extend', {
+          params: { path: { id: invitationId } },
+        }),
+      );
+      if (error || !data) {
+        // El server aplica el tope de extensiones (BR): cuando se
+        // supera, la respuesta es un problem detail. Se leen los campos
+        // del detalle para que el residente vea el motivo real.
+        const problem = error as { detail?: string; title?: string } | null;
+        const message =
+          problem?.detail ??
+          problem?.title ??
+          'No se pudo extender el pase. Alcanzaste el tope de extensiones o el server rechazo la operacion.';
+        throw new Error(message);
+      }
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['invitations'] });
+      void queryClient.invalidateQueries({ queryKey: ['stays', 'open'] });
+    },
+  });
+}
+
+export function useRequestExit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (invitationId: string) => {
+      const { data, error } = await authRequest(() =>
+        api.POST('/api/v1/invitations/{id}/request-exit', {
+          params: { path: { id: invitationId } },
+        }),
+      );
+      if (error || !data) {
+        throw new Error('No se pudo enviar el aviso a la garita. Reintentá en unos segundos.');
+      }
+      return data;
+    },
+    onSuccess: () => {
+      // La garita ve exitRequestedAt en el proximo refresh de /stays/open.
+      void queryClient.invalidateQueries({ queryKey: ['stays', 'open'] });
+    },
+  });
+}

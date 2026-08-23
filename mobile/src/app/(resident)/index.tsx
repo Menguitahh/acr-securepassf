@@ -12,6 +12,7 @@ import { Spinner } from '@/common/components/spinner';
 import { TYPE_LABELS } from '@/modules/invitation/data';
 import { useActiveInvitations } from '@/modules/invitation/hooks';
 import { formatWindow, remainingUses } from '@/modules/invitation/lib';
+import { PendingStaysCard } from '@/modules/resident-stays/pending-stays-card';
 import { initials } from '@/modules/auth/lib';
 import { useSessionStore } from '@/modules/auth/session-store';
 
@@ -56,6 +57,11 @@ export default function ResidentHomeScreen() {
         data={data}
         keyExtractor={(item) => item.id ?? ''}
         contentContainerClassName="gap-3 px-6"
+        ListHeaderComponent={
+          <View className="pb-3">
+            <PendingStaysCard />
+          </View>
+        }
         ListFooterComponent={
           <View className="gap-3 pb-10 pt-8">
             <Button

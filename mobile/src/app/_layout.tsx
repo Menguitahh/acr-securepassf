@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { useEffect } from 'react';
 
+import { bindFocusManagerToAppState } from '@/common/query/focus-manager';
 import { useSessionStore } from '@/modules/auth/session-store';
 import { useRegisterDeviceOnSignIn } from '@/modules/devices/hooks';
 
@@ -29,6 +30,8 @@ export default function RootLayout() {
   useEffect(() => {
     void restore();
   }, [restore]);
+
+  useEffect(() => bindFocusManagerToAppState(), []);
 
   return (
     <QueryClientProvider client={queryClient}>

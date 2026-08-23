@@ -850,6 +850,8 @@ export interface components {
         Item: {
             /** Format: uuid */
             id?: string;
+            /** Format: uuid */
+            invitationId?: string;
             subjectName?: string;
             lotCode?: string;
             /** Format: date-time */
