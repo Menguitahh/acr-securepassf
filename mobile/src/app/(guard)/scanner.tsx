@@ -67,6 +67,7 @@ export default function ScannerScreen() {
           onCancel={cancelEnrollment}
         />
         <View className="absolute right-4 top-12 flex-row gap-2">
+          <Button label="Manual" onPress={() => router.push('/(guard)/manual')} />
           <Button label="Turno" onPress={() => router.push('/(guard)/shifts')} />
           <Button label="Presentes" onPress={() => router.push('/(guard)/stays')} />
           <LogoutButton />
