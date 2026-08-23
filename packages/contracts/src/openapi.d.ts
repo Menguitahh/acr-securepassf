@@ -100,6 +100,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/invitations/{id}/request-exit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requestExit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invitations/{id}/extend": {
         parameters: {
             query?: never;
@@ -126,6 +142,22 @@ export interface paths {
         get: operations["list_2"];
         put?: never;
         post: operations["add"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["register"];
         delete?: never;
         options?: never;
         head?: never;
@@ -372,6 +404,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invitations/{id}": {
         parameters: {
             query?: never;
@@ -547,6 +595,12 @@ export interface components {
             qrToken?: string;
             shareUrl?: string;
         };
+        RequestExitResponse: {
+            /** Format: uuid */
+            invitationId?: string;
+            /** Format: date-time */
+            exitRequestedAt?: string;
+        };
         ExtendInvitationResponse: {
             /** Format: uuid */
             id?: string;
@@ -572,6 +626,19 @@ export interface components {
             isOwner?: boolean;
             canInvite?: boolean;
             active?: boolean;
+        };
+        RegisterDeviceRequest: {
+            expoPushToken: string;
+            /** @enum {string} */
+            platform: "IOS" | "ANDROID";
+        };
+        DeviceResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            platform?: "IOS" | "ANDROID";
+            /** Format: date-time */
+            lastSeenAt?: string;
         };
         RefreshRequest: {
             refreshToken: string;
@@ -792,6 +859,8 @@ export interface components {
             /** Format: int64 */
             minutesRemaining?: number;
             warned?: boolean;
+            /** Format: date-time */
+            exitRequestedAt?: string;
         };
         OpenStaysResponse: {
             stays?: components["schemas"]["Item"][];
@@ -806,6 +875,11 @@ export interface components {
         };
         PassesResponse: {
             passes?: components["schemas"]["PassResponse"][];
+        };
+        LotAutocompleteResponse: {
+            /** Format: uuid */
+            id?: string;
+            code?: string;
         };
         PagedInvitationsResponse: {
             items?: components["schemas"]["InvitationResponse"][];
@@ -1010,6 +1084,28 @@ export interface operations {
             };
         };
     };
+    requestExit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RequestExitResponse"];
+                };
+            };
+        };
+    };
     extend: {
         parameters: {
             query?: never;
@@ -1076,6 +1172,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["FamilyMemberResponse"];
+                };
+            };
+        };
+    };
+    register: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DeviceResponse"];
                 };
             };
         };
@@ -1473,6 +1593,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PassesResponse"];
+                };
+            };
+        };
+    };
+    search: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LotAutocompleteResponse"][];
                 };
             };
         };
