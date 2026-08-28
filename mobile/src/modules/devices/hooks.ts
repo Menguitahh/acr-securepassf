@@ -1,11 +1,11 @@
 import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
 import type { components } from '@securepass/contracts';
 
 import { api, authRequest } from '@/common/api/client';
+import { loadNotifications } from '@/common/notifications';
 import { useSessionStore } from '@/modules/auth/session-store';
 
 type Platform_ = components['schemas']['RegisterDeviceRequest']['platform'];
@@ -18,20 +18,17 @@ function currentPlatform(): Platform_ | null {
 }
 
 async function fetchExpoPushToken(): Promise<string | null> {
-  // Expo Go (SDK 53+) no soporta push remoto; getExpoPushTokenAsync tira
-  // error. Se cae al catch y se marca la deuda en logs. Cuando haya dev
-  // build, el mismo path funciona sin cambios.
-  // ponytail: sin dev build el token nunca se emite; alcanza para que el
-  // flujo de registro este armado, no genera ruido en el server.
+  const N = await loadNotifications();
+  if (!N) return null;
   const projectId =
     Constants.expoConfig?.extra?.['eas']?.projectId ??
     Constants.easConfig?.projectId;
-  const permission = await Notifications.getPermissionsAsync();
+  const permission = await N.getPermissionsAsync();
   if (!permission.granted) {
-    const request = await Notifications.requestPermissionsAsync();
+    const request = await N.requestPermissionsAsync();
     if (!request.granted) return null;
   }
-  const result = await Notifications.getExpoPushTokenAsync(
+  const result = await N.getExpoPushTokenAsync(
     projectId ? { projectId } : undefined,
   );
   return result.data ?? null;
@@ -60,9 +57,10 @@ export function useRegisterDeviceOnSignIn(): void {
         await authRequest(() =>
           api.POST('/api/v1/devices', { body: { expoPushToken, platform } }),
         );
-      } catch {
+      } catch (err) {
         // Sin dev build / sin permiso / red caida: no interrumpe la sesion.
         // El proximo signIn vuelve a intentar (ref se resetea con userId nuevo).
+        console.warn('[devices] registro de push omitido:', err);
       }
     })();
   }, [status, userId]);

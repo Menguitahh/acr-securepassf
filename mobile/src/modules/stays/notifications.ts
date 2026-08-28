@@ -1,5 +1,6 @@
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsType from 'expo-notifications';
 
+import { loadNotifications } from '@/common/notifications';
 import { computeWarningSchedule } from '@/modules/stays/lib';
 import type { Stay } from '@/modules/stays/types';
 import {
@@ -12,20 +13,20 @@ import {
 let permissionResolved = false;
 let permissionGranted = false;
 
-async function ensurePermission(): Promise<boolean> {
+async function ensurePermission(N: typeof NotificationsType): Promise<boolean> {
   if (permissionResolved) return permissionGranted;
-  const settings = await Notifications.getPermissionsAsync();
+  const settings = await N.getPermissionsAsync();
   if (settings.granted) {
     permissionGranted = true;
   } else {
-    const request = await Notifications.requestPermissionsAsync();
+    const request = await N.requestPermissionsAsync();
     permissionGranted = request.granted;
   }
   permissionResolved = true;
   return permissionGranted;
 }
 
-function buildContent(stay: Stay): Notifications.NotificationContentInput {
+function buildContent(stay: Stay): NotificationsType.NotificationContentInput {
   const who = stay.subjectName ?? 'un invitado';
   const lot = stay.lotCode ? ` (Lote ${stay.lotCode})` : '';
   return {
@@ -38,9 +39,13 @@ function buildContent(stay: Stay): Notifications.NotificationContentInput {
 // Programa (o dispara ya) el aviso local para un stay. Idempotente:
 // llamar dos veces con el mismo stay no crea dos notificaciones. Se
 // asume ejecucion desde useSyncStayWarnings, que ya filtra los skip.
-async function scheduleForStay(stay: Stay, fireAt: number | null): Promise<void> {
+async function scheduleForStay(
+  N: typeof NotificationsType,
+  stay: Stay,
+  fireAt: number | null,
+): Promise<void> {
   if (!stay.id) return;
-  const granted = await ensurePermission();
+  const granted = await ensurePermission(N);
   if (!granted) {
     // Sin permiso no hay notificacion posible, pero se marca como
     // avisado para que la fila resaltada en la UI cumpla el otro
@@ -48,12 +53,12 @@ async function scheduleForStay(stay: Stay, fireAt: number | null): Promise<void>
     recordWarning(stay.id, null);
     return;
   }
-  const identifier = await Notifications.scheduleNotificationAsync({
+  const identifier = await N.scheduleNotificationAsync({
     content: buildContent(stay),
     trigger:
       fireAt === null
         ? null
-        : { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(fireAt) },
+        : { type: N.SchedulableTriggerInputTypes.DATE, date: new Date(fireAt) },
   });
   recordWarning(stay.id, identifier);
 }
@@ -62,6 +67,8 @@ async function scheduleForStay(stay: Stay, fireAt: number | null): Promise<void>
 // corresponde. Idempotente. Para stays que ya cerraron o se borraron
 // del servidor, cancela la notificacion pendiente y limpia el flag.
 export async function syncStayWarnings(stays: readonly Stay[], now: number): Promise<void> {
+  const N = await loadNotifications();
+  if (!N) return;
   const alreadyWarned = warnedStayIds();
   const seen = new Set<string>();
 
@@ -71,9 +78,9 @@ export async function syncStayWarnings(stays: readonly Stay[], now: number): Pro
     if (alreadyWarned.has(stay.id)) continue;
     const schedule = computeWarningSchedule(stay, now, false);
     if (schedule.action === 'schedule') {
-      await scheduleForStay(stay, schedule.fireAt);
+      await scheduleForStay(N, stay, schedule.fireAt);
     } else if (schedule.action === 'fireNow') {
-      await scheduleForStay(stay, null);
+      await scheduleForStay(N, stay, null);
     }
   }
 
@@ -84,7 +91,7 @@ export async function syncStayWarnings(stays: readonly Stay[], now: number): Pro
     const notifId = forgetWarning(stayId);
     if (notifId) {
       try {
-        await Notifications.cancelScheduledNotificationAsync(notifId);
+        await N.cancelScheduledNotificationAsync(notifId);
       } catch {
         // La notificacion pudo haber disparado ya; no importa.
       }
