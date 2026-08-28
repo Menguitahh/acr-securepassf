@@ -1,32 +1,20 @@
 import { useLocalSearchParams } from 'expo-router';
-import * as Haptics from 'expo-haptics';
-import { useState } from 'react';
 import { Alert, Pressable, Switch, Text, View } from 'react-native';
 
 import type { components } from '@securepass/contracts';
 
-import { Button } from '@/common/components/button';
 import { Card } from '@/common/components/card';
 import { ErrorState } from '@/common/components/error-state';
-import { Input } from '@/common/components/input';
 import { ScreenHeader } from '@/common/components/screen-header';
 import { Spinner } from '@/common/components/spinner';
 import { useSessionStore } from '@/modules/auth/session-store';
-import {
-  useAddFamilyMember,
-  useFamilyMembers,
-  useUpdateFamilyMember,
-} from '@/modules/family/hooks';
+import { useFamilyMembers, useUpdateFamilyMember } from '@/modules/family/hooks';
 
 export default function FamilyMembersScreen() {
   const { lotId } = useLocalSearchParams<{ lotId: string }>();
   const { data, isLoading, isError, error } = useFamilyMembers(lotId);
   const user = useSessionStore((state) => state.user);
-  const addMember = useAddFamilyMember(lotId ?? '');
   const updateMember = useUpdateFamilyMember(lotId ?? '');
-
-  const [identifier, setIdentifier] = useState('');
-  const [canInvite, setCanInvite] = useState(true);
 
   const lot = (user?.lots ?? []).find((item) => item.id === lotId);
   const isOwner = lot?.isOwner === true;
@@ -44,19 +32,6 @@ export default function FamilyMembersScreen() {
   if (isLoading) return <View className="flex-1 bg-bg-base"><Spinner /></View>;
 
   const members = data ?? [];
-
-  const submitAdd = () => {
-    if (identifier.trim() === '') return;
-    addMember.mutate(
-      { identifier: identifier.trim(), canInvite },
-      {
-        onSuccess: () => {
-          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          setIdentifier('');
-        },
-      },
-    );
-  };
 
   const confirmRemove = (memberId: string, fullName: string) => {
     Alert.alert(
@@ -105,37 +80,26 @@ export default function FamilyMembersScreen() {
         </View>
 
         {isOwner ? (
+          // TODO(WBS-113): reescribir el formulario de alta para el contrato v2
+          // (WBS-110). Cambios: pasa a pedir fullName + DNI + birthDate + email
+          // (obligatorio si edad >= 16) + relation + canInvite; el back valida
+          // AGE_UNDER_16 (redirect al padron de menores de WBS-111) y
+          // EMAIL_REQUIRED; usar `outcome` del response para mostrar
+          // "reactivaste a alguien dado de baja" vs "agregaste nuevo". El hook
+          // useAddFamilyMember ya compila contra el tipo v2 en modules/family/hooks.ts.
           <View className="gap-3">
-            <Text className="text-footnote font-medium uppercase tracking-[1px] text-text-muted">
-              Agregar miembro
-            </Text>
-            <Input
-              label="Email o telefono"
-              value={identifier}
-              onChangeText={setIdentifier}
-              autoCapitalize="none"
-              autoComplete="email"
-            />
-            <View className="flex-row items-center justify-between">
-              <Text className="text-body leading-[22px] text-text-primary">Puede invitar</Text>
-              <Switch
-                value={canInvite}
-                onValueChange={setCanInvite}
-                trackColor={{ false: '#27272a', true: '#fafafa' }}
-                thumbColor={canInvite ? '#09090b' : '#a1a1aa'}
-              />
-            </View>
-            {addMember.error ? (
-              <Text className="text-body leading-[22px] text-text-primary">
-                {addMember.error.message}
-              </Text>
-            ) : null}
-            <Button
-              label={addMember.isPending ? 'Agregando' : 'Agregar miembro'}
-              onPress={submitAdd}
-              disabled={addMember.isPending || identifier.trim() === ''}
-              variant="primary"
-            />
+            <Card>
+              <View className="gap-2">
+                <Text className="text-footnote font-medium uppercase tracking-[1px] text-text-muted">
+                  Agregar miembro
+                </Text>
+                <Text className="text-body leading-[22px] text-text-primary">
+                  Formulario en construcción (WBS-113). El backend ya acepta el
+                  alta por DNI y edad; la pantalla la reescribimos en el próximo
+                  PR del mobile de familia.
+                </Text>
+              </View>
+            </Card>
           </View>
         ) : null}
       </View>

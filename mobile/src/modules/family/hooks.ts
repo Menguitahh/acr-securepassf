@@ -31,6 +31,13 @@ export function useFamilyMembers(lotId: string | undefined) {
   });
 }
 
+// WBS-110: el contrato v2 pide {fullName, dni, birthDate, email?, relation?, canInvite}
+// y devuelve un `outcome` (CREATED_USER_AND_PERMISSION | ADDED_PERMISSION |
+// REACTIVATED_PERMISSION | ALREADY_MEMBER) que el frontend usa para mostrar el
+// mensaje correcto: crear cuenta, sumar al lote o reactivar a alguien dado de
+// baja. Este hook compila contra el tipo v2; la reescritura de la UI (input
+// unico por email/telefono -> formulario con edad ramificando + parentesco +
+// canInvite explicito + mensajes por outcome) queda para WBS-113.
 export function useAddFamilyMember(lotId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -43,7 +50,7 @@ export function useAddFamilyMember(lotId: string) {
       );
       if (error || !data) {
         throw new Error(
-          serverDetail(error, 'No se pudo agregar el miembro. Revisá el email o telefono e intentá de nuevo.'),
+          serverDetail(error, 'No se pudo agregar el miembro. Revisá los datos e intentá de nuevo.'),
         );
       }
       return data;

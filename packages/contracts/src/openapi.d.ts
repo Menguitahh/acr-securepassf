@@ -164,6 +164,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -212,6 +228,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["forgotPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["create_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}/resend-activation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resendActivation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/lots": {
         parameters: {
             query?: never;
@@ -221,7 +285,7 @@ export interface paths {
         };
         get: operations["list_3"];
         put?: never;
-        post: operations["create_1"];
+        post: operations["create_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -238,6 +302,22 @@ export interface paths {
         get: operations["members"];
         put?: never;
         post: operations["addMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/activation/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get"];
+        put?: never;
+        post: operations["post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -484,6 +564,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/activar/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["page"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -612,20 +708,28 @@ export interface components {
             maxExtensions?: number;
         };
         AddFamilyMemberRequest: {
-            identifier: string;
-            canInvite?: boolean;
+            fullName: string;
+            dni: string;
+            /** Format: date */
+            birthDate: string;
+            email?: string;
             relation?: string;
+            canInvite: boolean;
         };
-        FamilyMemberResponse: {
+        AddFamilyMemberResponse: {
             /** Format: uuid */
             userId?: string;
             fullName?: string;
             email?: string;
-            phone?: string;
             relation?: string;
-            isOwner?: boolean;
             canInvite?: boolean;
             active?: boolean;
+            reused?: boolean;
+            changed?: boolean;
+            /** @enum {string} */
+            outcome?: "CREATED_USER_AND_PERMISSION" | "ADDED_PERMISSION" | "REACTIVATED_PERMISSION" | "ALREADY_MEMBER";
+            /** @enum {string} */
+            userStatus?: "ACTIVE" | "PENDING_ACTIVATION" | "SUSPENDED" | "DELETED";
         };
         RegisterDeviceRequest: {
             expoPushToken: string;
@@ -639,6 +743,10 @@ export interface components {
             platform?: "IOS" | "ANDROID";
             /** Format: date-time */
             lastSeenAt?: string;
+        };
+        ResetPasswordRequest: {
+            token: string;
+            password: string;
         };
         RefreshRequest: {
             refreshToken: string;
@@ -675,6 +783,27 @@ export interface components {
             neighborhoodId?: string;
             roles?: string[];
             lots?: components["schemas"]["LotPayload"][];
+        };
+        ForgotPasswordRequest: {
+            email: string;
+        };
+        CreateUserRequest: {
+            email: string;
+            fullName: string;
+            dni: string;
+            role: string;
+            /** Format: uuid */
+            lotId?: string;
+        };
+        OnboardUserResponse: {
+            /** Format: uuid */
+            userId?: string;
+            role?: string;
+            status?: string;
+            reused?: boolean;
+            changed?: boolean;
+            email?: string;
+            fullName?: string;
         };
         CreateLotRequest: {
             code: string;
@@ -716,6 +845,9 @@ export interface components {
             active?: boolean;
             /** Format: date-time */
             createdAt?: string;
+        };
+        ActivateRequest: {
+            password: string;
         };
         ValidateAccessRequest: {
             token: string;
@@ -841,6 +973,17 @@ export interface components {
             canInvite?: boolean;
             active?: boolean;
         };
+        FamilyMemberResponse: {
+            /** Format: uuid */
+            userId?: string;
+            fullName?: string;
+            email?: string;
+            phone?: string;
+            relation?: string;
+            isOwner?: boolean;
+            canInvite?: boolean;
+            active?: boolean;
+        };
         UpdateLotRequest: {
             /** @enum {string} */
             status?: "ACTIVE" | "SUSPENDED" | "VACANT";
@@ -891,6 +1034,13 @@ export interface components {
             size?: number;
             /** Format: int64 */
             total?: number;
+        };
+        ActivationLookupResponse: {
+            maskedEmail?: string;
+            fullName?: string;
+            purpose?: string;
+            /** Format: date-time */
+            expiresAt?: string;
         };
         RevokedTokenResponse: {
             /** Format: uuid */
@@ -1173,7 +1323,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["FamilyMemberResponse"];
+                    "*/*": components["schemas"]["AddFamilyMemberResponse"];
                 };
             };
         };
@@ -1199,6 +1349,28 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["DeviceResponse"];
                 };
+            };
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1272,6 +1444,72 @@ export interface operations {
             };
         };
     };
+    forgotPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgotPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUserRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["OnboardUserResponse"];
+                };
+            };
+        };
+    };
+    resendActivation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_3: {
         parameters: {
             query?: {
@@ -1294,7 +1532,7 @@ export interface operations {
             };
         };
     };
-    create_1: {
+    create_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -1363,6 +1601,52 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["LotMemberResponse"];
                 };
+            };
+        };
+    };
+    get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ActivationLookupResponse"];
+                };
+            };
+        };
+    };
+    post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1707,6 +1991,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AccessLogsResponse"];
+                };
+            };
+        };
+    };
+    page: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
                 };
             };
         };
