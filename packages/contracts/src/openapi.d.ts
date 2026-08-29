@@ -132,6 +132,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/family/lots/{lotId}/minors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listMinors"];
+        put?: never;
+        post: operations["register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/family/lots/{lotId}/minors/{minorId}/graduate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["graduateMinor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/family/lots/{lotId}/members": {
         parameters: {
             query?: never;
@@ -157,7 +189,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["register"];
+        post: operations["register_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -580,6 +612,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/family/lots/{lotId}/minors/{minorId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteMinor"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -707,14 +755,31 @@ export interface components {
             /** Format: int32 */
             maxExtensions?: number;
         };
-        AddFamilyMemberRequest: {
+        RegisterMinorRequest: {
             fullName: string;
-            dni: string;
+            documentNumber?: string;
             /** Format: date */
             birthDate: string;
-            email?: string;
+            relation?: string;
+            notes?: string;
+        };
+        MinorResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            lotId?: string;
+            fullName?: string;
+            documentNumber?: string;
+            /** Format: date */
+            birthDate?: string;
+            relation?: string;
+            notes?: string;
+        };
+        GraduateMinorRequest: {
+            email: string;
             relation?: string;
             canInvite: boolean;
+            dniOverride?: string;
         };
         AddFamilyMemberResponse: {
             /** Format: uuid */
@@ -730,6 +795,20 @@ export interface components {
             outcome?: "CREATED_USER_AND_PERMISSION" | "ADDED_PERMISSION" | "REACTIVATED_PERMISSION" | "ALREADY_MEMBER";
             /** @enum {string} */
             userStatus?: "ACTIVE" | "PENDING_ACTIVATION" | "SUSPENDED" | "DELETED";
+        };
+        GraduateMinorResponse: {
+            /** Format: uuid */
+            graduatedFromMinorId?: string;
+            member?: components["schemas"]["AddFamilyMemberResponse"];
+        };
+        AddFamilyMemberRequest: {
+            fullName: string;
+            dni: string;
+            /** Format: date */
+            birthDate: string;
+            email?: string;
+            relation?: string;
+            canInvite: boolean;
         };
         RegisterDeviceRequest: {
             expoPushToken: string;
@@ -973,7 +1052,7 @@ export interface components {
             canInvite?: boolean;
             active?: boolean;
         };
-        FamilyMemberResponse: {
+        UpdateFamilyMemberResponse: {
             /** Format: uuid */
             userId?: string;
             fullName?: string;
@@ -983,6 +1062,10 @@ export interface components {
             isOwner?: boolean;
             canInvite?: boolean;
             active?: boolean;
+            /** @enum {string} */
+            outcome?: "REVOKED_MEMBER" | "ALREADY_INACTIVE" | "TOGGLED_CAN_INVITE";
+            /** Format: int32 */
+            revokedInvitationsCount?: number;
         };
         UpdateLotRequest: {
             /** @enum {string} */
@@ -1034,6 +1117,17 @@ export interface components {
             size?: number;
             /** Format: int64 */
             total?: number;
+        };
+        FamilyMemberResponse: {
+            /** Format: uuid */
+            userId?: string;
+            fullName?: string;
+            email?: string;
+            phone?: string;
+            relation?: string;
+            isOwner?: boolean;
+            canInvite?: boolean;
+            active?: boolean;
         };
         ActivationLookupResponse: {
             maskedEmail?: string;
@@ -1280,6 +1374,81 @@ export interface operations {
             };
         };
     };
+    listMinors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MinorResponse"][];
+                };
+            };
+        };
+    };
+    register: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterMinorRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MinorResponse"];
+                };
+            };
+        };
+    };
+    graduateMinor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: string;
+                minorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GraduateMinorRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["GraduateMinorResponse"];
+                };
+            };
+        };
+    };
     list_2: {
         parameters: {
             query?: never;
@@ -1328,7 +1497,7 @@ export interface operations {
             };
         };
     };
-    register: {
+    register_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -1768,7 +1937,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["FamilyMemberResponse"];
+                    "*/*": components["schemas"]["UpdateFamilyMemberResponse"];
                 };
             };
         };
@@ -2014,6 +2183,27 @@ export interface operations {
                 content: {
                     "text/html": string;
                 };
+            };
+        };
+    };
+    deleteMinor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: string;
+                minorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
