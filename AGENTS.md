@@ -27,9 +27,23 @@ Expo SDK 52+ · React Native · TypeScript strict · expo-router · TanStack Que
 expo-sqlite · expo-camera · nativewind v4.
 Web: Next.js 16 App Router · React 19 · Tailwind CSS 4 · @base-ui/react.
 
-**Restriccion dura: todo debe correr en Expo Go.** Nada de modulos nativos custom.
-No VisionCamera, no MMKV, no WatermelonDB. Si una libreria requiere `expo prebuild`,
-no va.
+**Restriccion dura: nada de modulos nativos custom** que impidan usar EAS Build
+managed workflow. No VisionCamera, no MMKV, no WatermelonDB. Si una libreria
+requiere config nativo escrito a mano (no un config plugin de Expo), no va.
+
+**El proyecto NO corre en Expo Go**. Necesita development build (EAS). Razon:
+`expo-notifications` tira al importar el modulo cuando esta corriendo en Expo Go,
+por un side effect de `DevicePushTokenAutoRegistration.fx.js` que llama
+`warnOfExpoGoPushUsage` -> THROW. Rompe `_layout.tsx` en la carga, todos los
+routes cascadean con "missing default export" + "Cannot read property
+'ErrorBoundary' of undefined". Detalles y stack en issue securepassf#66.
+
+Un import con side effects puede romper el modulo entero aunque la funcion
+problematica nunca se llame. `getExpoPushTokenAsync` esta guarded con try/catch
+y jamas se invoca en boot; alcanza con el `import * as Notifications from
+'expo-notifications'` para tirar.
+
+Setup de development build: seccion "Development build" mas abajo.
 
 ## Estructura de modulos
 
@@ -119,12 +133,41 @@ Refs: #31
 - [ ] Criterios de aceptacion del issue cumplidos
 - [ ] `tsc --noEmit` limpio, `eslint` sin warnings
 - [ ] Tests nuevos pasan
-- [ ] Probado en Expo Go, no solo en web
+- [ ] Probado en el development build (no en Expo Go: el proyecto no corre ahi, ver arriba)
 - [ ] PR con `Closes #N`
 
 ## Que no hacer
 
-- No agregar dependencias que rompan Expo Go.
+- No agregar dependencias que requieran editar `android/` o `ios/` a mano
+  (rompen `expo prebuild` limpio). Config plugins de Expo si, patches nativos no.
 - No implementar captura de patente. Decidido para v2.
 - No construir componentes manuales que ya existen en el design system.
 - No inventar endpoints. Los que hay estan en `spec.md` seccion 7.
+
+## Development build
+
+El proyecto necesita development build para correr en device. Expo Go no sirve
+(ver "Restriccion dura" arriba, y securepassf#66).
+
+Setup una sola vez:
+
+```bash
+npm install -g eas-cli
+cd mobile && npx expo install expo-dev-client
+eas login             # cuenta en expo.dev, tier free alcanza
+eas build --profile development --platform android
+```
+
+El build corre en la nube EAS (~15-25 min primera vez). Descargar el APK del
+link que da el CLI, instalar en el telefono (habilitar "Install unknown apps"
+para el navegador o file manager).
+
+Desarrollo diario:
+
+```bash
+cd mobile && npx expo start --dev-client
+```
+
+Abrir el dev client instalado en el telefono (no Expo Go) y pegarle la URL de
+Metro. Cambios en JS hot-reloadean sin rebuild. Solo rebuild cuando cambian
+modulos nativos o `app.json`.
