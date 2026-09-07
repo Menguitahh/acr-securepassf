@@ -7,6 +7,8 @@
     "packages/*"
   ],
   "scripts": {
+    "start": "npm --workspace mobile run start",
+    "start:web": "npm --workspace web run dev",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present"
   }
