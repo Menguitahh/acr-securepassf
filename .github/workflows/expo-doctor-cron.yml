@@ -1,0 +1,77 @@
+name: expo-doctor-cron
+
+# Detecta drift de patches SDK 57 (#59): Expo publica un patch, expo-doctor
+# empieza a fallar en develop aunque nadie toque el repo. El cron corre la
+# MISMA herramienta que el CI de PRs (expo install --check / expo-doctor),
+# asi que cero divergencia posible entre lo que detecta y lo que rompe.
+#
+# Cuando encuentra drift, aplica `expo install --fix` y abre (o actualiza)
+# UN unico PR en la rama chore/expo-doctor-drift-auto. Si no hay drift,
+# no crea nada. Si el drift crece dia a dia, force-pushea al mismo PR
+# — nunca acumula multiples PRs por el mismo tema.
+
+on:
+  schedule:
+    # 12:00 UTC = 09:00 Mza, dias habiles. Detecta al dia siguiente de que
+    # Expo publique un patch; el bug historico tardo 5 dias en descubrirse.
+    - cron: '0 12 * * 1-5'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: expo-doctor-cron
+  cancel-in-progress: false
+
+jobs:
+  check-and-fix:
+    name: check-and-fix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: develop
+
+      - name: set up Node 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: install
+        run: npm ci
+
+      - name: expo install --fix
+        working-directory: mobile
+        run: npx expo install --fix
+
+      - name: expo-doctor (verifica que el fix haya alcanzado)
+        working-directory: mobile
+        run: npx expo-doctor
+
+      - name: create or update PR si hay diff
+        uses: peter-evans/create-pull-request@v7
+        with:
+          base: develop
+          branch: chore/expo-doctor-drift-auto
+          delete-branch: true
+          title: 'chore(deps): auto-bump para pasar expo-doctor'
+          commit-message: |
+            chore(deps): auto-bump por drift detectado por el cron
+
+            Ejecutado por el workflow expo-doctor-cron. El bump surge de
+            `expo install --fix` con la ultima expectativa del SDK 57.
+
+            Refs #59
+          body: |
+            Auto-abierto por `.github/workflows/expo-doctor-cron.yml` cuando `expo install --fix` produce cambios (Expo publico patches nuevos del SDK 57 y el `package.json` de develop quedo atras).
+
+            Si el cron vuelve a detectar drift adicional, este PR se actualiza en el mismo branch (no se crean PRs duplicados).
+
+            Antes de mergear:
+            - [ ] Revisar el diff de `mobile/package.json` y `package-lock.json`.
+            - [ ] Confirmar que el CI de este PR pasa (incluye expo-doctor).
+
+            Refs #59
