@@ -45,10 +45,15 @@ export function toSessionUser(
   if (!payload.roles || !payload.roles.every((role) => typeof role === 'string')) {
     return null;
   }
+  const tz =
+    typeof payload.neighborhoodTimezone === 'string' && payload.neighborhoodTimezone.length > 0
+      ? payload.neighborhoodTimezone
+      : null;
   return {
     id: payload.id,
     fullName: payload.fullName,
     neighborhoodId: payload.neighborhoodId,
+    neighborhoodTimezone: tz,
     roles: payload.roles,
     lots: payload.lots ?? [],
   };
@@ -64,5 +69,12 @@ export function isSessionUser(value: unknown): value is SessionUser {
   if (!('roles' in value) || !Array.isArray(value.roles)) return false;
   if (!value.roles.every((role) => typeof role === 'string')) return false;
   if (!('lots' in value) || !Array.isArray(value.lots)) return false;
+  // Tolerante con sesiones persistidas antes de securepassb#155: el campo
+  // puede faltar. Si viene, tiene que ser string o null; cualquier otro
+  // tipo indica corrupcion y se rechaza para forzar re-login.
+  if ('neighborhoodTimezone' in value) {
+    const tz = (value as { neighborhoodTimezone: unknown }).neighborhoodTimezone;
+    if (tz !== null && typeof tz !== 'string') return false;
+  }
   return true;
 }

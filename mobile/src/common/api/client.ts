@@ -2,7 +2,14 @@ import createClient from 'openapi-fetch';
 import type { paths } from '@securepass/contracts';
 
 import { API_BASE_URL } from '@/modules/auth/data';
-import { clearSession, loadTokens, saveTokens } from '@/modules/auth/session-storage';
+import { toSessionUser } from '@/modules/auth/lib';
+import { useSessionStore } from '@/modules/auth/session-store';
+import {
+  clearSession,
+  loadTokens,
+  saveTokens,
+  saveUser,
+} from '@/modules/auth/session-storage';
 
 export const api = createClient<paths>({ baseUrl: API_BASE_URL });
 
@@ -34,6 +41,17 @@ export async function refreshSession(): Promise<void> {
     throw new SessionExpiredError();
   }
   await saveTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+  // El backend incluye user en /auth/refresh desde securepassb#155 para
+  // propagar neighborhoodTimezone (y cualquier futuro cambio del perfil)
+  // sin exigir re-login. Si el server responde sin user, se conserva el
+  // ya persistido para no romper sesiones antiguas.
+  if (data.user) {
+    const user = toSessionUser(data.user);
+    if (user) {
+      await saveUser(user);
+      useSessionStore.getState().signIn(user);
+    }
+  }
 }
 
 type ApiResult = { error?: { status?: number } | undefined };

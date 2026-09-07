@@ -51,6 +51,15 @@ export async function loadSession(): Promise<{
   } catch {
     return null;
   }
+  // Sesiones persistidas antes de securepassb#155 no traen el campo; se
+  // rellena antes del narrow para que el tipo satisfaga SessionUser.
+  if (
+    typeof user === 'object' &&
+    user !== null &&
+    !('neighborhoodTimezone' in user)
+  ) {
+    (user as { neighborhoodTimezone: string | null }).neighborhoodTimezone = null;
+  }
   if (!isSessionUser(user)) return null;
   return { tokens, user };
 }

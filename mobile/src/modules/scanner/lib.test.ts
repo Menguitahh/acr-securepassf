@@ -5,6 +5,7 @@ import { TOKEN_PREFIX } from '@/modules/scanner/data';
 import {
   isDenialReason,
   isDuplicateScan,
+  isWithinRecurringSchedule,
   parseArgentineDni,
   parseToken,
   toScanResult,
@@ -67,6 +68,7 @@ function makeContext(overrides: Partial<OfflineContext> = {}): OfflineContext {
     // sin preocuparse por el enrolamiento. Los tests de needs_enrollment
     // sobreescriben esta funcion.
     isEnrolled: () => true,
+    neighborhoodTimezone: 'America/Argentina/Mendoza',
     ...overrides,
   };
 }
@@ -410,6 +412,7 @@ describe('token real emitido por el backend', () => {
       revoked: new Set(),
       localUses: () => 0,
       isEnrolled: () => true,
+      neighborhoodTimezone: 'America/Argentina/Mendoza',
     });
     expect(decision).toEqual({ status: 'allowed' });
   });
@@ -555,5 +558,81 @@ describe('parseArgentineDni', () => {
     expect(parseArgentineDni('')).toBeNull();
     expect(parseArgentineDni('@LOPEZ@JOSE')).toBeNull();
     expect(parseArgentineDni('random qr content')).toBeNull();
+  });
+});
+
+// Bug #64: withinDailySlot evaluaba franja con la tz del dispositivo.
+// La migracion a scheduleContains + neighborhoodTimezone lo cierra: el
+// mismo instante en Mza vs Tokio ahora da veredictos distintos con la
+// misma ventana, y sin tz configurada no se cae a la tz del sistema.
+describe('validateOffline - RECURRING usa la tz del barrio (#64)', () => {
+  const secretKey = utils.randomSecretKey();
+  const publicKey = toBase64Url(getPublicKey(secretKey));
+
+  // 2026-03-03 13:00 UTC (martes): 10:00 en Mza, 22:00 en Tokio.
+  const INSTANT_TUE_1300Z = Math.floor(new Date('2026-03-03T13:00:00Z').getTime() / 1000);
+
+  function recurringPayload(): TokenPayload {
+    return basePayload({
+      t: 'R',
+      f: INSTANT_TUE_1300Z - 3600,
+      u: INSTANT_TUE_1300Z + 3600,
+      w: [2],
+      df: '08:00',
+      du: '12:00',
+    });
+  }
+
+  it('permite con tz Mza cuando el instante cae en la franja local', () => {
+    const token = makeToken(recurringPayload(), secretKey);
+    const ctx = makeContext({
+      keys: { a1b2c3d4: publicKey },
+      now: INSTANT_TUE_1300Z,
+      neighborhoodTimezone: 'America/Argentina/Mendoza',
+    });
+    expect(validateOffline(token, ctx)).toEqual({ status: 'allowed' });
+  });
+
+  it('deniega OUT_OF_SCHEDULE con tz Tokio para el mismo instante y ventana', () => {
+    const token = makeToken(recurringPayload(), secretKey);
+    const ctx = makeContext({
+      keys: { a1b2c3d4: publicKey },
+      now: INSTANT_TUE_1300Z,
+      neighborhoodTimezone: 'Asia/Tokyo',
+    });
+    expect(validateOffline(token, ctx)).toMatchObject({ reason: 'OUT_OF_SCHEDULE' });
+  });
+
+  // Payload 'R' construido a mano al que le falta w/df/du. Antes del fix
+  // el codigo hacia payload.w!/df!/du! y crasheaba al pasarlos a
+  // scheduleContains — un token con este shape emitido por un backend
+  // roto (o por un atacante que se saltee parseToken) tiraba el scanner.
+  // Ahora el guard devuelve false y el flujo denega, no crashea.
+  it('isWithinRecurringSchedule fail-closed con payload R sin franja', () => {
+    const ctx = makeContext({ neighborhoodTimezone: 'America/Argentina/Mendoza' });
+    const sinCampos: TokenPayload = basePayload({ t: 'R' });
+    const sinDias: TokenPayload = basePayload({ t: 'R', df: '08:00', du: '12:00' });
+    const sinFrom: TokenPayload = basePayload({ t: 'R', w: [2], du: '12:00' });
+    const sinUntil: TokenPayload = basePayload({ t: 'R', w: [2], df: '08:00' });
+    const diasVacios: TokenPayload = basePayload({ t: 'R', w: [], df: '08:00', du: '12:00' });
+    expect(isWithinRecurringSchedule(sinCampos, ctx)).toBe(false);
+    expect(isWithinRecurringSchedule(sinDias, ctx)).toBe(false);
+    expect(isWithinRecurringSchedule(sinFrom, ctx)).toBe(false);
+    expect(isWithinRecurringSchedule(sinUntil, ctx)).toBe(false);
+    expect(isWithinRecurringSchedule(diasVacios, ctx)).toBe(false);
+  });
+
+  it('deniega NEIGHBORHOOD_TZ_MISSING cuando falta la tz del barrio (no OUT_OF_SCHEDULE ni UNKNOWN)', () => {
+    // Sin tz configurada la franja no se puede evaluar. El motivo tiene
+    // que ser explicito: NEIGHBORHOOD_TZ_MISSING le dice al guardia que la
+    // config falta (mensaje dedicado en DENIAL_MESSAGES); OUT_OF_SCHEDULE
+    // mentiria diciendo "la ventana no case" y UNKNOWN seria generico.
+    const token = makeToken(recurringPayload(), secretKey);
+    const ctx = makeContext({
+      keys: { a1b2c3d4: publicKey },
+      now: INSTANT_TUE_1300Z,
+      neighborhoodTimezone: null,
+    });
+    expect(validateOffline(token, ctx)).toMatchObject({ reason: 'NEIGHBORHOOD_TZ_MISSING' });
   });
 });

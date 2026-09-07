@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 
 import { api, authRequest } from '@/common/api/client';
 import { getDb } from '@/common/db/database';
+import { useSessionStore } from '@/modules/auth/session-store';
 import { isInvitationEnrolled, recordEnrollment } from '@/modules/offline/enrollments-cache';
 import { useOfflineStore } from '@/modules/offline/offline-store';
 import { enqueueOutboxEvent } from '@/modules/offline/outbox';
@@ -36,6 +37,7 @@ function buildOfflineContext(): OfflineContext {
     revoked,
     localUses,
     isEnrolled: isInvitationEnrolled,
+    neighborhoodTimezone: useSessionStore.getState().user?.neighborhoodTimezone ?? null,
   };
 }
 

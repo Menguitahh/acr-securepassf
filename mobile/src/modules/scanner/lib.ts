@@ -4,6 +4,7 @@ import { sha512 } from '@noble/hashes/sha2.js';
 import type { components } from '@securepass/contracts';
 
 import { DENIAL_MESSAGES, DUPLICATE_WINDOW_MS, TOKEN_PREFIX } from '@/modules/scanner/data';
+import { scheduleContains } from '@/modules/scanner/schedule-window';
 import type {
   AccessDecision,
   DenialReason,
@@ -103,24 +104,18 @@ function verifySignature(parsed: ParsedToken, publicKeyBase64Url: string): boole
   }
 }
 
-// ponytail: usa el timezone del dispositivo del guardia para la franja diaria;
-// revisar si un barrio opera en un timezone distinto al del telefono de garita.
-function withinDailySlot(payload: TokenPayload, nowEpochSeconds: number): boolean {
-  const weekdays = payload.w;
-  const dailyFrom = payload.df;
-  const dailyUntil = payload.du;
-  if (!weekdays || !dailyFrom || !dailyUntil) return false;
-
-  const date = new Date(nowEpochSeconds * 1000);
-  const weekday = ((date.getDay() + 6) % 7) + 1;
-  if (!weekdays.includes(weekday)) return false;
-
-  const minutes = date.getHours() * 60 + date.getMinutes();
-  const [fromHours, fromMinutes] = dailyFrom.split(':');
-  const [untilHours, untilMinutes] = dailyUntil.split(':');
-  const from = Number(fromHours) * 60 + Number(fromMinutes);
-  const until = Number(untilHours) * 60 + Number(untilMinutes);
-  return minutes >= from && minutes <= until;
+// Exportado para tests: el guard defiende ante llamadores que bypasseen
+// parseToken (payload construido a mano) o ante un futuro subtype que
+// haga la franja opcional. Fail-closed: si falta cualquier pieza, false.
+export function isWithinRecurringSchedule(payload: TokenPayload, ctx: OfflineContext): boolean {
+  if (!payload.w || payload.w.length === 0) return false;
+  if (!payload.df || !payload.du) return false;
+  if (!ctx.neighborhoodTimezone) return false;
+  return scheduleContains(
+    { weekdays: payload.w, dailyFrom: payload.df, dailyUntil: payload.du },
+    ctx.now,
+    ctx.neighborhoodTimezone,
+  );
 }
 
 function denied(reason: OfflineDenialReason): AccessDecision {
@@ -138,8 +133,12 @@ export function validateOffline(token: string, ctx: OfflineContext): AccessDecis
   if (ctx.revoked.has(parsed.payload.j)) return denied('REVOKED');
   if (ctx.now < parsed.payload.f) return denied('NOT_YET_VALID');
   if (ctx.now > parsed.payload.u) return denied('EXPIRED');
-  if (parsed.payload.t === 'R' && !withinDailySlot(parsed.payload, ctx.now)) {
-    return denied('OUT_OF_SCHEDULE');
+  if (parsed.payload.t === 'R') {
+    // Sin tz del barrio configurada no se puede evaluar la franja. No es
+    // que la ventana no case: no la podemos calcular. Motivo dedicado
+    // para que el mensaje al guardia sea especifico (no un UNKNOWN generico).
+    if (!ctx.neighborhoodTimezone) return denied('NEIGHBORHOOD_TZ_MISSING');
+    if (!isWithinRecurringSchedule(parsed.payload, ctx)) return denied('OUT_OF_SCHEDULE');
   }
   if (ctx.localUses(parsed.payload.j) >= parsed.payload.m) {
     return denied('ALREADY_USED');
@@ -157,7 +156,8 @@ export function validateOffline(token: string, ctx: OfflineContext): AccessDecis
   const noRevocado = !ctx.revoked.has(parsed.payload.j);
   const dentroDeVentana = ctx.now >= parsed.payload.f && ctx.now <= parsed.payload.u;
   const enFranja =
-    parsed.payload.t !== 'R' || withinDailySlot(parsed.payload, ctx.now);
+    parsed.payload.t !== 'R' ||
+    (!!ctx.neighborhoodTimezone && isWithinRecurringSchedule(parsed.payload, ctx));
   const cupoDisponible = ctx.localUses(parsed.payload.j) < parsed.payload.m;
   const enrolado = ctx.isEnrolled(parsed.payload.i);
   if (noRevocado && dentroDeVentana && enFranja && cupoDisponible && enrolado) {
@@ -178,6 +178,7 @@ const DENIAL_REASONS: DenialReason[] = [
   'OUT_OF_SCHEDULE',
   'LOT_SUSPENDED',
   'REPLAY',
+  'NEIGHBORHOOD_TZ_MISSING',
   'UNKNOWN',
 ];
 

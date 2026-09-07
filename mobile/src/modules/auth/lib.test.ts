@@ -15,6 +15,7 @@ const baseUser: SessionUser = {
   id: 'u1',
   fullName: 'Juan Perez',
   neighborhoodId: 'n1',
+  neighborhoodTimezone: 'America/Argentina/Mendoza',
   roles: ['RESIDENT_OWNER'],
   lots: [],
 };
@@ -100,9 +101,36 @@ describe('toSessionUser', () => {
       id: 'u1',
       fullName: 'Juan Perez',
       neighborhoodId: 'n1',
+      neighborhoodTimezone: 'America/Argentina/Mendoza',
       roles: ['GUARD'],
       lots: [{ id: 'l1', code: 'M4-L12', canInvite: true, isOwner: true }],
     });
+  });
+
+  it('acepta payloads sin neighborhoodTimezone (backend viejo o sesion pre-#155)', () => {
+    // El contrato OpenAPI ahora marca neighborhoodTimezone como requerido,
+    // pero el guard tiene que seguir siendo tolerante en runtime por si el
+    // backend regresiona o una sesion vieja se procesa. @ts-expect-error
+    // documenta la violacion intencional del contrato para este test.
+    // @ts-expect-error tolerancia runtime a payload sin tz
+    const user = toSessionUser({
+      id: 'u1',
+      fullName: 'Juan',
+      neighborhoodId: 'n1',
+      roles: ['GUARD'],
+    });
+    expect(user?.neighborhoodTimezone).toBeNull();
+  });
+
+  it('trata neighborhoodTimezone vacio como null', () => {
+    const user = toSessionUser({
+      id: 'u1',
+      fullName: 'Juan',
+      neighborhoodId: 'n1',
+      neighborhoodTimezone: '',
+      roles: ['GUARD'],
+    });
+    expect(user?.neighborhoodTimezone).toBeNull();
   });
 
   it('devuelve null sin id, nombre o barrio', () => {
@@ -142,5 +170,14 @@ describe('isSessionUser', () => {
 
   it('rechaza roles con elementos que no son string', () => {
     expect(isSessionUser({ ...baseUser, roles: ['GUARD', 7] })).toBe(false);
+  });
+
+  it('acepta sesiones persistidas sin neighborhoodTimezone', () => {
+    const { neighborhoodTimezone: _tz, ...legacyUser } = baseUser;
+    expect(isSessionUser(legacyUser)).toBe(true);
+  });
+
+  it('rechaza neighborhoodTimezone con tipo invalido', () => {
+    expect(isSessionUser({ ...baseUser, neighborhoodTimezone: 123 })).toBe(false);
   });
 });

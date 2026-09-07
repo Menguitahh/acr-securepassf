@@ -17,5 +17,7 @@ export const DENIAL_MESSAGES: Record<DenialReason, string> = {
   ALREADY_USED: 'Cupo del pase agotado. Pedí un pase nuevo al residente.',
   LOT_SUSPENDED: 'Lote suspendido. El residente no puede recibir visitas.',
   REPLAY: 'Pase ya utilizado. Si es un error del sistema, registrá el ingreso manualmente.',
+  NEIGHBORHOOD_TZ_MISSING:
+    'Falta configuración del barrio en este dispositivo. El pase puede ser válido; registrá el ingreso manualmente.',
   UNKNOWN: 'Pase no valido. Registrá el ingreso manualmente o pedí un pase nuevo.',
 };

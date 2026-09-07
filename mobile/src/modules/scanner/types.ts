@@ -7,6 +7,7 @@ export type DenialReason =
   | 'OUT_OF_SCHEDULE'
   | 'LOT_SUSPENDED'
   | 'REPLAY'
+  | 'NEIGHBORHOOD_TZ_MISSING'
   | 'UNKNOWN';
 
 export type OfflineDenialReason =
@@ -16,6 +17,7 @@ export type OfflineDenialReason =
   | 'ALREADY_USED'
   | 'REVOKED'
   | 'OUT_OF_SCHEDULE'
+  | 'NEIGHBORHOOD_TZ_MISSING'
   | 'UNKNOWN';
 
 export type TokenPayload = {
@@ -46,6 +48,11 @@ export type OfflineContext = {
   revoked: ReadonlySet<string>;
   localUses: (jti: string) => number;
   isEnrolled: (invitationId: string) => boolean;
+  // IANA timezone del barrio para evaluar scheduleContains (issue #64).
+  // Null cuando la sesion se abrio antes de que el backend enviara el
+  // campo (securepassb#155): en pases RECURRING, validateOffline responde
+  // NEIGHBORHOOD_TZ_MISSING en vez de asumir la tz del dispositivo.
+  neighborhoodTimezone: string | null;
 };
 
 export type AccessDecision =
