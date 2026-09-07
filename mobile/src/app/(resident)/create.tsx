@@ -15,20 +15,9 @@ import {
   type InvitationFormValues,
 } from '@/modules/invitation/lib';
 
-const WEEKDAYS = [
-  { value: 1, label: 'Lunes' },
-  { value: 2, label: 'Martes' },
-  { value: 3, label: 'Miercoles' },
-  { value: 4, label: 'Jueves' },
-  { value: 5, label: 'Viernes' },
-  { value: 6, label: 'Sabado' },
-  { value: 7, label: 'Domingo' },
-];
-
 const INVITATION_TYPES = [
   { value: 'SINGLE', label: 'Unica' },
   { value: 'EVENT', label: 'Evento' },
-  { value: 'RECURRING', label: 'Recurrente' },
 ] as const;
 
 function defaultWindow(): { from: Date; until: Date } {
@@ -61,14 +50,9 @@ export default function CreateInvitationScreen() {
     validFrom: defaultFrom,
     validUntil: defaultUntil,
     maxUses: '',
-    weekdays: [],
-    dailyFrom: new Date(new Date().setHours(8, 0, 0, 0)),
-    dailyUntil: new Date(new Date().setHours(18, 0, 0, 0)),
   }));
   const [showFrom, setShowFrom] = useState(false);
   const [showUntil, setShowUntil] = useState(false);
-  const [showDailyFrom, setShowDailyFrom] = useState(false);
-  const [showDailyUntil, setShowDailyUntil] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const { mutate, isPending, error } = useCreateInvitation();
@@ -93,11 +77,6 @@ export default function CreateInvitationScreen() {
     key: K,
     value: InvitationFormValues[K],
   ) => setValues((current) => ({ ...current, [key]: value }));
-
-  const toggleWeekday = (day: number) => {
-    const selected = values.weekdays.includes(day);
-    setValue('weekdays', selected ? values.weekdays.filter((d) => d !== day) : [...values.weekdays, day]);
-  };
 
   const submit = () => {
     const result = validateInvitationForm(values);
@@ -211,41 +190,6 @@ export default function CreateInvitationScreen() {
               keyboardType="number-pad"
               editable={!isPending}
             />
-          ) : null}
-
-          {values.type === 'RECURRING' ? (
-            <View className="gap-3 pt-2">
-              <Text className="text-footnote font-medium text-text-muted">Dias de la semana</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {WEEKDAYS.map((day) => {
-                  const selected = values.weekdays.includes(day.value);
-                  return (
-                    <Button
-                      key={day.value}
-                      label={day.label}
-                      selected={selected}
-                      onPress={() => toggleWeekday(day.value)}
-                    />
-                  );
-                })}
-              </View>
-              <DateTimeField
-                label="Desde las"
-                value={values.dailyFrom}
-                onChange={(dailyFrom) => setValue('dailyFrom', dailyFrom)}
-                showPicker={showDailyFrom}
-                setShowPicker={setShowDailyFrom}
-                mode="time"
-              />
-              <DateTimeField
-                label="Hasta las"
-                value={values.dailyUntil}
-                onChange={(dailyUntil) => setValue('dailyUntil', dailyUntil)}
-                showPicker={showDailyUntil}
-                setShowPicker={setShowDailyUntil}
-                mode="time"
-              />
-            </View>
           ) : null}
         </View>
 

@@ -9,7 +9,7 @@ import { EmptyState } from '@/common/components/empty-state';
 import { ErrorState } from '@/common/components/error-state';
 import { ScreenHeader } from '@/common/components/screen-header';
 import { Spinner } from '@/common/components/spinner';
-import { TYPE_LABELS } from '@/modules/invitation/data';
+import { typeLabel } from '@/modules/invitation/data';
 import { useActiveInvitations } from '@/modules/invitation/hooks';
 import { formatWindow, remainingUses } from '@/modules/invitation/lib';
 import { PendingStaysCard } from '@/modules/resident-stays/pending-stays-card';
@@ -81,11 +81,9 @@ export default function ResidentHomeScreen() {
                 <Text className="flex-1 text-body font-semibold leading-[22px] text-text-primary">
                   {item.guestName ?? 'Sin nombre'}
                 </Text>
-                {item.type ? (
-                  <Text className="rounded-full bg-bg-elevated px-2.5 py-1 text-footnote text-text-muted">
-                    {TYPE_LABELS[item.type]}
-                  </Text>
-                ) : null}
+                <Text className="rounded-full bg-bg-elevated px-2.5 py-1 text-footnote text-text-muted">
+                  {typeLabel(item.type)}
+                </Text>
               </View>
               <Text className="mt-3 text-footnote leading-[18px] text-text-muted">
                 {formatWindow(item.validFrom, item.validUntil)}

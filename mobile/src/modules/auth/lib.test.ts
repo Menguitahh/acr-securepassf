@@ -92,6 +92,7 @@ describe('toSessionUser', () => {
       id: 'u1',
       fullName: 'Juan Perez',
       neighborhoodId: 'n1',
+      neighborhoodTimezone: 'America/Argentina/Mendoza',
       roles: ['GUARD'],
       lots: [{ id: 'l1', code: 'M4-L12', canInvite: true, isOwner: true }],
     });
@@ -105,13 +106,13 @@ describe('toSessionUser', () => {
   });
 
   it('devuelve null sin id, nombre o barrio', () => {
-    expect(toSessionUser({ fullName: 'Juan', neighborhoodId: 'n1', roles: ['GUARD'] })).toBeNull();
-    expect(toSessionUser({ id: 'u1', neighborhoodId: 'n1', roles: ['GUARD'] })).toBeNull();
-    expect(toSessionUser({ id: 'u1', fullName: 'Juan', roles: ['GUARD'] })).toBeNull();
+    expect(toSessionUser({ fullName: 'Juan', neighborhoodId: 'n1', neighborhoodTimezone: 'America/Argentina/Mendoza', roles: ['GUARD'] })).toBeNull();
+    expect(toSessionUser({ id: 'u1', neighborhoodId: 'n1', neighborhoodTimezone: 'America/Argentina/Mendoza', roles: ['GUARD'] })).toBeNull();
+    expect(toSessionUser({ id: 'u1', fullName: 'Juan', neighborhoodTimezone: 'America/Argentina/Mendoza', roles: ['GUARD'] })).toBeNull();
   });
 
   it('devuelve null sin roles', () => {
-    expect(toSessionUser({ id: 'u1', fullName: 'Juan', neighborhoodId: 'n1' })).toBeNull();
+    expect(toSessionUser({ id: 'u1', fullName: 'Juan', neighborhoodId: 'n1', neighborhoodTimezone: 'America/Argentina/Mendoza' })).toBeNull();
   });
 
   it('usa [] cuando no hay lots', () => {
@@ -119,6 +120,7 @@ describe('toSessionUser', () => {
       id: 'u1',
       fullName: 'Juan',
       neighborhoodId: 'n1',
+      neighborhoodTimezone: 'America/Argentina/Mendoza',
       roles: ['GUARD'],
     });
     expect(user?.lots).toEqual([]);

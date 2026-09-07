@@ -68,7 +68,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/invitations": {
+    "/api/v1/lots/{lotId}/workers": {
         parameters: {
             query?: never;
             header?: never;
@@ -76,6 +76,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["list_1"];
+        put?: never;
+        post: operations["add"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_2"];
         put?: never;
         post: operations["create"];
         delete?: never;
@@ -171,9 +187,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_2"];
+        get: operations["list_3"];
         put?: never;
-        post: operations["add"];
+        post: operations["add_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -315,7 +331,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_3"];
+        get: operations["list_4"];
         put?: never;
         post: operations["create_2"];
         delete?: never;
@@ -347,7 +363,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get"];
+        get: operations["get_1"];
         put?: never;
         post: operations["post"];
         delete?: never;
@@ -420,6 +436,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lots/{lotId}/workers/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete"];
+        options?: never;
+        head?: never;
+        patch: operations["update"];
+        trace?: never;
+    };
     "/api/v1/family/lots/{lotId}/members/{userId}": {
         parameters: {
             query?: never;
@@ -433,7 +465,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["update"];
+        patch: operations["update_1"];
         trace?: never;
     };
     "/api/v1/admin/lots/{id}": {
@@ -449,7 +481,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["update_1"];
+        patch: operations["update_2"];
         trace?: never;
     };
     "/api/v1/stays/open": {
@@ -492,6 +524,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["current"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/worker-qr": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -548,6 +596,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/metrics/traffic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["traffic"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/metrics/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/metrics/overstays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["overstays"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/access/revoked": {
         parameters: {
             query?: never;
@@ -556,6 +652,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["revoked"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/permissions/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["sync_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -587,7 +699,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_4"];
+        get: operations["list_5"];
         put?: never;
         post?: never;
         delete?: never;
@@ -678,11 +790,38 @@ export interface components {
         CloseShiftRequest: {
             handoverNotes?: string;
         };
+        AddWorkerRequest: {
+            fullName: string;
+            dni: string;
+            email: string;
+            service: string;
+            weekdays: number[];
+            dailyFrom: string;
+            dailyUntil: string;
+            dailyOrderValid?: boolean;
+        };
+        AddWorkerResponse: {
+            /** Format: uuid */
+            userId?: string;
+            fullName?: string;
+            email?: string;
+            service?: string;
+            weekdays?: number[];
+            dailyFrom?: string;
+            dailyUntil?: string;
+            active?: boolean;
+            reused?: boolean;
+            changed?: boolean;
+            /** @enum {string} */
+            outcome?: "CREATED_USER_AND_PERMISSION" | "ADDED_PERMISSION" | "REACTIVATED_PERMISSION" | "ALREADY_ACTIVE";
+            /** @enum {string} */
+            userStatus?: "ACTIVE" | "PENDING_ACTIVATION" | "SUSPENDED" | "DELETED";
+        };
         CreateInvitationRequest: {
             /** Format: uuid */
             lotId: string;
             /** @enum {string} */
-            type: "SINGLE" | "EVENT" | "RECURRING";
+            type: "SINGLE" | "EVENT";
             guestName: string;
             guestDocument: string;
             /** Format: int32 */
@@ -692,21 +831,9 @@ export interface components {
             validFrom: string;
             /** Format: date-time */
             validUntil: string;
-            weekdays?: number[];
-            dailyFrom?: components["schemas"]["LocalTime"];
-            dailyUntil?: components["schemas"]["LocalTime"];
             /** Format: int32 */
             maxUses?: number;
-        };
-        LocalTime: {
-            /** Format: int32 */
-            hour?: number;
-            /** Format: int32 */
-            minute?: number;
-            /** Format: int32 */
-            second?: number;
-            /** Format: int32 */
-            nano?: number;
+            typeAllowed?: boolean;
         };
         InvitationResponse: {
             /** Format: uuid */
@@ -717,7 +844,7 @@ export interface components {
             neighborhoodId?: string;
             neighborhoodName?: string;
             /** @enum {string} */
-            type?: "SINGLE" | "EVENT" | "RECURRING";
+            type?: "SINGLE" | "EVENT";
             /** @enum {string} */
             status?: "ACTIVE" | "USED" | "EXPIRED" | "REVOKED";
             guestName?: string;
@@ -729,9 +856,6 @@ export interface components {
             validFrom?: string;
             /** Format: date-time */
             validUntil?: string;
-            weekdays?: number[];
-            dailyFrom?: components["schemas"]["LocalTime"];
-            dailyUntil?: components["schemas"]["LocalTime"];
             /** Format: int32 */
             maxUses?: number;
             /** Format: int32 */
@@ -830,11 +954,30 @@ export interface components {
         RefreshRequest: {
             refreshToken: string;
         };
+        LotPayload: {
+            /** Format: uuid */
+            id?: string;
+            code?: string;
+            canInvite?: boolean;
+            isOwner?: boolean;
+        };
         RefreshResponse: {
             accessToken?: string;
             refreshToken?: string;
             /** Format: int64 */
             expiresIn?: number;
+            user?: components["schemas"]["UserPayload"];
+        };
+        UserPayload: {
+            /** Format: uuid */
+            id?: string;
+            fullName?: string;
+            /** Format: uuid */
+            neighborhoodId?: string;
+            /** @description IANA timezone del barrio, ej. America/Argentina/Mendoza. Fuente unica para evaluar ScheduleWindow client-side. */
+            neighborhoodTimezone: string;
+            roles?: string[];
+            lots?: components["schemas"]["LotPayload"][];
         };
         LoginRequest: {
             identifier: string;
@@ -846,22 +989,6 @@ export interface components {
             /** Format: int64 */
             expiresIn?: number;
             user?: components["schemas"]["UserPayload"];
-        };
-        LotPayload: {
-            /** Format: uuid */
-            id?: string;
-            code?: string;
-            canInvite?: boolean;
-            isOwner?: boolean;
-        };
-        UserPayload: {
-            /** Format: uuid */
-            id?: string;
-            fullName?: string;
-            /** Format: uuid */
-            neighborhoodId?: string;
-            roles?: string[];
-            lots?: components["schemas"]["LotPayload"][];
         };
         ForgotPasswordRequest: {
             email: string;
@@ -956,6 +1083,12 @@ export interface components {
             /** Format: int32 */
             remaining?: number;
         };
+        LotChoice: {
+            /** Format: uuid */
+            lotId?: string;
+            code?: string;
+            service?: string;
+        };
         LotDetail: {
             code?: string;
         };
@@ -964,11 +1097,19 @@ export interface components {
             /** Format: uuid */
             logId?: string;
             reason?: string;
+            subjectKind?: string;
             /** Format: uuid */
             invitationId?: string;
             guest?: components["schemas"]["GuestDetail"];
             lot?: components["schemas"]["LotDetail"];
             invitation?: components["schemas"]["InvitationDetail"];
+            worker?: components["schemas"]["WorkerDetail"];
+        };
+        WorkerDetail: {
+            /** Format: uuid */
+            userId?: string;
+            name?: string;
+            lots?: components["schemas"]["LotChoice"][];
         };
         Event: {
             /** Format: uuid */
@@ -1048,6 +1189,30 @@ export interface components {
             name?: string;
             document?: string;
         };
+        UpdateWorkerRequest: {
+            service?: string;
+            weekdays?: number[];
+            dailyFrom?: string;
+            dailyUntil?: string;
+            active?: boolean;
+            scheduleBundled?: boolean;
+            dailyOrderValid?: boolean;
+            nonEmpty?: boolean;
+        };
+        UpdateWorkerResponse: {
+            /** Format: uuid */
+            userId?: string;
+            fullName?: string;
+            email?: string;
+            documentNumber?: string;
+            service?: string;
+            weekdays?: number[];
+            dailyFrom?: string;
+            dailyUntil?: string;
+            active?: boolean;
+            /** @enum {string} */
+            outcome?: "UPDATED" | "DEACTIVATED" | "ALREADY_INACTIVE" | "ALREADY_ACTIVE";
+        };
         UpdateFamilyMemberRequest: {
             canInvite?: boolean;
             active?: boolean;
@@ -1093,6 +1258,11 @@ export interface components {
         OpenStaysResponse: {
             stays?: components["schemas"]["Item"][];
         };
+        WorkerQrResponse: {
+            /** Format: uuid */
+            jti?: string;
+            token?: string;
+        };
         PassResponse: {
             /** Format: uuid */
             lotId?: string;
@@ -1108,6 +1278,18 @@ export interface components {
             /** Format: uuid */
             id?: string;
             code?: string;
+        };
+        WorkerResponse: {
+            /** Format: uuid */
+            userId?: string;
+            fullName?: string;
+            email?: string;
+            documentNumber?: string;
+            service?: string;
+            weekdays?: number[];
+            dailyFrom?: string;
+            dailyUntil?: string;
+            active?: boolean;
         };
         PagedInvitationsResponse: {
             items?: components["schemas"]["InvitationResponse"][];
@@ -1129,6 +1311,53 @@ export interface components {
             canInvite?: boolean;
             active?: boolean;
         };
+        Bucket: {
+            /** Format: date-time */
+            start?: string;
+            /** Format: int64 */
+            in?: number;
+            /** Format: int64 */
+            out?: number;
+        };
+        TrafficResponse: {
+            /** Format: date-time */
+            from?: string;
+            /** Format: date-time */
+            to?: string;
+            bucket?: string;
+            buckets?: components["schemas"]["Bucket"][];
+        };
+        OverviewResponse: {
+            /** Format: date */
+            date?: string;
+            /** Format: int64 */
+            currentOccupancy?: number;
+            /** Format: int64 */
+            allowedIn?: number;
+            /** Format: int64 */
+            allowedOut?: number;
+            /** Format: int64 */
+            denied?: number;
+            denialsByReason?: {
+                [key: string]: number;
+            };
+        };
+        Overstay: {
+            /** Format: uuid */
+            stayId?: string;
+            subjectName?: string;
+            subjectDocument?: string;
+            lotCode?: string;
+            /** Format: date-time */
+            enteredAt?: string;
+            /** Format: date-time */
+            expectedUntil?: string;
+            /** Format: int64 */
+            minutesElapsed?: number;
+        };
+        OverstaysResponse: {
+            items?: components["schemas"]["Overstay"][];
+        };
         ActivationLookupResponse: {
             maskedEmail?: string;
             fullName?: string;
@@ -1141,6 +1370,22 @@ export interface components {
             jti?: string;
             /** Format: date-time */
             revokedAt?: string;
+        };
+        WorkerPermissionSyncResponse: {
+            /** Format: uuid */
+            userId?: string;
+            /** Format: uuid */
+            jti?: string;
+            /** Format: uuid */
+            lotId?: string;
+            lotCode?: string;
+            service?: string;
+            weekdays?: number[];
+            dailyFrom?: string;
+            dailyUntil?: string;
+            timezone?: string;
+            /** Format: date-time */
+            updatedAt?: string;
         };
         PublicKeyResponse: {
             kid?: string;
@@ -1261,6 +1506,54 @@ export interface operations {
         };
     };
     list_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkerResponse"][];
+                };
+            };
+        };
+    };
+    add: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddWorkerRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AddWorkerResponse"];
+                };
+            };
+        };
+    };
+    list_2: {
         parameters: {
             query?: {
                 lotId?: string;
@@ -1449,7 +1742,7 @@ export interface operations {
             };
         };
     };
-    list_2: {
+    list_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -1471,7 +1764,7 @@ export interface operations {
             };
         };
     };
-    add: {
+    add_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -1679,7 +1972,7 @@ export interface operations {
             };
         };
     };
-    list_3: {
+    list_4: {
         parameters: {
             query?: {
                 page?: number;
@@ -1773,7 +2066,7 @@ export interface operations {
             };
         };
     };
-    get: {
+    get_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -1915,7 +2208,57 @@ export interface operations {
             };
         };
     };
+    delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: string;
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UpdateWorkerResponse"];
+                };
+            };
+        };
+    };
     update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: string;
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWorkerRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UpdateWorkerResponse"];
+                };
+            };
+        };
+    };
+    update_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -1942,7 +2285,7 @@ export interface operations {
             };
         };
     };
-    update_1: {
+    update_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -2032,6 +2375,26 @@ export interface operations {
             };
         };
     };
+    get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkerQrResponse"];
+                };
+            };
+        };
+    };
     passes: {
         parameters: {
             query?: never;
@@ -2096,6 +2459,71 @@ export interface operations {
             };
         };
     };
+    traffic: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TrafficResponse"];
+                };
+            };
+        };
+    };
+    overview: {
+        parameters: {
+            query?: {
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["OverviewResponse"];
+                };
+            };
+        };
+    };
+    overstays: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["OverstaysResponse"];
+                };
+            };
+        };
+    };
     revoked: {
         parameters: {
             query?: {
@@ -2114,6 +2542,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["RevokedTokenResponse"][];
+                };
+            };
+        };
+    };
+    sync_1: {
+        parameters: {
+            query?: {
+                since?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkerPermissionSyncResponse"][];
                 };
             };
         };
@@ -2138,7 +2588,7 @@ export interface operations {
             };
         };
     };
-    list_4: {
+    list_5: {
         parameters: {
             query?: {
                 from?: string;

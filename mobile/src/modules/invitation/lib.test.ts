@@ -51,9 +51,6 @@ function baseValues(): InvitationFormValues {
     validFrom: new Date('2026-08-20T18:00:00Z'),
     validUntil: new Date('2026-08-20T23:59:00Z'),
     maxUses: '',
-    weekdays: [],
-    dailyFrom: new Date('2026-08-20T08:00:00Z'),
-    dailyUntil: new Date('2026-08-20T18:00:00Z'),
   };
 }
 
@@ -109,7 +106,6 @@ describe('validateInvitationForm', () => {
     if (result.ok) {
       expect(result.payload.maxUses).toBe(1);
       expect(result.payload.type).toBe('SINGLE');
-      expect(result.payload.weekdays).toBeUndefined();
     }
   });
 
@@ -133,35 +129,6 @@ describe('validateInvitationForm', () => {
     ).toMatchObject({ ok: false });
   });
 
-  it('valida un RECURRING con dias y franja', () => {
-    const result = validateInvitationForm({
-      ...baseValues(),
-      type: 'RECURRING',
-      weekdays: [1, 2, 3],
-      dailyFrom: new Date(2026, 7, 20, 8, 0),
-      dailyUntil: new Date(2026, 7, 20, 18, 0),
-    });
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.payload.weekdays).toEqual([1, 2, 3]);
-      expect(result.payload.dailyFrom).toEqual({ hour: 8, minute: 0 });
-    }
-  });
-
-  it('rechaza RECURRING sin dias o sin franja', () => {
-    expect(validateInvitationForm({ ...baseValues(), type: 'RECURRING' })).toMatchObject({
-      ok: false,
-    });
-    expect(
-      validateInvitationForm({
-        ...baseValues(),
-        type: 'RECURRING',
-        weekdays: [1],
-        dailyFrom: null,
-      }),
-    ).toMatchObject({ ok: false });
-  });
-
   it('rechaza ventana invertida o vacia', () => {
     expect(
       validateInvitationForm({
@@ -175,22 +142,14 @@ describe('validateInvitationForm', () => {
     });
   });
 
-  it('aplica BR-04: 30 dias para SINGLE/EVENT y 365 para RECURRING', () => {
+  it('aplica BR-04: 30 dias maximo para SINGLE y EVENT', () => {
     const from = new Date('2026-08-20T18:00:00Z');
     const beyond30 = new Date(from.getTime() + 31 * 24 * 60 * 60 * 1000);
     expect(
       validateInvitationForm({ ...baseValues(), validFrom: from, validUntil: beyond30 }),
     ).toMatchObject({ ok: false });
-
-    const beyond365 = new Date(from.getTime() + 366 * 24 * 60 * 60 * 1000);
     expect(
-      validateInvitationForm({
-        ...baseValues(),
-        type: 'RECURRING',
-        weekdays: [1],
-        validFrom: from,
-        validUntil: beyond365,
-      }),
+      validateInvitationForm({ ...baseValues(), type: 'EVENT', maxUses: '10', validFrom: from, validUntil: beyond30 }),
     ).toMatchObject({ ok: false });
   });
 
