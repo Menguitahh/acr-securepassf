@@ -1,11 +1,11 @@
 import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
 import type { components } from '@securepass/contracts';
 
 import { api, authRequest } from '@/common/api/client';
+import { getNotifications } from '@/common/notifications/safe';
 import { useSessionStore } from '@/modules/auth/session-store';
 
 type Platform_ = components['schemas']['RegisterDeviceRequest']['platform'];
@@ -17,21 +17,21 @@ function currentPlatform(): Platform_ | null {
   return null;
 }
 
-async function fetchExpoPushToken(): Promise<string | null> {
-  // Expo Go (SDK 53+) no soporta push remoto; getExpoPushTokenAsync tira
-  // error. Se cae al catch y se marca la deuda en logs. Cuando haya dev
-  // build, el mismo path funciona sin cambios.
-  // ponytail: sin dev build el token nunca se emite; alcanza para que el
-  // flujo de registro este armado, no genera ruido en el server.
+export async function fetchExpoPushToken(): Promise<string | null> {
+  // En Expo Go el wrapper devuelve null y este flujo es no-op: no hay push
+  // remoto, no hay ruido en el server. En dev build / standalone carga
+  // expo-notifications y el path completo corre.
+  const N = await getNotifications();
+  if (!N) return null;
   const projectId =
     Constants.expoConfig?.extra?.['eas']?.projectId ??
     Constants.easConfig?.projectId;
-  const permission = await Notifications.getPermissionsAsync();
+  const permission = await N.getPermissionsAsync();
   if (!permission.granted) {
-    const request = await Notifications.requestPermissionsAsync();
+    const request = await N.requestPermissionsAsync();
     if (!request.granted) return null;
   }
-  const result = await Notifications.getExpoPushTokenAsync(
+  const result = await N.getExpoPushTokenAsync(
     projectId ? { projectId } : undefined,
   );
   return result.data ?? null;

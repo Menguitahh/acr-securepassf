@@ -1,5 +1,6 @@
-import * as Notifications from 'expo-notifications';
+import type * as Notifications from 'expo-notifications';
 
+import { getNotifications } from '@/common/notifications/safe';
 import { computeWarningSchedule } from '@/modules/stays/lib';
 import type { Stay } from '@/modules/stays/types';
 import {
@@ -14,11 +15,18 @@ let permissionGranted = false;
 
 async function ensurePermission(): Promise<boolean> {
   if (permissionResolved) return permissionGranted;
-  const settings = await Notifications.getPermissionsAsync();
+  const N = await getNotifications();
+  if (!N) {
+    // Expo Go: no hay canal de notif. Se marca como resuelto para no reintentar.
+    permissionResolved = true;
+    permissionGranted = false;
+    return false;
+  }
+  const settings = await N.getPermissionsAsync();
   if (settings.granted) {
     permissionGranted = true;
   } else {
-    const request = await Notifications.requestPermissionsAsync();
+    const request = await N.requestPermissionsAsync();
     permissionGranted = request.granted;
   }
   permissionResolved = true;
@@ -48,12 +56,16 @@ async function scheduleForStay(stay: Stay, fireAt: number | null): Promise<void>
     recordWarning(stay.id, null);
     return;
   }
-  const identifier = await Notifications.scheduleNotificationAsync({
+  // ensurePermission=true garantiza que N no es null aca, pero el wrapper
+  // devuelve promise: hay que re-consultarlo. Cache hit en el segundo call.
+  const N = await getNotifications();
+  if (!N) return;
+  const identifier = await N.scheduleNotificationAsync({
     content: buildContent(stay),
     trigger:
       fireAt === null
         ? null
-        : { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(fireAt) },
+        : { type: N.SchedulableTriggerInputTypes.DATE, date: new Date(fireAt) },
   });
   recordWarning(stay.id, identifier);
 }
@@ -62,6 +74,10 @@ async function scheduleForStay(stay: Stay, fireAt: number | null): Promise<void>
 // corresponde. Idempotente. Para stays que ya cerraron o se borraron
 // del servidor, cancela la notificacion pendiente y limpia el flag.
 export async function syncStayWarnings(stays: readonly Stay[], now: number): Promise<void> {
+  const N = await getNotifications();
+  // Expo Go: no-op completo. El aviso local depende del modulo nativo.
+  if (!N) return;
+
   const alreadyWarned = warnedStayIds();
   const seen = new Set<string>();
 
@@ -84,7 +100,7 @@ export async function syncStayWarnings(stays: readonly Stay[], now: number): Pro
     const notifId = forgetWarning(stayId);
     if (notifId) {
       try {
-        await Notifications.cancelScheduledNotificationAsync(notifId);
+        await N.cancelScheduledNotificationAsync(notifId);
       } catch {
         // La notificacion pudo haber disparado ya; no importa.
       }

@@ -31,17 +31,27 @@ Web: Next.js 16 App Router · React 19 · Tailwind CSS 4 · @base-ui/react.
 managed workflow. No VisionCamera, no MMKV, no WatermelonDB. Si una libreria
 requiere config nativo escrito a mano (no un config plugin de Expo), no va.
 
-**El proyecto NO corre en Expo Go**. Necesita development build (EAS). Razon:
-`expo-notifications` tira al importar el modulo cuando esta corriendo en Expo Go,
-por un side effect de `DevicePushTokenAutoRegistration.fx.js` que llama
-`warnOfExpoGoPushUsage` -> THROW. Rompe `_layout.tsx` en la carga, todos los
-routes cascadean con "missing default export" + "Cannot read property
-'ErrorBoundary' of undefined". Detalles y stack en issue securepassf#66.
+**Expo Go vs development build**: la app bootea en los dos gracias al wrapper
+dinamico de `expo-notifications` (#66 -> fix en #78). Pero solo el development
+build tiene push remoto y notificaciones locales.
 
-Un import con side effects puede romper el modulo entero aunque la funcion
-problematica nunca se llame. `getExpoPushTokenAsync` esta guarded con try/catch
-y jamas se invoca en boot; alcanza con el `import * as Notifications from
-'expo-notifications'` para tirar.
+- Expo Go: bootea, escanea, valida, invita — todo lo que no depende de
+  notificaciones. `getNotifications()` devuelve null, `fetchExpoPushToken`
+  es no-op, `syncStayWarnings` es no-op (no programa avisos locales). Util
+  para iterar UI sin esperar 15-25 min de rebuild EAS.
+- Development build (EAS): igual que Expo Go PLUS registro de push token,
+  notificaciones locales (WBS-69, aviso de permanencia por vencer), y
+  cualquier feature futura que dependa de `expo-notifications`. Modo canonico
+  de test antes de mergear features que tocan notificaciones.
+
+Contexto del bug historico (#66): hasta #78, un `import * as N from
+'expo-notifications'` en cualquier archivo del arbol de `_layout.tsx` tiraba
+`warnOfExpoGoPushUsage` como side effect al cargar el modulo bajo Expo Go —
+rompia la app en boot con "missing default export" cascada. El wrapper
+`common/notifications/safe.ts` hace dynamic import solo cuando
+`Constants.appOwnership !== 'expo'`. Cualquier consumidor nuevo de
+notificaciones tiene que pasar por ese wrapper, no importar
+`expo-notifications` directo.
 
 Setup de development build: seccion "Development build" mas abajo.
 
@@ -133,7 +143,11 @@ Refs: #31
 - [ ] Criterios de aceptacion del issue cumplidos
 - [ ] `tsc --noEmit` limpio, `eslint` sin warnings
 - [ ] Tests nuevos pasan
-- [ ] Probado en el development build (no en Expo Go: el proyecto no corre ahi, ver arriba)
+- [ ] Probado en el development build. Es el binario que se instala en la
+  garita, y Expo Go puede resolver camara, SQLite, permisos nativos y
+  notificaciones distinto que el binario real. Expo Go solo sirve para
+  iterar UI que NO toque scanner, camara, SQLite, offline ni notificaciones
+  — no cierra un ticket que use cualquiera de esos
 - [ ] PR con `Closes #N`
 
 ## Que no hacer
@@ -146,8 +160,10 @@ Refs: #31
 
 ## Development build
 
-El proyecto necesita development build para correr en device. Expo Go no sirve
-(ver "Restriccion dura" arriba, y securepassf#66).
+El development build es el modo canonico para features que dependen de
+notificaciones (push token, avisos locales de WBS-69). Para features que no
+las tocan, Expo Go alcanza y no requiere setup EAS — ver
+"Expo Go vs development build" arriba.
 
 Setup una sola vez:
 

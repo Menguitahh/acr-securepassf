@@ -2,12 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 import { api, authRequest } from '@/common/api/client';
+import { getNotifications } from '@/common/notifications/safe';
 import { GATE_ID } from '@/modules/scanner/data';
 import { STAYS_REFRESH_MS } from '@/modules/stays/data';
 import { syncStayWarnings } from '@/modules/stays/notifications';
 import type { Stay } from '@/modules/stays/types';
 import { forgetWarning } from '@/modules/stays/warnings-store';
-import * as Notifications from 'expo-notifications';
 
 export function useOpenStays() {
   return useQuery({
@@ -45,7 +45,11 @@ export function useCloseStay() {
       // Cerrada la estadia, no tiene sentido que dispare el aviso.
       const notifId = forgetWarning(stayId);
       if (notifId) {
-        void Notifications.cancelScheduledNotificationAsync(notifId).catch(() => {});
+        void (async () => {
+          const N = await getNotifications();
+          if (!N) return;
+          await N.cancelScheduledNotificationAsync(notifId).catch(() => {});
+        })();
       }
       void queryClient.invalidateQueries({ queryKey: ['stays', 'open'] });
     },
