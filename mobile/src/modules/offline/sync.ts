@@ -5,7 +5,7 @@ import type { components } from '@securepass/contracts';
 
 import { api, authRequest } from '@/common/api/client';
 import { SYNC_BATCH_SIZE } from '@/modules/offline/data';
-import { backoffDelayFor, runSyncCycle, toSyncEvent } from '@/modules/offline/lib';
+import { backoffDelayFor, hasValidGate, runSyncCycle, toSyncEvent } from '@/modules/offline/lib';
 import {
   markSyncFailure,
   maxSyncAttempts,
@@ -31,7 +31,7 @@ export async function syncOutbox(): Promise<'empty' | 'synced' | 'error'> {
   const deviceId = await getDeviceId();
   return runSyncCycle(
     {
-      peek: (limit) => peekPendingEvents(limit).filter((event) => event.gateId !== null),
+      peek: (limit) => peekPendingEvents(limit).filter((event) => hasValidGate(event.gateId)),
       send: async (events) => {
         const syncEvents: components['schemas']['Event'][] = [];
         for (const event of events) {

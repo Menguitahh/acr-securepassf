@@ -8,11 +8,27 @@ export function backoffDelayFor(attempts: number): number {
   return BACKOFF_SCHEDULE_MS[index] ?? BACKOFF_SCHEDULE_MS[BACKOFF_SCHEDULE_MS.length - 1] ?? 300000;
 }
 
+// Un gateId sincronizable es un string no-vacio (garita configurada).
+// null se acepta al hidratar (evento encolado antes de que el device
+// tenga garita), pero no viaja al server hasta que el mismo device se
+// configure.
+//
+// Fuente unica del predicado. Antes de este helper, tres puntos evaluaban
+// gateId con expresiones distintas — `isOutboxEvent` aceptaba null OR
+// cualquier string (incluso ''), el peek filter usaba `!== null` (deja
+// pasar ''), y `toSyncEvent` usaba `!gateId` (elimina ''). Con
+// EXPO_PUBLIC_GATE_ID= en .env, un evento con `gateId=''` pasaba el
+// peek, se filtraba dentro del send, y `runSyncCycle` borraba el
+// clientEventId al final igual porque send no throwo. Perdida silenciosa.
+export function hasValidGate(gateId: unknown): gateId is string {
+  return typeof gateId === 'string' && gateId.length > 0;
+}
+
 export function isOutboxEvent(value: unknown): value is OutboxEvent {
   if (typeof value !== 'object' || value === null) return false;
   if (!('clientEventId' in value) || typeof value.clientEventId !== 'string') return false;
   if (!('token' in value) || typeof value.token !== 'string') return false;
-  if (!('gateId' in value) || (typeof value.gateId !== 'string' && value.gateId !== null)) {
+  if (!('gateId' in value) || (value.gateId !== null && !hasValidGate(value.gateId))) {
     return false;
   }
   if (!('direction' in value) || (value.direction !== 'IN' && value.direction !== 'OUT')) {
@@ -60,10 +76,13 @@ export async function runSyncCycle(
 
 // Un evento sin garita no se puede sincronizar: se queda en la cola hasta
 // que el dispositivo tenga garita configurada (EXPO_PUBLIC_GATE_ID).
+// Guardia defensivo: el peek filter ya excluye estos eventos del batch;
+// este check adicional garantiza que si alguien llama toSyncEvent directo
+// con un evento sin garita, devuelva null y no un mapping mentiroso.
 export function toSyncEvent(
   event: OutboxEvent,
 ): components['schemas']['Event'] | null {
-  if (!event.gateId) return null;
+  if (!hasValidGate(event.gateId)) return null;
   return {
     clientEventId: event.clientEventId,
     token: event.token,

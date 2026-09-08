@@ -5,6 +5,7 @@ import { api, authRequest } from '@/common/api/client';
 import { getDb } from '@/common/db/database';
 import { useSessionStore } from '@/modules/auth/session-store';
 import { isInvitationEnrolled, recordEnrollment } from '@/modules/offline/enrollments-cache';
+import { hasValidGate } from '@/modules/offline/lib';
 import { useOfflineStore } from '@/modules/offline/offline-store';
 import { enqueueOutboxEvent } from '@/modules/offline/outbox';
 import { GATE_ID } from '@/modules/scanner/data';
@@ -99,7 +100,11 @@ async function validateScannedToken(token: string, clientEventId: string): Promi
   enqueueOutboxEvent({
     clientEventId,
     token,
-    gateId: GATE_ID ?? null,
+    // `??` colapsa null/undefined pero NO colapsa '' (misconfig de
+    // EXPO_PUBLIC_GATE_ID vacio en .env). El helper normaliza el string
+    // vacio a null para que quede fuera del ciclo de sync como el resto
+    // de eventos "sin garita".
+    gateId: hasValidGate(GATE_ID) ? GATE_ID : null,
     direction: 'IN',
     companions: null,
     capturedAt,

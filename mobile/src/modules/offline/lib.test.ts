@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   backoffDelayFor,
+  hasValidGate,
   isOutboxEvent,
   runSyncCycle,
   toSyncEvent,
@@ -124,6 +125,83 @@ describe('isOutboxEvent', () => {
     expect(isOutboxEvent({ ...event('e1'), direction: 'SIDEWAYS' })).toBe(false);
     expect(isOutboxEvent({ ...event('e1'), localDecision: 'MAYBE' })).toBe(false);
     expect(isOutboxEvent({ clientEventId: 'e1' })).toBe(false);
+  });
+
+  it('acepta gateId=null (evento encolado antes de que el device tenga garita configurada)', () => {
+    expect(isOutboxEvent({ ...event('e1'), gateId: null })).toBe(true);
+  });
+
+  it('rechaza gateId="" (misconfig: EXPO_PUBLIC_GATE_ID vacio produciria perdida silenciosa)', () => {
+    expect(isOutboxEvent({ ...event('e1'), gateId: '' })).toBe(false);
+  });
+});
+
+describe('hasValidGate', () => {
+  // Predicado unico usado en isOutboxEvent, peek filter (sync.ts) y
+  // toSyncEvent. Antes cada uno usaba una expresion distinta y la
+  // desincronizacion dejaba pasar gateId="" a un mapping que lo tiraba,
+  // con runSyncCycle borrando el clientEventId igual. Este test blinda
+  // el contrato del helper.
+  it('acepta strings no-vacios', () => {
+    expect(hasValidGate('g1')).toBe(true);
+    expect(hasValidGate('any-uuid-here')).toBe(true);
+  });
+
+  it('rechaza null, undefined y string vacio', () => {
+    expect(hasValidGate(null)).toBe(false);
+    expect(hasValidGate(undefined)).toBe(false);
+    expect(hasValidGate('')).toBe(false);
+  });
+
+  it('rechaza tipos que no son string', () => {
+    expect(hasValidGate(0)).toBe(false);
+    expect(hasValidGate(false)).toBe(false);
+    expect(hasValidGate({})).toBe(false);
+  });
+});
+
+describe('toSyncEvent - guardia contra gateId invalido', () => {
+  it('devuelve null cuando gateId es "" (no un mapping mentiroso al contrato)', () => {
+    expect(toSyncEvent({ ...event('e1'), gateId: '' as unknown as string })).toBeNull();
+  });
+});
+
+describe('runSyncCycle - regresion de perdida silenciosa por gateId invalido', () => {
+  // Bug pre-fix: peek filtraba con `gateId !== null` (dejaba pasar ''),
+  // send llamaba toSyncEvent que devolvia null para '' (el evento
+  // desaparecia del body), el POST resolvia sin throw, y runSyncCycle
+  // llamaba remove con el clientEventId original. El evento NUNCA viajaba
+  // al server pero se borraba del outbox. Perdida silenciosa.
+  //
+  // Este test simula el ciclo completo con la logica saneada: el evento
+  // con gateId invalido no debe salir del outbox aunque el ciclo termine
+  // "sincronizado" para el resto.
+  it('un evento con gateId invalido NO se remove del outbox aunque el batch se sincronice', async () => {
+    const badEvent: OutboxEvent = { ...event('e-bad'), gateId: '' as unknown as string };
+    const goodEvent = event('e-good');
+    const queue = [badEvent, goodEvent];
+    const sent: string[] = [];
+    const removed: string[] = [];
+    const deps: SyncCycleDeps = {
+      // Mismo filter que el sync real (sync.ts): usa hasValidGate.
+      peek: (limit) => queue.slice(0, limit).filter((e) => hasValidGate(e.gateId)),
+      send: async (events) => {
+        sent.push(...events.map((e) => e.clientEventId));
+      },
+      remove: (ids) => removed.push(...ids),
+      markFailure: () => {},
+    };
+
+    const outcome = await runSyncCycle(deps, 50);
+
+    expect(outcome).toBe('synced');
+    // El evento sano viajo y se borro.
+    expect(sent).toEqual(['e-good']);
+    expect(removed).toEqual(['e-good']);
+    // El critico: el evento con gateId invalido NI se envio NI se borro.
+    // Antes del fix, no se enviaba pero SI se borraba. Data loss.
+    expect(sent).not.toContain('e-bad');
+    expect(removed).not.toContain('e-bad');
   });
 });
 
