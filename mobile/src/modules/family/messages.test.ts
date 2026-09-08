@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   messageForAddOutcome,
   messageForConflictCode,
+  messageForReactivation,
   messageForUpdateOutcome,
 } from '@/modules/family/messages';
 
@@ -96,6 +97,22 @@ describe('messageForUpdateOutcome', () => {
     expect(msg).toBe('Se actualizó Juan.');
     expect(msg).not.toContain('undefined');
     expect(msg).not.toContain('NEW_OUTCOME');
+  });
+});
+
+describe('messageForReactivation', () => {
+  it('confirma que volvió el acceso al lote', () => {
+    const msg = messageForReactivation('Juan');
+    expect(msg).toContain('Juan');
+    expect(msg).toContain('volvió a tener acceso al lote');
+  });
+
+  it('avisa explicitamente que el permiso de invitar quedó desactivado', () => {
+    // Regresion #63: el titular tiene que enterarse del reset de canInvite
+    // sin tener que mirar la fila despues.
+    const msg = messageForReactivation('Ana');
+    expect(msg).toContain('permiso para invitar');
+    expect(msg).toContain('desactivado');
   });
 });
 

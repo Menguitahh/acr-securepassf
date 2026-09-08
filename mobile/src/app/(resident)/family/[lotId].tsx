@@ -12,7 +12,7 @@ import { useSessionStore } from '@/modules/auth/session-store';
 import { useFamilyMembers, useUpdateFamilyMember } from '@/modules/family/hooks';
 import { useMinors, useDeleteMinor } from '@/modules/family/minors-hooks';
 import { computeAgeYears } from '@/modules/family/age';
-import { messageForUpdateOutcome } from '@/modules/family/messages';
+import { messageForReactivation, messageForUpdateOutcome } from '@/modules/family/messages';
 import { AddPersonModal } from '@/modules/family/components/add-person-modal';
 import { GraduateMinorModal } from '@/modules/family/components/graduate-minor-modal';
 
@@ -81,6 +81,29 @@ export default function FamilyMembersScreen() {
     );
   };
 
+  const confirmReactivateMember = (memberId: string, fullName: string) => {
+    Alert.alert(
+      'Reactivar acceso',
+      `¿Devolver el acceso al lote a ${fullName}? El permiso para invitar arranca desactivado; podés cambiarlo con el switch después.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Reactivar',
+          onPress: () =>
+            // Reset explicito de canInvite: la baja pudo haber sido por abuso
+            // del permiso, devolverlo en silencio no es aceptable. El titular
+            // habilita con el switch si corresponde. Ver #63.
+            updateMember.mutate(
+              { userId: memberId, patch: { active: true, canInvite: false } },
+              {
+                onSuccess: () => showFeedback(messageForReactivation(fullName), 'success'),
+              },
+            ),
+        },
+      ],
+    );
+  };
+
   const confirmDeleteMinor = (minor: Minor) => {
     Alert.alert(
       'Borrar del padrón',
@@ -136,6 +159,9 @@ export default function FamilyMembersScreen() {
                     )
                   }
                   onRemove={() => confirmRemoveMember(m.userId ?? '', m.fullName ?? '')}
+                  onReactivate={() =>
+                    confirmReactivateMember(m.userId ?? '', m.fullName ?? 'Este familiar')
+                  }
                 />
               ))}
             </View>
@@ -242,11 +268,13 @@ function MemberRow({
   isOwner,
   onToggleInvite,
   onRemove,
+  onReactivate,
 }: {
   member: FamilyMember;
   isOwner: boolean;
   onToggleInvite: (next: boolean) => void;
   onRemove: () => void;
+  onReactivate: () => void;
 }) {
   const inactive = member.active === false;
   const relation = member.relation && !member.isOwner ? ` · ${member.relation}` : '';
@@ -282,10 +310,18 @@ function MemberRow({
           </Text>
         )}
       </View>
-      {isOwner && !member.isOwner && !inactive ? (
-        <Pressable onPress={onRemove} hitSlop={8} className="self-start active:opacity-60">
-          <Text className="text-footnote leading-[18px] text-text-muted">Dar de baja</Text>
-        </Pressable>
+      {isOwner && !member.isOwner ? (
+        inactive ? (
+          <Pressable onPress={onReactivate} hitSlop={8} className="self-start active:opacity-60">
+            <Text className="text-footnote font-semibold leading-[18px] text-text-primary">
+              Reactivar
+            </Text>
+          </Pressable>
+        ) : (
+          <Pressable onPress={onRemove} hitSlop={8} className="self-start active:opacity-60">
+            <Text className="text-footnote leading-[18px] text-text-muted">Dar de baja</Text>
+          </Pressable>
+        )
       ) : null}
     </View>
   );

@@ -53,6 +53,19 @@ export function messageForUpdateOutcome(
 }
 
 /**
+ * WBS-113 issue #63: la reactivacion se hace via PATCH { active: true,
+ * canInvite: false }, pero el back devuelve outcome TOGGLED_CAN_INVITE
+ * (no existe REACTIVATED_PERMISSION en el enum del PATCH). El mensaje
+ * al titular tiene que reflejar la intent real: reactivo, y el permiso
+ * de invitar arranca desactivado. Reset explicito por decision de
+ * seguridad — dar de baja puede haber sido por abuso del canInvite,
+ * devolver el permiso en silencio seria un vector no auditado.
+ */
+export function messageForReactivation(name: string): string {
+  return `${name} volvió a tener acceso al lote. El permiso para invitar quedó desactivado.`;
+}
+
+/**
  * WBS-113: mensaje para el 409 de USER_SUSPENDED / USER_DELETED que devuelve
  * el back cuando el DNI corresponde a un user en estado no reactivable.
  * El titular no tiene forma de resolverlo solo (no hay flujo autoservicio
