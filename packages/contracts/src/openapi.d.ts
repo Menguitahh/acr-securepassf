@@ -1124,25 +1124,28 @@ export interface components {
             /** Format: date-time */
             capturedAt: string;
             localDecision?: string;
+            documentNumber?: string;
         };
         SyncAccessRequest: {
             /** Format: uuid */
             deviceId: string;
             events: components["schemas"]["Event"][];
         };
-        Conflict: {
+        EventResult: {
             /** Format: uuid */
             clientEventId?: string;
-            serverResult?: string;
-            reason?: string;
+            /** @enum {string} */
+            result?: "ALLOWED" | "DENIED" | "ENROLLED";
+            /** @enum {string} */
+            reason?: "INVALID_SIGNATURE" | "NOT_YET_VALID" | "EXPIRED" | "ALREADY_USED" | "REVOKED" | "OUT_OF_SCHEDULE" | "LOT_SUSPENDED" | "REPLAY" | "DOCUMENT_MISMATCH" | "UNKNOWN";
             /** Format: uuid */
             logId?: string;
+            /** Format: uuid */
+            enrollmentId?: string;
             clockSkew?: boolean;
         };
         SyncAccessResponse: {
-            /** Format: int32 */
-            accepted?: number;
-            conflicts?: components["schemas"]["Conflict"][];
+            results?: components["schemas"]["EventResult"][];
         };
         ManualAccessRequest: {
             subjectName: string;
@@ -1195,9 +1198,9 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
+            nonEmpty?: boolean;
             scheduleBundled?: boolean;
             dailyOrderValid?: boolean;
-            nonEmpty?: boolean;
         };
         UpdateWorkerResponse: {
             /** Format: uuid */
