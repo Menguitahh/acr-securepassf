@@ -84,12 +84,24 @@ export async function syncStayWarnings(stays: readonly Stay[], now: number): Pro
   for (const stay of stays) {
     if (!stay.id) continue;
     seen.add(stay.id);
-    if (alreadyWarned.has(stay.id)) continue;
-    const schedule = computeWarningSchedule(stay, now, false);
+    const locallyWarned = alreadyWarned.has(stay.id);
+    const schedule = computeWarningSchedule(stay, now, locallyWarned);
     if (schedule.action === 'schedule') {
       await scheduleForStay(stay, schedule.fireAt);
     } else if (schedule.action === 'fireNow') {
       await scheduleForStay(stay, null);
+    } else if (schedule.action === 'cancel') {
+      // Cross-device: otro guardia disparo el aviso y marco warned
+      // server-side. Cancelar la notif local pendiente para no
+      // duplicar. Ver computeWarningSchedule para el detalle.
+      const notifId = forgetWarning(stay.id);
+      if (notifId) {
+        try {
+          await N.cancelScheduledNotificationAsync(notifId);
+        } catch {
+          // La notif pudo haber disparado ya entre el poll y este cancel; no importa.
+        }
+      }
     }
   }
 

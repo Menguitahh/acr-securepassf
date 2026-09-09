@@ -6,11 +6,21 @@ const MINUTE_MS = 60_000;
 export type WarningSchedule =
   | { action: 'schedule'; fireAt: number }
   | { action: 'fireNow' }
+  | { action: 'cancel' }
   | { action: 'skip'; reason: 'no-expected-until' | 'already-warned' | 'already-past' };
 
 // Decide que hacer con una estadia respecto al aviso local. Pura,
 // testeable sin expo-notifications.
 //
+// - Local scheduled + server confirma warned=true: cancel. Caso
+//   cross-device — otro device de garita disparo el aviso y llamo
+//   mark-warned server-side; este device tiene la notif local
+//   programada pero no disparada, hay que cancelarla para no
+//   duplicar el aviso al guardia. Hoy no se ejecuta en produccion:
+//   stays.warned SIEMPRE viene false del server hasta que backend
+//   implemente el endpoint mark-warned (~150 loc pendientes).
+//   Se deja anticipando el escenario del cambio de turno con dos
+//   guardias montados en paralelo.
 // - Ya avisado (server o local): skip.
 // - expected_until - lead ya paso pero la estadia sigue abierta y
 //   dentro de una ventana razonable (lead adicional): dispara ya.
@@ -20,6 +30,9 @@ export function computeWarningSchedule(
   now: number,
   locallyWarned: boolean,
 ): WarningSchedule {
+  if (locallyWarned && stay.warned === true) {
+    return { action: 'cancel' };
+  }
   if (stay.warned === true || locallyWarned) {
     return { action: 'skip', reason: 'already-warned' };
   }

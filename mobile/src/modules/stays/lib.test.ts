@@ -94,6 +94,18 @@ describe('computeWarningSchedule', () => {
     });
   });
 
+  it('cancela si el aviso local esta pendiente Y el server confirma warned=true (cross-device)', () => {
+    // Caso del cambio de turno con dos guardias en paralelo: device A
+    // dispara el aviso y llama mark-warned. Device B tiene la notif
+    // programada localmente (locallyWarned=true) y en el proximo poll
+    // ve stay.warned=true. Hay que cancelar la local para que no
+    // duplique el aviso. Hasta que backend implemente mark-warned
+    // (~150 loc pendientes, confirmado), este case no ocurre en
+    // produccion pero el fix esta anticipado por diseño.
+    const s = stay({ warned: true, expectedUntil: inMinutes(30) });
+    expect(computeWarningSchedule(s, NOW, true)).toEqual({ action: 'cancel' });
+  });
+
   it('salta si expected_until ya paso hace demasiado (permanencia excedida, no aviso)', () => {
     const s = stay({ expectedUntil: inMinutes(-(WARNING_LEAD_MINUTES + 5)) });
     expect(computeWarningSchedule(s, NOW, false)).toEqual({
