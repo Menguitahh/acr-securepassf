@@ -9,11 +9,12 @@ vi.mock('@/common/notifications/safe', () => ({
   getNotifications: getNotificationsMock,
 }));
 
-// warnings-store en memoria: sin nativos, evita tocar AsyncStorage.
+// warnings-store en memoria: sin nativos, evita tocar SQLite.
 vi.mock('@/modules/stays/warnings-store', () => ({
   hasBeenWarned: () => false,
-  warnedStayIds: () => new Set<string>(),
+  warnedStayStates: () => new Map(),
   recordWarning: vi.fn(),
+  markSyncedToServer: vi.fn(),
   forgetWarning: () => null,
 }));
 

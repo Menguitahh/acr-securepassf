@@ -42,4 +42,11 @@ export const MIGRATIONS: string[] = [
     notification_id TEXT
   );
   `,
+  // #31 mark-warned: distinguir "yo fui dueño del aviso" (mark_warned_synced=1)
+  // de "otro device fue dueño" (mark_warned_synced=0 + server.warned=true).
+  // Sin este flag, un solo device de garita cancela su propia notif
+  // pendiente en cuanto su POST llega y el server la marca warned=true.
+  `
+  ALTER TABLE stay_warnings ADD COLUMN mark_warned_synced INTEGER NOT NULL DEFAULT 0;
+  `,
 ];

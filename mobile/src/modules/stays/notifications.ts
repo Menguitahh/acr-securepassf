@@ -1,13 +1,15 @@
 import type * as Notifications from 'expo-notifications';
 
+import { api, authRequest } from '@/common/api/client';
 import { getNotifications } from '@/common/notifications/safe';
 import { computeWarningSchedule } from '@/modules/stays/lib';
 import type { Stay } from '@/modules/stays/types';
 import {
   forgetWarning,
   hasBeenWarned,
+  markSyncedToServer,
   recordWarning,
-  warnedStayIds,
+  warnedStayStates,
 } from '@/modules/stays/warnings-store';
 
 let permissionResolved = false;
@@ -70,6 +72,24 @@ async function scheduleForStay(stay: Stay, fireAt: number | null): Promise<void>
   recordWarning(stay.id, identifier);
 }
 
+// Persiste server-side que este device se hizo cargo del aviso (#31).
+// Idempotente: el server hace first-writer-wins. Falla silenciosa; el
+// proximo ciclo de sync detecta la divergencia y reintenta.
+async function postMarkWarned(stayId: string): Promise<boolean> {
+  try {
+    const { error } = await authRequest(() =>
+      api.POST('/api/v1/stays/{id}/mark-warned', {
+        params: { path: { id: stayId } },
+      }),
+    );
+    if (error) return false;
+    markSyncedToServer(stayId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Reconciliacion: para cada stay abierto, programa el aviso si
 // corresponde. Idempotente. Para stays que ya cerraron o se borraron
 // del servidor, cancela la notificacion pendiente y limpia el flag.
@@ -78,24 +98,48 @@ export async function syncStayWarnings(stays: readonly Stay[], now: number): Pro
   // Expo Go: no-op completo. El aviso local depende del modulo nativo.
   if (!N) return;
 
-  const alreadyWarned = warnedStayIds();
+  const localStates = warnedStayStates();
   const seen = new Set<string>();
 
   for (const stay of stays) {
     if (!stay.id) continue;
     seen.add(stay.id);
-    if (alreadyWarned.has(stay.id)) continue;
-    const schedule = computeWarningSchedule(stay, now, false);
+    const local = localStates.get(stay.id);
+    const locallyWarned = local !== undefined;
+    const locallySynced = local?.syncedToServer ?? false;
+    const schedule = computeWarningSchedule(stay, now, locallyWarned, locallySynced);
+
     if (schedule.action === 'schedule') {
       await scheduleForStay(stay, schedule.fireAt);
+      await postMarkWarned(stay.id);
     } else if (schedule.action === 'fireNow') {
       await scheduleForStay(stay, null);
+      await postMarkWarned(stay.id);
+    } else if (schedule.action === 'markWarned') {
+      if (schedule.divergent) {
+        console.warn(
+          `[stays] divergencia mark-warned stay=${stay.id}: locallySynced=true pero server.warned=false. Reintentando POST — si O el server perdio el mark O el flag local miente, esto lo corrige.`,
+        );
+      }
+      await postMarkWarned(stay.id);
+    } else if (schedule.action === 'cancel') {
+      // Cross-device: otro guardia disparo el aviso y marco warned
+      // server-side primero. Cancelar la notif local pendiente para
+      // no duplicar. Ver computeWarningSchedule para la tabla completa.
+      const notifId = forgetWarning(stay.id);
+      if (notifId) {
+        try {
+          await N.cancelScheduledNotificationAsync(notifId);
+        } catch {
+          // La notif pudo haber disparado ya entre el poll y este cancel; no importa.
+        }
+      }
     }
   }
 
   // Stays que ya no estan abiertos (cerrados o expirados y purgados):
   // cancelar cualquier notificacion pendiente para no molestar.
-  for (const stayId of alreadyWarned) {
+  for (const stayId of localStates.keys()) {
     if (seen.has(stayId)) continue;
     const notifId = forgetWarning(stayId);
     if (notifId) {

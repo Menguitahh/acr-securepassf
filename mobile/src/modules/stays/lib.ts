@@ -6,21 +6,51 @@ const MINUTE_MS = 60_000;
 export type WarningSchedule =
   | { action: 'schedule'; fireAt: number }
   | { action: 'fireNow' }
+  | { action: 'cancel' }
+  | { action: 'markWarned'; divergent: boolean }
   | { action: 'skip'; reason: 'no-expected-until' | 'already-warned' | 'already-past' };
 
 // Decide que hacer con una estadia respecto al aviso local. Pura,
-// testeable sin expo-notifications.
+// testeable sin expo-notifications ni SQLite.
 //
-// - Ya avisado (server o local): skip.
-// - expected_until - lead ya paso pero la estadia sigue abierta y
-//   dentro de una ventana razonable (lead adicional): dispara ya.
-// - fireAt en el futuro: schedule.
+// Los tres inputs de estado forman una tabla de decisiones (#31):
+// | locallyWarned | locallySynced | server.warned | action           |
+// | true          | true          | true          | skip (yo dueño)   |
+// | true          | true          | false         | markWarned (dvg)  |
+// | true          | false         | true          | cancel            |
+// | true          | false         | false         | markWarned        |
+// | false         | *             | true          | skip              |
+// | false         | *             | false         | schedule/fireNow  |
+//
+// - `cancel`: otro device fue dueño del aviso — cancelar mi notif local
+//   pendiente para no duplicar. Cross-device, cambio de turno.
+// - `markWarned`: POST /stays/{id}/mark-warned no llego al server todavia
+//   (o llego y despues divergio: `divergent=true`). Reintentar es
+//   idempotente por first-writer-wins del server; si yo tenia razon
+//   confirma, si el server tenia razon corrige. Divergent=true adicional
+//   pinta el log porque significa que O el server perdio el mark O el
+//   flag local miente — vale la pena visibilidad.
+// - `skip (yo dueño)`: server.warned=true por MI POST. No cancelar mi
+//   notif local; es la que va a avisar al guardia.
 export function computeWarningSchedule(
   stay: Stay,
   now: number,
   locallyWarned: boolean,
+  locallySynced: boolean,
 ): WarningSchedule {
-  if (stay.warned === true || locallyWarned) {
+  if (locallyWarned && locallySynced) {
+    if (stay.warned === true) {
+      return { action: 'skip', reason: 'already-warned' };
+    }
+    return { action: 'markWarned', divergent: true };
+  }
+  if (locallyWarned) {
+    if (stay.warned === true) {
+      return { action: 'cancel' };
+    }
+    return { action: 'markWarned', divergent: false };
+  }
+  if (stay.warned === true) {
     return { action: 'skip', reason: 'already-warned' };
   }
   if (!stay.expectedUntil) {
