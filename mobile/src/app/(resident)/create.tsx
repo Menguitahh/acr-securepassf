@@ -1,11 +1,11 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
-import { Platform, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
 import { Button } from '@/common/components/button';
+import { DateField } from '@/common/components/date-field';
 import { Input } from '@/common/components/input';
 import { ScreenHeader } from '@/common/components/screen-header';
 import { useSessionStore } from '@/modules/auth/session-store';
@@ -51,8 +51,6 @@ export default function CreateInvitationScreen() {
     validUntil: defaultUntil,
     maxUses: '',
   }));
-  const [showFrom, setShowFrom] = useState(false);
-  const [showUntil, setShowUntil] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const { mutate, isPending, error } = useCreateInvitation();
@@ -165,21 +163,19 @@ export default function CreateInvitationScreen() {
 
         <View className="gap-3">
           <SectionLabel>Vigencia</SectionLabel>
-          <DateTimeField
+          <DateField
             label="Valido desde"
             value={values.validFrom}
             onChange={(validFrom) => setValue('validFrom', validFrom)}
-            showPicker={showFrom}
-            setShowPicker={setShowFrom}
             mode="datetime"
+            disabled={isPending}
           />
-          <DateTimeField
+          <DateField
             label="Valido hasta"
             value={values.validUntil}
             onChange={(validUntil) => setValue('validUntil', validUntil)}
-            showPicker={showUntil}
-            setShowPicker={setShowUntil}
             mode="datetime"
+            disabled={isPending}
           />
 
           {values.type === 'EVENT' ? (
@@ -211,61 +207,3 @@ export default function CreateInvitationScreen() {
   );
 }
 
-function DateTimeField({
-  label,
-  value,
-  onChange,
-  showPicker,
-  setShowPicker,
-  mode,
-}: {
-  label: string;
-  value: Date | null;
-  onChange: (date: Date) => void;
-  showPicker: boolean;
-  setShowPicker: (show: boolean) => void;
-  mode: 'date' | 'time' | 'datetime';
-}) {
-  const display = value
-    ? value.toLocaleString('es-AR', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : 'Elegir';
-
-  if (Platform.OS === 'android') {
-    return (
-      <View className="gap-2">
-        <Text className="text-footnote font-medium text-text-muted">{label}</Text>
-        <Button label={display} onPress={() => setShowPicker(true)} />
-        {showPicker ? (
-          <DateTimePicker
-            value={value ?? new Date()}
-            mode={mode}
-            onChange={(event, selected) => {
-              setShowPicker(false);
-              if (event.type === 'set' && selected) onChange(selected);
-            }}
-          />
-        ) : null}
-      </View>
-    );
-  }
-
-  return (
-    <View className="gap-2">
-      <Text className="text-footnote font-medium text-text-muted">{label}</Text>
-      <DateTimePicker
-        value={value ?? new Date()}
-        mode={mode}
-        onChange={(_, selected) => {
-          if (selected) onChange(selected);
-        }}
-        textColor="#fafafa"
-        accentColor="#fafafa"
-      />
-    </View>
-  );
-}

@@ -1,9 +1,9 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
 import { useMemo, useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/common/components/button';
+import { DateField } from '@/common/components/date-field';
 import { Input } from '@/common/components/input';
 import { isProblemDetail, problemCode } from '@/common/api/problem';
 import { useAddFamilyMember } from '@/modules/family/hooks';
@@ -46,7 +46,6 @@ function defaultBirth(): Date {
 export function AddPersonModal({ visible, onClose, lotId, onFeedback }: Props) {
   const [fullName, setFullName] = useState('');
   const [birth, setBirth] = useState<Date>(defaultBirth);
-  const [showPicker, setShowPicker] = useState(false);
   const [dni, setDni] = useState('');
   const [email, setEmail] = useState('');
   const [relation, setRelation] = useState('');
@@ -197,38 +196,14 @@ export function AddPersonModal({ visible, onClose, lotId, onFeedback }: Props) {
             />
 
             <View className="gap-2">
-              <Text className="text-footnote font-medium text-text-muted">Fecha de nacimiento</Text>
-              {Platform.OS === 'android' ? (
-                <>
-                  <Button
-                    label={birth.toLocaleDateString('es-AR')}
-                    onPress={() => setShowPicker(true)}
-                    disabled={isPending}
-                  />
-                  {showPicker ? (
-                    <DateTimePicker
-                      value={birth}
-                      mode="date"
-                      onChange={(event, selected) => {
-                        setShowPicker(false);
-                        if (event.type === 'set' && selected) setBirth(selected);
-                      }}
-                      maximumDate={new Date()}
-                    />
-                  ) : null}
-                </>
-              ) : (
-                <DateTimePicker
-                  value={birth}
-                  mode="date"
-                  maximumDate={new Date()}
-                  onChange={(_, selected) => {
-                    if (selected) setBirth(selected);
-                  }}
-                  textColor="#fafafa"
-                  accentColor="#fafafa"
-                />
-              )}
+              <DateField
+                label="Fecha de nacimiento"
+                value={birth}
+                onChange={setBirth}
+                mode="date"
+                maximumDate={new Date()}
+                disabled={isPending}
+              />
               <Text className="text-footnote text-text-muted">
                 Edad: {age} años · {isMinor ? 'menor de 16, va al padrón' : '16 o más, va a familiares con cuenta'}.
               </Text>
