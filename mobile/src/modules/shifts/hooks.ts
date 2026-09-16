@@ -13,9 +13,16 @@ export function useCurrentShift() {
       const { data, error, response } = await authRequest(() =>
         api.GET('/api/v1/shifts/current'),
       );
-      // 404 = no hay turno abierto: no es error, es estado valido.
-      if (response.status === 404) return null;
-      if (error || !data) throw new Error('No se pudo cargar el turno actual.');
+      // Sin turno abierto es estado valido, no error. Contract drift:
+      // el backend hoy devuelve 200-empty, el contrato declara solo 200
+      // con ShiftResponse, y no hay acuerdo sobre 204 vs 404. Se toleran
+      // los tres (204, 404 y 200 sin body) para que el dia que el server
+      // se alinee al contrato correcto el cliente no se rompa de nuevo.
+      // Deuda: alinear server + contrato (issue #96). Hasta entonces, un
+      // guardia con "sin turno" tiene que caer a ClosedShiftView con
+      // boton "Abrir turno", nunca al error state.
+      if (response.status === 404 || response.status === 204 || !data) return null;
+      if (error) throw new Error('No se pudo cargar el turno actual.');
       return data;
     },
     networkMode: 'offlineFirst',
