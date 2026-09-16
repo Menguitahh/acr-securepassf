@@ -11,6 +11,7 @@ import { ScreenHeader } from '@/common/components/screen-header';
 import { useSessionStore } from '@/modules/auth/session-store';
 import { useCreateInvitation } from '@/modules/invitation/hooks';
 import {
+  MAX_INVITATION_WINDOW_DAYS,
   validateInvitationForm,
   type InvitationFormValues,
 } from '@/modules/invitation/lib';
@@ -168,6 +169,7 @@ export default function CreateInvitationScreen() {
             value={values.validFrom}
             onChange={(validFrom) => setValue('validFrom', validFrom)}
             mode="datetime"
+            minimumDate={new Date()}
             disabled={isPending}
           />
           <DateField
@@ -175,6 +177,8 @@ export default function CreateInvitationScreen() {
             value={values.validUntil}
             onChange={(validUntil) => setValue('validUntil', validUntil)}
             mode="datetime"
+            minimumDate={values.validFrom ?? new Date()}
+            maximumDate={new Date((values.validFrom ?? new Date()).getTime() + MAX_INVITATION_WINDOW_DAYS * 24 * 60 * 60 * 1000)}
             disabled={isPending}
           />
 

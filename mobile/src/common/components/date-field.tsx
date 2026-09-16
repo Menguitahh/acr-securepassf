@@ -32,6 +32,17 @@ export function DateField({
       const current = value ?? new Date();
       // Android imperative API no soporta mode 'datetime': encadenar date y time
       // como hace el wrapper declarativo internamente.
+      //
+      // Granularidad del clamp: minimumDate/maximumDate se pasan al step de
+      // FECHA pero NO al de HORA. Consecuencia deliberada: en Android el
+      // clamp opera a granularidad de dia (bloquea "ayer" pero permite
+      // "hoy 14:00" cuando son las 15:00). En iOS el picker declarativo
+      // usa el timestamp entero y bloquea el minuto pasado. Se acepta la
+      // diferencia porque un pase que arranca "hoy hace una hora" es un
+      // caso legitimo (invitado ya llego, residente cargando tarde), no un
+      // typo; y meter mas logica en este encadenamiento aumenta la
+      // superficie de bugs de un componente que ya rompimos una vez
+      // (#92: firma de onValueChange).
       if (mode === 'datetime') {
         DateTimePickerAndroid.open({
           value: current,

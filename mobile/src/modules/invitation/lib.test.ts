@@ -66,6 +66,28 @@ describe('createInvitationErrorMessage', () => {
     ).toBe('usuario sin permiso para invitar en este lote');
   });
 
+  it('BR-04 tiene mensaje humano sobre ventana maxima', () => {
+    expect(
+      createInvitationErrorMessage({
+        status: 422,
+        type: 'business-rule-violation',
+        rule: 'BR-04',
+        detail: 'BR-04: ventana excede 30 dias para SINGLE',
+      }),
+    ).toBe('El pase no puede durar más de 30 días. Ajustá la fecha de fin.');
+  });
+
+  it('BR-05 tiene mensaje humano sobre cupo maximo de evento', () => {
+    expect(
+      createInvitationErrorMessage({
+        status: 422,
+        type: 'business-rule-violation',
+        rule: 'BR-05',
+        detail: 'BR-05: max_uses de EVENT supera 200',
+      }),
+    ).toBe('Un evento admite hasta 200 usos.');
+  });
+
   it('sin problem detail cae al mensaje generico', () => {
     expect(createInvitationErrorMessage('caida de red')).toContain('Revisá los datos');
   });

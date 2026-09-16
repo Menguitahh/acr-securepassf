@@ -4,6 +4,11 @@ import { isProblemDetail } from '@/common/api/problem';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// BR-04: SINGLE y EVENT no pueden durar mas de 30 dias. Se reusa en
+// validateInvitationForm (guard al submit) y en el clamp del picker
+// de validUntil (limite al elegir). Cambiar en un solo lugar.
+export const MAX_INVITATION_WINDOW_DAYS = 30;
+
 export function formatDateTime(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
@@ -67,7 +72,7 @@ export function validateInvitationForm(
     return { ok: false, error: 'El fin de la ventana tiene que ser despues del inicio.' };
   }
   const windowDays = (values.validUntil.getTime() - values.validFrom.getTime()) / DAY_MS;
-  if (windowDays > 30) {
+  if (windowDays > MAX_INVITATION_WINDOW_DAYS) {
     return { ok: false, error: 'Un pase unico o de evento dura hasta 30 dias.' };
   }
 
@@ -98,15 +103,24 @@ export function validateInvitationForm(
 }
 
 // Mensaje legible para el rechazo del server al crear una invitacion.
-// BR-03 (lote suspendido) tiene texto propio: es un estado del lote que
-// el usuario no puede resolver desde la app, no un error de formulario.
+// Las rules conocidas (BR-XX) que llegan con prefijo tecnico en el detail
+// se mapean a copy humano. Las que no estan mapeadas (o el server no
+// mando rule) caen al detail crudo — mas informativo que un generico.
+// BR-05: el spec menciona "aprobacion de ADMIN" para superar 200 pero
+// no existe endpoint de aprobacion, no prometemos al residente un flow
+// que no existe.
+const BR_MESSAGES: Record<string, string> = {
+  'BR-03': 'El lote esta suspendido por mora y no acepta invitaciones. Comunicate con la administración del barrio.',
+  'BR-04': 'El pase no puede durar más de 30 días. Ajustá la fecha de fin.',
+  'BR-05': 'Un evento admite hasta 200 usos.',
+};
+
 export function createInvitationErrorMessage(raw: unknown): string {
   if (!isProblemDetail(raw)) {
     return 'El server rechazó la invitación. Revisá los datos.';
   }
-  if (raw.rule === 'BR-03') {
-    return 'El lote esta suspendido por mora y no acepta invitaciones. Comunicate con la administración del barrio.';
-  }
+  const humanMessage = raw.rule ? BR_MESSAGES[raw.rule] : undefined;
+  if (humanMessage) return humanMessage;
   return raw.detail ?? 'El server rechazó la invitación. Revisá los datos.';
 }
 
