@@ -115,33 +115,82 @@ export function isOutboxEvent(value: unknown): value is OutboxEvent {
   ) {
     return false;
   }
+  if (
+    !('documentNumber' in value) ||
+    (value.documentNumber !== null && !hasNonEmptyString(value.documentNumber))
+  ) {
+    return false;
+  }
   return true;
 }
 
+function hasNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
+
+// Resultado per-evento del sync (#27, PR composite). Reemplaza la
+// asuncion pre-existente de "send resolve => todo el batch se acepto",
+// que abria dos vectores de bug: perdida silenciosa cuando send filtraba
+// eventos internamente (ver #82, cerrado), y poison pill cuando el server
+// rechazaba uno del batch pero borrabamos todos (o ninguno).
+//
+// - remove: clientEventIds que salen del outbox: aceptados por el server
+//   (result ALLOWED/ENROLLED) O rechazados terminales (DOCUMENT_MISMATCH,
+//   REPLAY, EXPIRED, etc). El server dio veredicto, no reintentamos.
+// - retry: clientEventIds cuyo attempts++ y se quedan en la cola.
+//   Rechazos transitorios del server (si existen). La red caida se
+//   maneja aparte (throw en send).
+export type SendOutcome = {
+  remove: string[];
+  retry: string[];
+};
+
 export type SyncCycleDeps = {
   peek: (limit: number) => OutboxEvent[];
-  send: (events: OutboxEvent[]) => Promise<void>;
+  send: (events: OutboxEvent[]) => Promise<SendOutcome>;
   remove: (clientEventIds: string[]) => void;
-  markFailure: () => void;
+  markFailure: (clientEventIds: string[], reason: string) => void;
 };
 
 export type SyncCycleOutcome = 'empty' | 'synced' | 'error';
 
-// Un ciclo de sync: toma un batch, lo envia y solo lo borra de la cola
-// si el server respondio. La red caida nunca descarta eventos (spec 8.4).
+// Un ciclo de sync: toma un batch, lo envia y actua per-evento sobre la
+// respuesta. La red caida (throw en send) marca todo el batch como fallo
+// transitorio; la respuesta del server clasifica cada evento como
+// remove o retry.
+//
+// Guard estructural: send solo puede reportar clientEventIds que le
+// fueron pasados en el batch. Si aparece un id fuera del batch, throw —
+// eso implica un bug en send (mapping equivocado, id inventado, o
+// re-uso de un id de otro batch).
 export async function runSyncCycle(
   deps: SyncCycleDeps,
   limit: number,
 ): Promise<SyncCycleOutcome> {
   const events = deps.peek(limit);
   if (events.length === 0) return 'empty';
+  const batchIds = new Set(events.map((event) => event.clientEventId));
+
+  let outcome: SendOutcome;
   try {
-    await deps.send(events);
+    outcome = await deps.send(events);
   } catch {
-    deps.markFailure();
+    // Red caida: attempts++ solo del batch, no de toda la cola.
+    deps.markFailure(events.map((event) => event.clientEventId), 'red caida al intentar sync');
     return 'error';
   }
-  deps.remove(events.map((event) => event.clientEventId));
+
+  const reported = [...outcome.remove, ...outcome.retry];
+  for (const id of reported) {
+    if (!batchIds.has(id)) {
+      throw new Error(
+        `send reporto clientEventId ${id} que no estaba en el batch. Bug en el mapping.`,
+      );
+    }
+  }
+
+  if (outcome.remove.length > 0) deps.remove(outcome.remove);
+  if (outcome.retry.length > 0) deps.markFailure(outcome.retry, 'rechazo transitorio del server');
   return 'synced';
 }
 
@@ -162,5 +211,11 @@ export function toSyncEvent(
     capturedAt: event.capturedAt,
     localDecision: event.localDecision,
     ...(event.companions !== null ? { companions: event.companions } : {}),
+    // Invariante estructural (#27): un evento con documentNumber es un
+    // enrolamiento diferido; el server lo procesa como enrolamiento +
+    // ingreso. Sin este campo, el server registraria el ingreso sin
+    // enrolamiento — cache local mentiroso, data corruption silenciosa.
+    // Tests: "regresion: evento con documentNumber no viaja sin el DNI".
+    ...(event.documentNumber !== null ? { documentNumber: event.documentNumber } : {}),
   };
 }

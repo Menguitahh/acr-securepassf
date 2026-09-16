@@ -47,6 +47,11 @@ export function ScanResultScreen({ result, onDismiss }: ScanResultScreenProps) {
       {result.status === 'allowed' && result.lotCode ? (
         <Text className="text-xl text-bg-base">{result.lotCode}</Text>
       ) : null}
+      {result.status === 'allowed' && result.offlineEnrolled ? (
+        <Text className="text-center text-xl leading-snug text-bg-base">
+          Enrolamiento sin conexión. Se registra al volver la red.
+        </Text>
+      ) : null}
       {result.status === 'denied' ? (
         <Text className="text-center text-xl leading-snug text-bg-base">
           {result.message}

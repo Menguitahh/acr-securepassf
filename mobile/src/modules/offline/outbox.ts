@@ -42,11 +42,14 @@ export function removeEvents(clientEventIds: string[]): void {
   db.runSync(`DELETE FROM outbox WHERE client_event_id IN (${placeholders})`, clientEventIds);
 }
 
-export function markSyncFailure(): void {
+export function markSyncFailure(clientEventIds: string[], reason: string): void {
+  if (clientEventIds.length === 0) return;
   const db = getDb();
-  db.runSync('UPDATE outbox SET attempts = attempts + 1, last_error = ?', [
-    'red caida al intentar sync',
-  ]);
+  const placeholders = clientEventIds.map(() => '?').join(', ');
+  db.runSync(
+    `UPDATE outbox SET attempts = attempts + 1, last_error = ? WHERE client_event_id IN (${placeholders})`,
+    [reason, ...clientEventIds],
+  );
 }
 
 // Cleanup de huerfanos al arrancar (#83). Lee todas las filas, delega la

@@ -61,7 +61,16 @@ export type AccessDecision =
   | { status: 'denied'; reason: DenialReason; message: string };
 
 export type ScanResult =
-  | { status: 'allowed'; guestName: string | null; lotCode: string | null }
+  | {
+      status: 'allowed';
+      guestName: string | null;
+      lotCode: string | null;
+      // true cuando el ingreso surge de un enrolamiento hecho offline
+      // (#27): el server no confirmo en el momento, esta encolado. Se
+      // rendera un subtitulo en la pantalla verde para que el guardia
+      // sepa que la sincronizacion queda pendiente.
+      offlineEnrolled?: boolean;
+    }
   | { status: 'needs_enrollment'; invitationId: string; token: string }
   | { status: 'denied'; reason: DenialReason; message: string };
 

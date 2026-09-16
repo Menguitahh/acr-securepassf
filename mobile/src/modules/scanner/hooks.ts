@@ -4,7 +4,11 @@ import { useCallback, useRef, useState } from 'react';
 import { api, authRequest } from '@/common/api/client';
 import { getDb } from '@/common/db/database';
 import { useSessionStore } from '@/modules/auth/session-store';
-import { isInvitationEnrolled, recordEnrollment } from '@/modules/offline/enrollments-cache';
+import {
+  enqueueOfflineEnrollment,
+  isInvitationEnrolled,
+  recordEnrollment,
+} from '@/modules/offline/enrollments-cache';
 import { hasValidGate } from '@/modules/offline/lib';
 import { useOfflineStore } from '@/modules/offline/offline-store';
 import { enqueueOutboxEvent } from '@/modules/offline/outbox';
@@ -109,6 +113,7 @@ async function validateScannedToken(token: string, clientEventId: string): Promi
     companions: null,
     capturedAt,
     localDecision: decision.status === 'allowed' ? 'ALLOWED' : 'DENIED',
+    documentNumber: null,
   });
   useOfflineStore.getState().refreshPendingCount();
 
@@ -204,9 +209,29 @@ export function useQrScanner() {
           );
         }
       } catch {
-        setEnrollmentError(
-          'Sin conexion. Intentá de nuevo cuando vuelva la red o registrá el ingreso manualmente.',
-        );
+        // Red caida: en vez de trabar al guardia, se enrola offline.
+        // El evento (con documentNumber) va al outbox y se sincroniza
+        // cuando vuelva la red; el cache local marca la invitacion como
+        // enrolada para que scans siguientes del mismo QR no vuelvan a
+        // pedir DNI. La confirmacion contra la invitacion la hace el
+        // server al sincronizar — si el DNI no coincide, PR 2 borra el
+        // cache local al procesar la respuesta MISMATCH.
+        enqueueOfflineEnrollment({
+          clientEventId: Crypto.randomUUID(),
+          invitationId: enrollment.invitationId,
+          token: enrollment.token,
+          gateId: hasValidGate(gateId) ? gateId : null,
+          documentNumber,
+          capturedAt: new Date().toISOString(),
+        });
+        useOfflineStore.getState().refreshPendingCount();
+        setEnrollment(null);
+        setResult({
+          status: 'allowed',
+          guestName: null,
+          lotCode: null,
+          offlineEnrolled: true,
+        });
       } finally {
         setIsEnrolling(false);
       }

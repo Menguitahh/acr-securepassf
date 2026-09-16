@@ -20,22 +20,25 @@ const event = (clientEventId: string): OutboxEvent => ({
   companions: null,
   capturedAt: '2026-08-19T18:00:00.000Z',
   localDecision: 'ALLOWED',
+  documentNumber: null,
 });
 
 function makeDeps(overrides: Partial<SyncCycleDeps> = {}): SyncCycleDeps & {
   removed: string[];
-  failures: number;
+  failed: string[];
 } {
   const queue = [event('e1'), event('e2')];
-  const deps: SyncCycleDeps & { removed: string[]; failures: number } = {
+  const deps: SyncCycleDeps & { removed: string[]; failed: string[] } = {
     peek: (limit) => queue.slice(0, limit),
-    send: async () => {},
+    // Default: server acepta todos, ninguno a retry.
+    send: async (events) => ({
+      remove: events.map((e) => e.clientEventId),
+      retry: [],
+    }),
     remove: (ids) => deps.removed.push(...ids),
-    markFailure: () => {
-      deps.failures += 1;
-    },
+    markFailure: (ids) => deps.failed.push(...ids),
     removed: [],
-    failures: 0,
+    failed: [],
     ...overrides,
   };
   return deps;
@@ -67,7 +70,9 @@ describe('runSyncCycle - cola con red simulada', () => {
 
     expect(outcome).toBe('error');
     expect(deps.removed).toEqual([]);
-    expect(deps.failures).toBe(1);
+    // markFailure recibe SOLO los ids del batch que fallo, no globalmente
+    // (fix del poison pill: antes se incrementaba attempts en toda la cola).
+    expect(deps.failed).toEqual(['e1', 'e2']);
   });
 
   it('borra el batch enviado cuando el server responde', async () => {
@@ -75,6 +80,7 @@ describe('runSyncCycle - cola con red simulada', () => {
     const deps = makeDeps({
       send: async (events) => {
         sent.push(...events);
+        return { remove: events.map((e) => e.clientEventId), retry: [] };
       },
     });
 
@@ -83,7 +89,7 @@ describe('runSyncCycle - cola con red simulada', () => {
     expect(outcome).toBe('synced');
     expect(sent.map((e) => e.clientEventId)).toEqual(['e1', 'e2']);
     expect(deps.removed).toEqual(['e1', 'e2']);
-    expect(deps.failures).toBe(0);
+    expect(deps.failed).toEqual([]);
   });
 
   it('no hace nada con la cola vacia', async () => {
@@ -98,7 +104,7 @@ describe('runSyncCycle - cola con red simulada', () => {
 
     expect(outcome).toBe('empty');
     expect(deps.removed).toEqual([]);
-    expect(deps.failures).toBe(0);
+    expect(deps.failed).toEqual([]);
   });
 
   it('respeta el limite del batch', async () => {
@@ -108,12 +114,41 @@ describe('runSyncCycle - cola con red simulada', () => {
       peek: (limit) => queue.slice(0, limit),
       send: async (events) => {
         sent.push(...events);
+        return { remove: events.map((e) => e.clientEventId), retry: [] };
       },
     });
 
     await runSyncCycle(deps, 2);
 
     expect(sent.map((e) => e.clientEventId)).toEqual(['e1', 'e2']);
+  });
+
+  it('respeta el split remove/retry per-evento del server', async () => {
+    // El server acepta e1, marca e2 como retry (rechazo transitorio).
+    const deps = makeDeps({
+      send: async () => ({ remove: ['e1'], retry: ['e2'] }),
+    });
+
+    const outcome = await runSyncCycle(deps, 50);
+
+    expect(outcome).toBe('synced');
+    expect(deps.removed).toEqual(['e1']);
+    expect(deps.failed).toEqual(['e2']);
+  });
+
+  it('panica si send reporta un clientEventId fuera del batch (bug estructural)', async () => {
+    // Guardia estructural: send no puede referirse a ids que no le
+    // fueron pasados. Si lo hace, el mapping esta roto — throw en vez
+    // de silenciar. Cubre casos como send reusando ids de otro batch
+    // o inventando un id fantasma.
+    const deps = makeDeps({
+      send: async () => ({ remove: ['e1', 'e-inventado'], retry: [] }),
+    });
+
+    await expect(runSyncCycle(deps, 50)).rejects.toThrow(/no estaba en el batch/);
+    // Guard corre ANTES de tocar el outbox: cero remove, cero markFailure.
+    expect(deps.removed).toEqual([]);
+    expect(deps.failed).toEqual([]);
   });
 });
 
@@ -135,6 +170,24 @@ describe('isOutboxEvent', () => {
 
   it('rechaza gateId="" (misconfig: EXPO_PUBLIC_GATE_ID vacio produciria perdida silenciosa)', () => {
     expect(isOutboxEvent({ ...event('e1'), gateId: '' })).toBe(false);
+  });
+
+  it('acepta documentNumber string en un evento de enrolamiento offline (#27)', () => {
+    expect(isOutboxEvent({ ...event('e1'), documentNumber: '30123456' })).toBe(true);
+  });
+
+  it('acepta documentNumber=null (evento de acceso normal, sin enrolamiento)', () => {
+    expect(isOutboxEvent({ ...event('e1'), documentNumber: null })).toBe(true);
+  });
+
+  it('rechaza documentNumber="" (misconfig o payload corrupto)', () => {
+    expect(isOutboxEvent({ ...event('e1'), documentNumber: '' })).toBe(false);
+  });
+
+  it('rechaza documentNumber ausente (payload viejo sin migrar)', () => {
+    const { documentNumber: _drop, ...withoutDoc } = event('e1');
+    void _drop;
+    expect(isOutboxEvent(withoutDoc)).toBe(false);
   });
 });
 
@@ -189,6 +242,7 @@ describe('runSyncCycle - regresion de perdida silenciosa por gateId invalido', (
       peek: (limit) => queue.slice(0, limit).filter((e) => hasValidGate(e.gateId)),
       send: async (events) => {
         sent.push(...events.map((e) => e.clientEventId));
+        return { remove: events.map((e) => e.clientEventId), retry: [] };
       },
       remove: (ids) => removed.push(...ids),
       markFailure: () => {},
@@ -204,6 +258,57 @@ describe('runSyncCycle - regresion de perdida silenciosa por gateId invalido', (
     // Antes del fix, no se enviaba pero SI se borraba. Data loss.
     expect(sent).not.toContain('e-bad');
     expect(removed).not.toContain('e-bad');
+  });
+});
+
+describe('toSyncEvent - invariante estructural #27', () => {
+  // Regresion critica del composite: si toSyncEvent deja de incluir
+  // documentNumber (bug o refactor), el server recibe el evento como
+  // acceso normal y registra el ingreso SIN el enrolamiento. El cache
+  // local dice enrolado pero el server no — data corruption silenciosa,
+  // proximo scan del mismo QR va a fallar en /validate. El invariante:
+  // enrolamiento offline encolado con DNI => enrolamiento offline llega
+  // al server con DNI.
+  it('un evento con documentNumber MAPEA el DNI en el body del contrato', () => {
+    const mapped = toSyncEvent({ ...event('e-enroll'), documentNumber: '30123456' });
+    expect(mapped).not.toBeNull();
+    expect(mapped?.documentNumber).toBe('30123456');
+    // El resto de campos siguen mapeando normal.
+    expect(mapped?.clientEventId).toBe('e-enroll');
+    expect(mapped?.gateId).toBe('g1');
+  });
+
+  it('un evento sin documentNumber (acceso normal) NO incluye el campo en el body', () => {
+    const mapped = toSyncEvent(event('e-access'));
+    expect(mapped).not.toBeNull();
+    expect(mapped).not.toHaveProperty('documentNumber');
+  });
+});
+
+describe('runSyncCycle - regresion #27 enrolamiento offline viaja con DNI', () => {
+  it('un evento con documentNumber NO viaja al server sin el DNI', async () => {
+    // Simula el ciclo completo con un solo evento de enrolamiento offline.
+    // Si en algun momento toSyncEvent deja de incluir documentNumber (bug
+    // o refactor), este test rompe. Ver comentario en toSyncEvent.
+    const enrollmentEvent: OutboxEvent = { ...event('e-enroll'), documentNumber: '30123456' };
+    const sentToServer: Array<{ clientEventId: string; documentNumber?: string }> = [];
+    const deps: SyncCycleDeps = {
+      peek: (limit) => [enrollmentEvent].slice(0, limit),
+      send: async (events) => {
+        for (const e of events) {
+          const mapped = toSyncEvent(e);
+          if (mapped) sentToServer.push(mapped);
+        }
+        return { remove: events.map((e) => e.clientEventId), retry: [] };
+      },
+      remove: () => {},
+      markFailure: () => {},
+    };
+
+    await runSyncCycle(deps, 50);
+
+    expect(sentToServer).toHaveLength(1);
+    expect(sentToServer[0]?.documentNumber).toBe('30123456');
   });
 });
 
