@@ -9,6 +9,7 @@ import { isProblemDetail, problemCode } from '@/common/api/problem';
 import { useAddFamilyMember } from '@/modules/family/hooks';
 import { useRegisterMinor } from '@/modules/family/minors-hooks';
 import { computeAgeYears } from '@/modules/family/age';
+import { isValidEmail } from '@/modules/family/email';
 import { messageForAddOutcome, messageForConflictCode } from '@/modules/family/messages';
 
 /**
@@ -114,6 +115,10 @@ export function AddPersonModal({ visible, onClose, lotId, onFeedback }: Props) {
     }
     if (email.trim().length === 0) {
       setFormError('Email requerido para dar de alta un familiar mayor de 16.');
+      return;
+    }
+    if (!isValidEmail(email.trim())) {
+      setFormError('Email invalido. Revisá el formato.');
       return;
     }
     addFamily.mutate(

@@ -7,6 +7,7 @@ import type { components } from '@securepass/contracts';
 import { Button } from '@/common/components/button';
 import { Input } from '@/common/components/input';
 import { isProblemDetail, problemCode } from '@/common/api/problem';
+import { isValidEmail } from '@/modules/family/email';
 import { useGraduateMinor } from '@/modules/family/minors-hooks';
 import { messageForAddOutcome, messageForConflictCode } from '@/modules/family/messages';
 
@@ -60,6 +61,10 @@ export function GraduateMinorModal({ visible, onClose, lotId, minor, onFeedback 
     setFormError(null);
     if (email.trim().length === 0) {
       setFormError('Email requerido para activar la cuenta.');
+      return;
+    }
+    if (!isValidEmail(email.trim())) {
+      setFormError('Email invalido. Revisá el formato.');
       return;
     }
     if (needsDniOverride && dniOverride.trim().length === 0) {
