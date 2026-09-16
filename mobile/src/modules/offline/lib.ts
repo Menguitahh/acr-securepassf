@@ -24,6 +24,77 @@ export function hasValidGate(gateId: unknown): gateId is string {
   return typeof gateId === 'string' && gateId.length > 0;
 }
 
+// Clasifica filas del outbox como huerfanas para el prune del bootstrap
+// (#83). Es pura (no toca DB) para que el test blinde la regla mas
+// critica: una fila con gateId real NUNCA se marca para borrar, sin
+// importar edad ni forma del payload. La ejecucion del DELETE vive en
+// pruneOrphanOutboxEvents (outbox.ts), que solo aplica los ids que
+// esta funcion devuelve.
+//
+// Categorias:
+// - gateId === '': se borra siempre. Misconfig historica de
+//   EXPO_PUBLIC_GATE_ID vacio (pre #82). Nunca es sincronizable.
+// - gateId === null: se borra si created_at < now - maxAgeMs. Un evento
+//   reciente sin garita puede volverse sincronizable si administracion
+//   configura el device. Uno viejo, no.
+// - gateId string no-vacio: NO se toca nunca. Fila valida = ingreso
+//   pendiente de sincronizar, no basura, aunque tenga 6 meses.
+// - payload no parseable o gateId de tipo raro: se trata como null
+//   (borra por edad). Corrupto es orphan; el umbral es la unica cautela.
+export type OutboxOrphanRow = {
+  clientEventId: string;
+  payload: string;
+  createdAt: string;
+};
+
+export type OrphanClassification = {
+  removeEmpty: string[];
+  removeStale: string[];
+};
+
+export function classifyOrphanOutboxRows(
+  rows: readonly OutboxOrphanRow[],
+  nowMs: number,
+  maxAgeMsForNullGate: number,
+): OrphanClassification {
+  const removeEmpty: string[] = [];
+  const removeStale: string[] = [];
+  const cutoffMs = nowMs - maxAgeMsForNullGate;
+
+  for (const row of rows) {
+    const gateId = extractGateIdFromPayload(row.payload);
+    if (gateId === '') {
+      removeEmpty.push(row.clientEventId);
+      continue;
+    }
+    if (typeof gateId === 'string' && gateId.length > 0) {
+      // Fila valida. Nunca se toca — aunque tenga anios.
+      continue;
+    }
+    // gateId null, ausente, o payload corrupto: se borra si es viejo.
+    const createdMs = Date.parse(row.createdAt);
+    if (Number.isFinite(createdMs) && createdMs < cutoffMs) {
+      removeStale.push(row.clientEventId);
+    }
+  }
+
+  return { removeEmpty, removeStale };
+}
+
+function extractGateIdFromPayload(payload: string): string | null | undefined {
+  try {
+    const parsed: unknown = JSON.parse(payload);
+    if (parsed && typeof parsed === 'object' && 'gateId' in parsed) {
+      const value = (parsed as { gateId: unknown }).gateId;
+      if (value === null) return null;
+      if (typeof value === 'string') return value;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function isOutboxEvent(value: unknown): value is OutboxEvent {
   if (typeof value !== 'object' || value === null) return false;
   if (!('clientEventId' in value) || typeof value.clientEventId !== 'string') return false;

@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   backoffDelayFor,
+  classifyOrphanOutboxRows,
   hasValidGate,
   isOutboxEvent,
   runSyncCycle,
   toSyncEvent,
+  type OutboxOrphanRow,
+  type SyncCycleDeps,
 } from '@/modules/offline/lib';
-import type { SyncCycleDeps } from '@/modules/offline/lib';
 import type { OutboxEvent } from '@/modules/offline/types';
 
 const event = (clientEventId: string): OutboxEvent => ({
@@ -226,5 +228,118 @@ describe('toSyncEvent', () => {
 
   it('devuelve null sin garita configurada: el evento se queda en la cola', () => {
     expect(toSyncEvent({ ...event('e1'), gateId: null })).toBeNull();
+  });
+});
+
+describe('classifyOrphanOutboxRows (#83)', () => {
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  // Referencia estable: 2026-09-09 00:00:00 UTC.
+  const NOW_MS = Date.parse('2026-09-09T00:00:00.000Z');
+
+  function row(
+    clientEventId: string,
+    gateIdField: string | null | 'ABSENT' | 'CORRUPT',
+    createdAt: string,
+  ): OutboxOrphanRow {
+    let payload: string;
+    if (gateIdField === 'ABSENT') {
+      payload = JSON.stringify({ clientEventId, token: 'SP1.x.y' });
+    } else if (gateIdField === 'CORRUPT') {
+      payload = '{"gateId": "'; // JSON invalido
+    } else {
+      payload = JSON.stringify({ clientEventId, token: 'SP1.x.y', gateId: gateIdField });
+    }
+    return { clientEventId, payload, createdAt };
+  }
+
+  // El test que pidio la review antes del DELETE (#83): una fila VALIDA
+  // no se borra bajo ninguna combinacion de edad. Un evento con garita
+  // real de hace 6 meses es un ingreso pendiente de sincronizar, no
+  // basura. Si este test rompe, el prune esta borrando datos operativos.
+  it('NUNCA borra una fila con gateId real, aunque tenga 6 meses de edad', () => {
+    const sixMonthsAgo = new Date(NOW_MS - 180 * 24 * 60 * 60 * 1000).toISOString();
+    const result = classifyOrphanOutboxRows(
+      [row('e-valid-old', 'gate-real-uuid', sixMonthsAgo)],
+      NOW_MS,
+      SEVEN_DAYS_MS,
+    );
+    expect(result.removeEmpty).toEqual([]);
+    expect(result.removeStale).toEqual([]);
+  });
+
+  it('NUNCA borra filas validas independientemente de la edad ni de la mezcla con huerfanos', () => {
+    const rows: OutboxOrphanRow[] = [
+      row('e-fresh', 'gate-a', new Date(NOW_MS - 60 * 1000).toISOString()),
+      row('e-week', 'gate-b', new Date(NOW_MS - 8 * 24 * 60 * 60 * 1000).toISOString()),
+      row('e-year', 'gate-c', new Date(NOW_MS - 365 * 24 * 60 * 60 * 1000).toISOString()),
+      // Huerfanos mezclados: se borran, pero los validos quedan intactos.
+      row('e-empty', '', new Date(NOW_MS - 60 * 1000).toISOString()),
+      row('e-null-old', null, new Date(NOW_MS - 30 * 24 * 60 * 60 * 1000).toISOString()),
+    ];
+
+    const result = classifyOrphanOutboxRows(rows, NOW_MS, SEVEN_DAYS_MS);
+
+    for (const id of ['e-fresh', 'e-week', 'e-year']) {
+      expect(result.removeEmpty).not.toContain(id);
+      expect(result.removeStale).not.toContain(id);
+    }
+    expect(result.removeEmpty).toEqual(['e-empty']);
+    expect(result.removeStale).toEqual(['e-null-old']);
+  });
+
+  it('borra siempre las filas con gateId="", sin importar la edad', () => {
+    const rows: OutboxOrphanRow[] = [
+      row('e-empty-fresh', '', new Date(NOW_MS - 60 * 1000).toISOString()),
+      row('e-empty-old', '', new Date(NOW_MS - 365 * 24 * 60 * 60 * 1000).toISOString()),
+    ];
+    const result = classifyOrphanOutboxRows(rows, NOW_MS, SEVEN_DAYS_MS);
+    expect(result.removeEmpty).toEqual(['e-empty-fresh', 'e-empty-old']);
+    expect(result.removeStale).toEqual([]);
+  });
+
+  it('mantiene filas con gateId=null recientes (setup en progreso)', () => {
+    const rows: OutboxOrphanRow[] = [
+      row('e-null-6d', null, new Date(NOW_MS - 6 * 24 * 60 * 60 * 1000).toISOString()),
+      row('e-null-1d', null, new Date(NOW_MS - 24 * 60 * 60 * 1000).toISOString()),
+    ];
+    const result = classifyOrphanOutboxRows(rows, NOW_MS, SEVEN_DAYS_MS);
+    expect(result.removeEmpty).toEqual([]);
+    expect(result.removeStale).toEqual([]);
+  });
+
+  it('borra filas con gateId=null anteriores al umbral', () => {
+    const rows: OutboxOrphanRow[] = [
+      row('e-null-8d', null, new Date(NOW_MS - 8 * 24 * 60 * 60 * 1000).toISOString()),
+      row('e-null-90d', null, new Date(NOW_MS - 90 * 24 * 60 * 60 * 1000).toISOString()),
+    ];
+    const result = classifyOrphanOutboxRows(rows, NOW_MS, SEVEN_DAYS_MS);
+    expect(result.removeStale).toEqual(['e-null-8d', 'e-null-90d']);
+  });
+
+  it('trata payload corrupto como null (borra por edad, misma cautela)', () => {
+    const rows: OutboxOrphanRow[] = [
+      row('e-corrupt-fresh', 'CORRUPT', new Date(NOW_MS - 60 * 1000).toISOString()),
+      row('e-corrupt-old', 'CORRUPT', new Date(NOW_MS - 30 * 24 * 60 * 60 * 1000).toISOString()),
+    ];
+    const result = classifyOrphanOutboxRows(rows, NOW_MS, SEVEN_DAYS_MS);
+    // El corrupto reciente sigue en cola (por si es un bug transitorio).
+    expect(result.removeStale).toEqual(['e-corrupt-old']);
+    expect(result.removeEmpty).toEqual([]);
+  });
+
+  it('trata gateId ausente como null (payload viejo sin el campo)', () => {
+    const rows: OutboxOrphanRow[] = [
+      row('e-absent-fresh', 'ABSENT', new Date(NOW_MS - 60 * 1000).toISOString()),
+      row('e-absent-old', 'ABSENT', new Date(NOW_MS - 30 * 24 * 60 * 60 * 1000).toISOString()),
+    ];
+    const result = classifyOrphanOutboxRows(rows, NOW_MS, SEVEN_DAYS_MS);
+    expect(result.removeStale).toEqual(['e-absent-old']);
+  });
+
+  it('cola vacia devuelve counts en cero', () => {
+    expect(classifyOrphanOutboxRows([], NOW_MS, SEVEN_DAYS_MS)).toEqual({
+      removeEmpty: [],
+      removeStale: [],
+    });
   });
 });
