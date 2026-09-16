@@ -22,3 +22,44 @@ export function formatElapsed(minutes: number): string {
   const rest = minutes % 60;
   return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
 }
+
+// Decide que dialogo mostrar cuando el guardia tapea "Cerrar turno".
+// La logica de eleccion es pura y separada de la vista para poder
+// testearla (Alert.alert es nativo, no testeable directo con vitest).
+//
+// - 'confirm-with-open': hay N > 0 estadias abiertas conocidas. Se
+//   advierte con conteo y se ofrecen tres opciones (marcar egresos /
+//   cerrar igual / cancelar).
+// - 'confirm-empty': N == 0 estadias abiertas. Confirmacion generica
+//   ("Cerrar el turno actual?").
+// - 'warn-unknown': no se pudo verificar (sin red o error del server).
+//   Se deja cerrar con aviso — un guardia sin red no puede quedar
+//   trabado sin poder cerrar su turno.
+// - 'disabled': todavia cargando por primera vez sin cache. El boton
+//   se muestra con label "Verificando estadias..." en vez de cerrar.
+export type CloseDialogChoice =
+  | { kind: 'confirm-with-open'; count: number }
+  | { kind: 'confirm-empty' }
+  | { kind: 'warn-unknown' }
+  | { kind: 'disabled' };
+
+export type CloseDialogInput = {
+  isLoading: boolean;
+  isError: boolean;
+  count: number | undefined;
+};
+
+export function pickCloseDialog(input: CloseDialogInput): CloseDialogChoice {
+  if (input.isError) return { kind: 'warn-unknown' };
+  if (input.count === undefined) {
+    // Sin cache y todavia cargando: no confirmar aun. Cuando llegue la
+    // data el boton se re-renderiza y el tap siguiente elige entre
+    // confirm-with-open y confirm-empty.
+    if (input.isLoading) return { kind: 'disabled' };
+    // Sin loading, sin error, sin count: raro (query aborto sin
+    // reportar error). Tratar como desconocido en vez de asumir 0.
+    return { kind: 'warn-unknown' };
+  }
+  if (input.count > 0) return { kind: 'confirm-with-open', count: input.count };
+  return { kind: 'confirm-empty' };
+}

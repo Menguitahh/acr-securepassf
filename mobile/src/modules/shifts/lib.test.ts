@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { elapsedMinutes, formatElapsed, isOpenShift } from '@/modules/shifts/lib';
+import { elapsedMinutes, formatElapsed, isOpenShift, pickCloseDialog } from '@/modules/shifts/lib';
 import type { Shift } from '@/modules/shifts/types';
 
 describe('isOpenShift', () => {
@@ -50,5 +50,47 @@ describe('formatElapsed', () => {
   it('horas + minutos', () => {
     expect(formatElapsed(75)).toBe('1h 15m');
     expect(formatElapsed(192)).toBe('3h 12m');
+  });
+});
+
+describe('pickCloseDialog', () => {
+  it('count > 0: advierte con conteo (tres opciones en la vista)', () => {
+    expect(pickCloseDialog({ isLoading: false, isError: false, count: 4 })).toEqual({
+      kind: 'confirm-with-open',
+      count: 4,
+    });
+  });
+
+  it('count === 0: confirmacion generica', () => {
+    expect(pickCloseDialog({ isLoading: false, isError: false, count: 0 })).toEqual({
+      kind: 'confirm-empty',
+    });
+  });
+
+  it('isError: deja cerrar con aviso (guardia sin red no queda trabado)', () => {
+    expect(pickCloseDialog({ isLoading: false, isError: true, count: undefined })).toEqual({
+      kind: 'warn-unknown',
+    });
+  });
+
+  it('isLoading sin cache: disabled (boton dice "Verificando estadias...")', () => {
+    expect(pickCloseDialog({ isLoading: true, isError: false, count: undefined })).toEqual({
+      kind: 'disabled',
+    });
+  });
+
+  it('sin loading, sin error, sin count: warn-unknown (no asumir 0)', () => {
+    expect(pickCloseDialog({ isLoading: false, isError: false, count: undefined })).toEqual({
+      kind: 'warn-unknown',
+    });
+  });
+
+  it('cache disponible durante refetch (isLoading=true + count definido): usa el count', () => {
+    // TanStack Query mantiene data anterior durante refetch. No debe
+    // caer a "disabled" cuando ya tenemos un conteo utilizable.
+    expect(pickCloseDialog({ isLoading: true, isError: false, count: 2 })).toEqual({
+      kind: 'confirm-with-open',
+      count: 2,
+    });
   });
 });

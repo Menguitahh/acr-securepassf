@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 
@@ -7,8 +8,9 @@ import { ErrorState } from '@/common/components/error-state';
 import { Input } from '@/common/components/input';
 import { Spinner } from '@/common/components/spinner';
 import { useCloseShift, useCurrentShift, useOpenShift } from '@/modules/shifts/hooks';
-import { elapsedMinutes, formatElapsed, isOpenShift } from '@/modules/shifts/lib';
+import { elapsedMinutes, formatElapsed, isOpenShift, pickCloseDialog } from '@/modules/shifts/lib';
 import type { Shift } from '@/modules/shifts/types';
+import { useOpenStays } from '@/modules/stays/hooks';
 
 const ELAPSED_TICK_MS = 30_000;
 
@@ -16,6 +18,8 @@ export function ShiftsView() {
   const { data, isLoading, isError, error, refetch } = useCurrentShift();
   const open = useOpenShift();
   const close = useCloseShift();
+  const stays = useOpenStays();
+  const router = useRouter();
   const [notes, setNotes] = useState('');
 
   if (isError) {
@@ -39,36 +43,72 @@ export function ShiftsView() {
   }
 
   if (isOpenShift(data)) {
+    const doClose = () =>
+      close.mutate(notes.trim(), {
+        onSuccess: () => setNotes(''),
+        onError: (err) =>
+          Alert.alert(
+            'No se pudo cerrar',
+            err instanceof Error ? err.message : 'Reintentá en unos segundos.',
+          ),
+      });
+
+    const choice = pickCloseDialog({
+      isLoading: stays.isLoading,
+      isError: stays.isError,
+      count: stays.data?.length,
+    });
+
     return (
       <OpenShiftView
         shift={data}
         isClosing={close.isPending}
+        closeLabel={choice.kind === 'disabled' ? 'Verificando estadias…' : 'Cerrar turno'}
+        closeDisabled={choice.kind === 'disabled'}
         notes={notes}
         onNotes={setNotes}
-        onClose={() =>
+        onClose={() => {
+          if (choice.kind === 'confirm-with-open') {
+            const noun = choice.count === 1 ? 'visitante' : 'visitantes';
+            const verb = choice.count === 1 ? 'no marcó egreso' : 'no marcaron egreso';
+            Alert.alert(
+              `Hay ${choice.count} ${noun} adentro`,
+              `Quedan ${choice.count} ${noun} que ${verb}. Si cerrás el turno, siguen registrados como presentes y el próximo guardia no va a saber que estaban pendientes.`,
+              [
+                {
+                  text: 'Marcar egresos',
+                  onPress: () => router.push('/(guard)/stays'),
+                },
+                { text: 'Cerrar igual', style: 'destructive', onPress: doClose },
+                { text: 'Cancelar', style: 'cancel' },
+              ],
+              { cancelable: true },
+            );
+            return;
+          }
+          if (choice.kind === 'warn-unknown') {
+            Alert.alert(
+              'No se pudo verificar estadias',
+              'No pudimos confirmar cuántos visitantes quedan adentro (sin red o el servidor no respondió). Podés cerrar igual, pero revisá después la lista de presentes por si quedaron sin egreso.',
+              [
+                { text: 'Cerrar igual', style: 'destructive', onPress: doClose },
+                { text: 'Cancelar', style: 'cancel' },
+              ],
+              { cancelable: true },
+            );
+            return;
+          }
+          // 'confirm-empty': N === 0, confirmacion generica.
           Alert.alert(
             'Cerrar turno',
             '¿Cerrar el turno actual?',
             [
               { text: 'Cancelar', style: 'cancel' },
-              {
-                text: 'Cerrar',
-                style: 'destructive',
-                onPress: () => {
-                  close.mutate(notes.trim(), {
-                    onSuccess: () => setNotes(''),
-                    onError: (err) =>
-                      Alert.alert(
-                        'No se pudo cerrar',
-                        err instanceof Error ? err.message : 'Reintentá en unos segundos.',
-                      ),
-                  });
-                },
-              },
+              { text: 'Cerrar', style: 'destructive', onPress: doClose },
             ],
             { cancelable: true },
-          )
-        }
+          );
+        }}
       />
     );
   }
@@ -95,12 +135,22 @@ export function ShiftsView() {
 type OpenShiftViewProps = {
   shift: Shift;
   isClosing: boolean;
+  closeLabel: string;
+  closeDisabled: boolean;
   notes: string;
   onNotes: (value: string) => void;
   onClose: () => void;
 };
 
-function OpenShiftView({ shift, isClosing, notes, onNotes, onClose }: OpenShiftViewProps) {
+function OpenShiftView({
+  shift,
+  isClosing,
+  closeLabel,
+  closeDisabled,
+  notes,
+  onNotes,
+  onClose,
+}: OpenShiftViewProps) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), ELAPSED_TICK_MS);
@@ -132,7 +182,12 @@ function OpenShiftView({ shift, isClosing, notes, onNotes, onClose }: OpenShiftV
           multiline
         />
         {isClosing ? <Spinner /> : null}
-        <Button label="Cerrar turno" variant="primary" disabled={isClosing} onPress={onClose} />
+        <Button
+          label={closeLabel}
+          variant="primary"
+          disabled={isClosing || closeDisabled}
+          onPress={onClose}
+        />
       </View>
     </ScrollView>
   );
