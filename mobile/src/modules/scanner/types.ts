@@ -71,7 +71,14 @@ export type ScanResult =
       // sepa que la sincronizacion queda pendiente.
       offlineEnrolled?: boolean;
     }
-  | { status: 'needs_enrollment'; invitationId: string; token: string }
+  | {
+      status: 'needs_enrollment';
+      invitationId: string;
+      token: string;
+      // lotCode del server (#98). Offline no lo conoce — cuando la
+      // decision surge de validateOffline, viaja como null.
+      lotCode: string | null;
+    }
   | { status: 'denied'; reason: DenialReason; message: string };
 
 export type DniData = {

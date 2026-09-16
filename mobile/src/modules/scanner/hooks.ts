@@ -13,7 +13,8 @@ import { hasValidGate } from '@/modules/offline/lib';
 import { useOfflineStore } from '@/modules/offline/offline-store';
 import { enqueueOutboxEvent } from '@/modules/offline/outbox';
 import { GATE_ID } from '@/modules/scanner/data';
-import { isDuplicateScan, parseToken, toScanResult, validateOffline } from '@/modules/scanner/lib';
+import { isDuplicateScan, parseToken } from '@/modules/scanner/lib';
+import { resolveScan } from '@/modules/scanner/scan-flow';
 import type { OfflineContext, ScanResult } from '@/modules/scanner/types';
 
 type EnrollmentContext = { invitationId: string; token: string };
@@ -54,74 +55,22 @@ function recordLocalUse(jti: string, context: OfflineContext): void {
   );
 }
 
-async function validateScannedToken(token: string, clientEventId: string): Promise<ScanResult> {
-  const capturedAt = new Date().toISOString();
-
-  if (GATE_ID) {
-    const gateId = GATE_ID;
-    try {
-      const { data, error } = await authRequest(() =>
+function validateScannedToken(token: string, clientEventId: string): Promise<ScanResult> {
+  return resolveScan(token, clientEventId, {
+    postValidate: ({ token: t, gateId, clientEventId: cid, capturedAt }) =>
+      authRequest(() =>
         api.POST('/api/v1/access/validate', {
-          body: {
-            token,
-            gateId,
-            direction: 'IN',
-            capturedAt,
-            clientEventId,
-          },
+          body: { token: t, gateId, direction: 'IN', capturedAt, clientEventId: cid },
         }),
-      );
-      const scanResult = data ? toScanResult(data) : null;
-      if (scanResult) return scanResult;
-      if (error) {
-        // El server respondio (no es caida de red): su veredicto manda.
-        return {
-          status: 'denied',
-          reason: 'UNKNOWN',
-          message: 'El server rechazó el pase. Intentá de nuevo o registrá el ingreso manualmente.',
-        };
-      }
-    } catch {
-      // Sin red: validacion offline.
-    }
-  }
-
-  const context = buildOfflineContext();
-  const decision = validateOffline(token, context);
-
-  if (decision.status === 'needs_enrollment') {
-    // El scanner encara el flujo de DNI + POST /access/enroll; no se
-    // registra ingreso todavia. Se pospone el enqueue del outbox hasta
-    // que la decision real (allowed o denied) exista.
-    return { status: 'needs_enrollment', invitationId: decision.invitationId, token };
-  }
-
-  if (decision.status === 'allowed') {
-    const parsed = parseToken(token);
-    if (parsed) recordLocalUse(parsed.payload.j, context);
-  }
-
-  enqueueOutboxEvent({
-    clientEventId,
-    token,
-    // `??` colapsa null/undefined pero NO colapsa '' (misconfig de
-    // EXPO_PUBLIC_GATE_ID vacio en .env). El helper normaliza el string
-    // vacio a null para que quede fuera del ciclo de sync como el resto
-    // de eventos "sin garita".
-    gateId: hasValidGate(GATE_ID) ? GATE_ID : null,
-    direction: 'IN',
-    companions: null,
-    capturedAt,
-    localDecision: decision.status === 'allowed' ? 'ALLOWED' : 'DENIED',
-    documentNumber: null,
+      ),
+    buildOfflineContext,
+    recordLocalUse,
+    enqueueOutboxEvent,
+    refreshPendingCount: () => useOfflineStore.getState().refreshPendingCount(),
+    gateId: GATE_ID,
+    hasValidGate,
+    parseToken,
   });
-  useOfflineStore.getState().refreshPendingCount();
-
-  if (decision.status === 'allowed') {
-    // Offline no conoce nombre ni lote: el QR no lleva PII (spec 5.1).
-    return { status: 'allowed', guestName: null, lotCode: null };
-  }
-  return decision;
 }
 
 export function useQrScanner() {

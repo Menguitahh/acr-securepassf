@@ -452,40 +452,71 @@ describe('isDenialReason', () => {
 });
 
 describe('toScanResult', () => {
+  const TOKEN = 'SP1.dummy-token';
+
   it('mapea ALLOWED con invitado y lote', () => {
-    const result = toScanResult({
-      result: 'ALLOWED',
-      guest: { name: 'Maria Lopez' },
-      lot: { code: 'M4-L12' },
-    });
-    expect(result).toEqual({
-      status: 'allowed',
-      guestName: 'Maria Lopez',
-      lotCode: 'M4-L12',
+    const outcome = toScanResult(
+      { result: 'ALLOWED', guest: { name: 'Maria Lopez' }, lot: { code: 'M4-L12' } },
+      TOKEN,
+    );
+    expect(outcome).toEqual({
+      kind: 'result',
+      value: { status: 'allowed', guestName: 'Maria Lopez', lotCode: 'M4-L12' },
     });
   });
 
   it('mapea ALLOWED sin invitado con nulls (offline no tiene nombre)', () => {
-    expect(toScanResult({ result: 'ALLOWED' })).toEqual({
-      status: 'allowed',
-      guestName: null,
-      lotCode: null,
+    expect(toScanResult({ result: 'ALLOWED' }, TOKEN)).toEqual({
+      kind: 'result',
+      value: { status: 'allowed', guestName: null, lotCode: null },
     });
   });
 
   it('mapea DENIED con motivo conocido y mensaje', () => {
-    const result = toScanResult({ result: 'DENIED', reason: 'ALREADY_USED' });
-    expect(result).toMatchObject({ status: 'denied', reason: 'ALREADY_USED' });
-    expect(result).toHaveProperty('message');
+    const outcome = toScanResult({ result: 'DENIED', reason: 'ALREADY_USED' }, TOKEN);
+    expect(outcome).toMatchObject({
+      kind: 'result',
+      value: { status: 'denied', reason: 'ALREADY_USED' },
+    });
+    expect(outcome).toHaveProperty('value.message');
   });
 
   it('mapea DENIED con motivo desconocido a UNKNOWN', () => {
-    const result = toScanResult({ result: 'DENIED', reason: 'otra-cosa' });
-    expect(result).toMatchObject({ status: 'denied', reason: 'UNKNOWN' });
+    const outcome = toScanResult({ result: 'DENIED', reason: 'otra-cosa' }, TOKEN);
+    expect(outcome).toMatchObject({
+      kind: 'result',
+      value: { status: 'denied', reason: 'UNKNOWN' },
+    });
   });
 
-  it('devuelve null para respuestas sin decision', () => {
-    expect(toScanResult({})).toBeNull();
+  it('mapea NEEDS_ENROLLMENT preservando invitationId, token y lotCode del server', () => {
+    const outcome = toScanResult(
+      { result: 'NEEDS_ENROLLMENT', invitationId: 'inv-123', lot: { code: 'A-14' } },
+      TOKEN,
+    );
+    expect(outcome).toEqual({
+      kind: 'result',
+      value: {
+        status: 'needs_enrollment',
+        invitationId: 'inv-123',
+        token: TOKEN,
+        lotCode: 'A-14',
+      },
+    });
+  });
+
+  it('NEEDS_ENROLLMENT sin invitationId cae a unknown (fail-closed, no offline)', () => {
+    const outcome = toScanResult({ result: 'NEEDS_ENROLLMENT' }, TOKEN);
+    expect(outcome).toEqual({ kind: 'unknown', result: 'NEEDS_ENROLLMENT' });
+  });
+
+  it('un result que no reconocemos devuelve unknown (fail-closed, NO offline)', () => {
+    const outcome = toScanResult({ result: 'PENDING_APPROVAL' }, TOKEN);
+    expect(outcome).toEqual({ kind: 'unknown', result: 'PENDING_APPROVAL' });
+  });
+
+  it('respuesta sin result devuelve empty (caller puede caer al offline)', () => {
+    expect(toScanResult({}, TOKEN)).toEqual({ kind: 'empty' });
   });
 });
 

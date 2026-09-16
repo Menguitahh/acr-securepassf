@@ -195,21 +195,63 @@ export function isDuplicateScan(
   return previous.token === token && now - previous.at < DUPLICATE_WINDOW_MS;
 }
 
+export type ToScanResultOutcome =
+  // Server respondio con un result que sabemos mapear -> se usa tal cual.
+  | { kind: 'result'; value: ScanResult }
+  // Server no emitio result (respuesta vacia / malformada benigna) ->
+  // el caller puede caer al offline como fallback.
+  | { kind: 'empty' }
+  // Server emitio un result que no reconocemos -> fail-closed a denied.
+  // NUNCA cae al offline: el server ya dio una respuesta, respetarla
+  // (aunque no la entendamos) es mas seguro que pisarla con un cache
+  // local que ni siquiera sabe que decision computar.
+  | { kind: 'unknown'; result: string };
+
+// Guard interno mientras ValidateAccessResponse.result sea `string` libre
+// en el contrato (securepassb#170). Cuando pase a enum
+// ALLOWED | DENIED | NEEDS_ENROLLMENT, este switch se vuelve exhaustivo
+// por tipos y la rama `unknown` (junto con este comentario) se borra:
+// el compilador va a forzar manejar cualquier valor nuevo del server.
 export function toScanResult(
   response: components['schemas']['ValidateAccessResponse'],
-): ScanResult | null {
+  token: string,
+): ToScanResultOutcome {
   if (response.result === 'ALLOWED') {
     return {
-      status: 'allowed',
-      guestName: response.guest?.name ?? null,
-      lotCode: response.lot?.code ?? null,
+      kind: 'result',
+      value: {
+        status: 'allowed',
+        guestName: response.guest?.name ?? null,
+        lotCode: response.lot?.code ?? null,
+      },
     };
   }
   if (response.result === 'DENIED') {
     const reason = isDenialReason(response.reason) ? response.reason : 'UNKNOWN';
-    return { status: 'denied', reason, message: DENIAL_MESSAGES[reason] };
+    return { kind: 'result', value: { status: 'denied', reason, message: DENIAL_MESSAGES[reason] } };
   }
-  return null;
+  if (response.result === 'NEEDS_ENROLLMENT') {
+    // Sin invitationId, la respuesta esta rota estructuralmente: el
+    // enrolamiento no se puede encarar. Tratar como desconocida en vez
+    // de asumir un invitationId vacio.
+    if (!response.invitationId) return { kind: 'unknown', result: 'NEEDS_ENROLLMENT' };
+    return {
+      kind: 'result',
+      value: {
+        status: 'needs_enrollment',
+        invitationId: response.invitationId,
+        token,
+        lotCode: response.lot?.code ?? null,
+      },
+    };
+  }
+  if (typeof response.result === 'string' && response.result.length > 0) {
+    // Un result que no reconocemos NO cae al offline: fail-closed a denied.
+    // Si esto salta en produccion, el fix es agregar el nuevo result aca,
+    // no relajar el guard. Ver #98.
+    return { kind: 'unknown', result: response.result };
+  }
+  return { kind: 'empty' };
 }
 
 const DATE_PATTERN = /^\d{2}\/\d{2}\/\d{4}$/;
