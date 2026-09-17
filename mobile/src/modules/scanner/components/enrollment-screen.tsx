@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { Button } from '@/common/components/button';
@@ -14,13 +14,16 @@ type EnrollmentScreenProps = {
   onCancel: () => void;
 };
 
-const CAMERA_FALLBACK_MS = 5000;
-
-// Modos: scanning (PDF417) → manual (input). Si en 5 s el lector no
-// atrapa nada, se pasa a manual solo (los pases mal impresos o el
-// telefono viejo no bloquean al guardia). Si el lector funciona, el
-// DNI parseado prellena el input y se muestra para revisar antes de
-// registrar el ingreso.
+// Modos: scanning (PDF417) ↔ manual (input). El pasaje entre modos es
+// SIEMPRE por accion explicita del guardia (boton "Cargar DNI
+// manualmente" en camara, "Reintentar camara" en manual).
+//
+// NO hay fallback automatico por tiempo — se probo con timeout de 5s y
+// en garita real no alcanza: el guardia todavia esta sacando el DNI de
+// la billetera y dandolo vuelta cuando el timer dispara, perdiendo la
+// camara justo cuando estaba por lograrlo. La camara queda activa hasta
+// que el guardia decida pasar a manual. Ver #28 para el AC actualizado
+// — no reintroducir un setTimeout aca.
 export function EnrollmentScreen({
   isSubmitting,
   error,
@@ -30,12 +33,6 @@ export function EnrollmentScreen({
   const [mode, setMode] = useState<'scanning' | 'manual'>('scanning');
   const [document, setDocument] = useState('');
   const [scanError, setScanError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (mode !== 'scanning') return;
-    const timer = setTimeout(() => setMode('manual'), CAMERA_FALLBACK_MS);
-    return () => clearTimeout(timer);
-  }, [mode]);
 
   const handleDniScan = (raw: string) => {
     const parsed = parseArgentineDni(raw);
@@ -61,7 +58,11 @@ export function EnrollmentScreen({
           </Text>
         </View>
         <View className="absolute inset-x-0 bottom-8 px-6">
-          <Button label="Cargar DNI manualmente" onPress={() => setMode('manual')} />
+          <Button
+            label="Cargar DNI manualmente"
+            variant="primary"
+            onPress={() => setMode('manual')}
+          />
         </View>
       </View>
     );
@@ -97,6 +98,10 @@ export function EnrollmentScreen({
         ) : null}
         {isSubmitting ? <Spinner /> : null}
       </View>
+      {/* Dos salidas distintas: "Reintentar camara" queda con la accion
+          primaria (sigue enrolando, solo cambia el metodo de captura);
+          "Cancelar" sale del enrolamiento entero y se separa con margen
+          extra para que no se confunda con las de arriba. */}
       <View className="gap-3">
         <Button
           label="Registrar ingreso"
@@ -104,7 +109,17 @@ export function EnrollmentScreen({
           disabled={!canSubmit}
           onPress={() => onSubmit(trimmed)}
         />
-        <Button label="Cancelar" onPress={onCancel} disabled={isSubmitting} />
+        <Button
+          label="Reintentar cámara"
+          onPress={() => {
+            setScanError(null);
+            setMode('scanning');
+          }}
+          disabled={isSubmitting}
+        />
+        <View className="mt-6">
+          <Button label="Cancelar" onPress={onCancel} disabled={isSubmitting} />
+        </View>
       </View>
     </View>
   );
