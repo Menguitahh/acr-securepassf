@@ -138,6 +138,27 @@ feat(scanner): agregar verificacion ed25519 offline
 Refs: #31
 ```
 
+**No agregar atribuciones automáticas de agentes** en el historial del
+repo. Ni `Co-Authored-By: Claude ...` en commits, ni en bodies de PR,
+ni en comentarios de issues. El código lo escribe quien lo firma.
+
+**Evidencia de verificaciones.** Si afirmás que verificaste algo, la
+evidencia va pegada en el chat. Qué necesita pegado y qué no:
+
+NO pegar (el CI del PR ya lo corre — alcanza con el link):
+- Salidas de `vitest`, `tsc`, `eslint`
+- `gh pr checks`
+- Cualquier resultado de CI
+
+SÍ pegar, siempre:
+- Diffs de lógica (no de config ni archivos generados)
+- Código completo de una función cuando se pide para revisarla
+- Comandos de verificación que el CI no corre: `git status`,
+  `git stash list`, `git log`, grep del árbol de imports, `npm ls`,
+  `curl` contra backend, readback de settings
+- Descripciones textuales de UI para probar en device
+- Cualquier evidencia que el pipeline no pueda producir
+
 ## Definition of Done
 
 - [ ] Criterios de aceptacion del issue cumplidos
