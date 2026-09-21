@@ -12,9 +12,10 @@ name: expo-doctor-cron
 
 on:
   schedule:
-    # 12:00 UTC = 09:00 Mza, dias habiles. Detecta al dia siguiente de que
-    # Expo publique un patch; el bug historico tardo 5 dias en descubrirse.
-    - cron: '0 12 * * 1-5'
+    # 12:00 UTC = 09:00 Mza, todos los dias. Expo publica cuando quiere:
+    # un patch del sabado quedaba fuera del rango habil y se descubria
+    # recien el lunes por un PR roto. Corre todos los dias por eso.
+    - cron: '0 12 * * *'
   workflow_dispatch: {}
 
 permissions:
@@ -58,6 +59,10 @@ jobs:
           branch: chore/expo-doctor-drift-auto
           delete-branch: true
           title: 'chore(deps): auto-bump para pasar expo-doctor'
+          # Reviewer + assignee para que el PR notifique en vez de acumularse
+          # en la cola sin que nadie se entere. Ver discusion en #112.
+          reviewers: Menguitahh
+          assignees: Menguitahh
           commit-message: |
             chore(deps): auto-bump por drift detectado por el cron
 
