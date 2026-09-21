@@ -78,6 +78,12 @@ export type ScanResult =
       // lotCode del server (#98). Offline no lo conoce — cuando la
       // decision surge de validateOffline, viaja como null.
       lotCode: string | null;
+      // Nombre del invitado tal como esta en la invitacion (securepassb#173).
+      // Se muestra en la pantalla de enrolamiento para que el guardia
+      // haga el cruce visual contra el nombre que sale del PDF417 del
+      // DNI. Offline es null: el QR no lleva PII. Null tambien si el
+      // server no lo emitio (ej. rama WORKER, o server viejo antes de #173).
+      guestName: string | null;
     }
   | { status: 'denied'; reason: DenialReason; message: string };
 

@@ -5,32 +5,43 @@ import { Button } from '@/common/components/button';
 import { Input } from '@/common/components/input';
 import { Spinner } from '@/common/components/spinner';
 import { DniCamera } from '@/modules/scanner/components/dni-camera';
-import { parseArgentineDni } from '@/modules/scanner/lib';
+import { formatDni, parseArgentineDni } from '@/modules/scanner/lib';
+import type { DniData } from '@/modules/scanner/types';
 
 type EnrollmentScreenProps = {
+  // Nombre desde la invitacion (server, #111). Null si el server no lo
+  // emitio (offline o server viejo): se degrada a la UI anterior (solo
+  // input del DNI) — cruce visual imposible sin el nombre esperado.
+  invitationName: string | null;
   isSubmitting: boolean;
   error: string | null;
   onSubmit: (documentNumber: string) => void;
   onCancel: () => void;
 };
 
-// Modos: scanning (PDF417) ↔ manual (input). El pasaje entre modos es
-// SIEMPRE por accion explicita del guardia (boton "Cargar DNI
-// manualmente" en camara, "Reintentar camara" en manual).
+// Modos: scanning (PDF417) -> scanned (confirmacion con cruce visual)
+// o manual (input). El pasaje entre modos es SIEMPRE por accion
+// explicita del guardia — no hay fallback automatico por tiempo (ver
+// discusion historica en el bloque de scanning + #28).
 //
-// NO hay fallback automatico por tiempo — se probo con timeout de 5s y
-// en garita real no alcanza: el guardia todavia esta sacando el DNI de
-// la billetera y dandolo vuelta cuando el timer dispara, perdiendo la
-// camara justo cuando estaba por lograrlo. La camara queda activa hasta
-// que el guardia decida pasar a manual. Ver #28 para el AC actualizado
-// — no reintroducir un setTimeout aca.
+// scanned: aparece cuando el parser del PDF417 devolvio ok. Muestra las
+// dos lineas (invitacion vs DNI parseado) para que el guardia haga el
+// cruce visual antes de confirmar. Sin comparacion automatica: el
+// backend tampoco compara nombres, y automatizar el match ensena al
+// guardia a no leer (ver #111 para el porque).
+type Mode =
+  | { kind: 'scanning' }
+  | { kind: 'scanned'; dni: DniData }
+  | { kind: 'manual' };
+
 export function EnrollmentScreen({
+  invitationName,
   isSubmitting,
   error,
   onSubmit,
   onCancel,
 }: EnrollmentScreenProps) {
-  const [mode, setMode] = useState<'scanning' | 'manual'>('scanning');
+  const [mode, setMode] = useState<Mode>({ kind: 'scanning' });
   const [document, setDocument] = useState('');
   const [scanError, setScanError] = useState<string | null>(null);
 
@@ -40,19 +51,24 @@ export function EnrollmentScreen({
       setScanError(
         'No se pudo leer el DNI. Verificá el codigo o cargá el numero manualmente.',
       );
-      setMode('manual');
+      setMode({ kind: 'manual' });
       return;
     }
     setScanError(null);
     setDocument(parsed.document);
-    setMode('manual');
+    setMode({ kind: 'scanned', dni: parsed });
   };
 
-  if (mode === 'scanning') {
+  if (mode.kind === 'scanning') {
     return (
       <View className="flex-1 bg-bg-base">
         <DniCamera onScan={handleDniScan} />
-        <View className="absolute inset-x-0 top-12 items-center px-6">
+        <View className="absolute inset-x-0 top-12 items-center gap-2 px-6">
+          {invitationName ? (
+            <Text className="rounded-md bg-bg-elevated/90 px-4 py-2 text-body text-text-primary">
+              Invitación: {invitationName}
+            </Text>
+          ) : null}
           <Text className="rounded-md bg-bg-elevated/90 px-4 py-2 text-body text-text-primary">
             Enfocá el codigo PDF417 del DNI
           </Text>
@@ -61,8 +77,71 @@ export function EnrollmentScreen({
           <Button
             label="Cargar DNI manualmente"
             variant="primary"
-            onPress={() => setMode('manual')}
+            onPress={() => setMode({ kind: 'manual' })}
           />
+        </View>
+      </View>
+    );
+  }
+
+  if (mode.kind === 'scanned') {
+    return (
+      <View className="flex-1 justify-between gap-6 bg-bg-base p-6">
+        <View className="gap-4">
+          <Text className="text-2xl font-semibold text-text-primary">
+            Confirmar ingreso
+          </Text>
+          {/* Cruce visual: mismo tamano y peso en las dos lineas para
+              que el ojo compare como iguales. Etiquetas alineadas en la
+              misma columna (min-w) para saltar vertical sin buscar. Sin
+              highlight de coincidencia — el juicio lo hace el guardia. */}
+          <View className="gap-2">
+            <View className="flex-row gap-2">
+              <Text className="min-w-[104px] text-body text-text-muted">
+                Invitación:
+              </Text>
+              <Text className="flex-1 text-body text-text-primary">
+                {invitationName ?? '—'}
+              </Text>
+            </View>
+            <View className="flex-row gap-2">
+              <Text className="min-w-[104px] text-body text-text-muted">
+                DNI:
+              </Text>
+              <Text className="flex-1 text-body text-text-primary">
+                {mode.dni.lastName}, {mode.dni.firstName} (
+                {formatDni(mode.dni.document)})
+              </Text>
+            </View>
+          </View>
+          {error ? (
+            <Text className="text-body text-deny">{error}</Text>
+          ) : null}
+          {isSubmitting ? <Spinner /> : null}
+        </View>
+        <View className="gap-3">
+          <Button
+            label="Registrar ingreso"
+            variant="primary"
+            disabled={isSubmitting}
+            onPress={() => onSubmit(mode.dni.document)}
+          />
+          <Button
+            label="Editar DNI"
+            onPress={() => setMode({ kind: 'manual' })}
+            disabled={isSubmitting}
+          />
+          <Button
+            label="Reintentar cámara"
+            onPress={() => {
+              setScanError(null);
+              setMode({ kind: 'scanning' });
+            }}
+            disabled={isSubmitting}
+          />
+          <View className="mt-6">
+            <Button label="Cancelar" onPress={onCancel} disabled={isSubmitting} />
+          </View>
         </View>
       </View>
     );
@@ -77,10 +156,16 @@ export function EnrollmentScreen({
         <Text className="text-2xl font-semibold text-text-primary">
           Enrolar DNI
         </Text>
-        <Text className="text-body text-text-muted">
-          Primera vez que ingresa este invitado. Cargá el numero de documento
-          para completar el ingreso.
-        </Text>
+        {invitationName ? (
+          <Text className="text-body text-text-muted">
+            Invitación: <Text className="text-text-primary">{invitationName}</Text>
+          </Text>
+        ) : (
+          <Text className="text-body text-text-muted">
+            Primera vez que ingresa este invitado. Cargá el numero de documento
+            para completar el ingreso.
+          </Text>
+        )}
         <Input
           label="DNI"
           value={document}
@@ -113,7 +198,7 @@ export function EnrollmentScreen({
           label="Reintentar cámara"
           onPress={() => {
             setScanError(null);
-            setMode('scanning');
+            setMode({ kind: 'scanning' });
           }}
           disabled={isSubmitting}
         />

@@ -45,6 +45,7 @@ describe('resolveScan', () => {
       invitationId: 'inv-123',
       token: 'SP1.token',
       lotCode: 'A-14',
+      guestName: null,
     });
     expect(deps.buildOfflineContext).not.toHaveBeenCalled();
     expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();

@@ -99,6 +99,9 @@ export async function resolveScan(
       invitationId: decision.invitationId,
       token,
       lotCode: null,
+      // Offline no conoce el nombre: el QR no lleva PII (spec 5.1).
+      // La pantalla de enrolamiento degrada al layout sin cruce visual.
+      guestName: null,
     };
   }
 

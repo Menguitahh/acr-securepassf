@@ -17,7 +17,14 @@ import { isDuplicateScan, parseToken } from '@/modules/scanner/lib';
 import { resolveScan } from '@/modules/scanner/scan-flow';
 import type { OfflineContext, ScanResult } from '@/modules/scanner/types';
 
-type EnrollmentContext = { invitationId: string; token: string };
+type EnrollmentContext = {
+  invitationId: string;
+  token: string;
+  // Nombre desde la invitacion (securepassb#173). Se usa en la pantalla
+  // de enrolamiento para el cruce visual contra el nombre del PDF417.
+  // Null cuando el server no lo emite (offline o server viejo).
+  invitationName: string | null;
+};
 
 function buildOfflineContext(): OfflineContext {
   const db = getDb();
@@ -92,7 +99,11 @@ export function useQrScanner() {
     try {
       const outcome = await validateScannedToken(token, Crypto.randomUUID());
       if (outcome.status === 'needs_enrollment') {
-        setEnrollment({ invitationId: outcome.invitationId, token: outcome.token });
+        setEnrollment({
+          invitationId: outcome.invitationId,
+          token: outcome.token,
+          invitationName: outcome.guestName,
+        });
         setEnrollmentError(null);
       } else {
         setResult(outcome);

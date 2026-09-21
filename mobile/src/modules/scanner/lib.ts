@@ -233,7 +233,8 @@ export function toScanResult(
   if (response.result === 'NEEDS_ENROLLMENT') {
     // Sin invitationId, la respuesta esta rota estructuralmente: el
     // enrolamiento no se puede encarar. Tratar como desconocida en vez
-    // de asumir un invitationId vacio.
+    // de asumir un invitationId vacio. La rama WORKER (securepassb#175)
+    // cae aca hasta que definamos el flujo — es fail-closed intencional.
     if (!response.invitationId) return { kind: 'unknown', result: 'NEEDS_ENROLLMENT' };
     return {
       kind: 'result',
@@ -242,6 +243,7 @@ export function toScanResult(
         invitationId: response.invitationId,
         token,
         lotCode: response.lot?.code ?? null,
+        guestName: response.guest?.name ?? null,
       },
     };
   }
@@ -268,6 +270,14 @@ const DATE_PATTERN = /^\d{2}\/\d{2}\/\d{4}$/;
 // siempre estan antes, DNI siempre esta despues. Se ubica su indice y
 // se derivan los demas relativos a el. Asi la funcion es indiferente
 // al formato y a los @ vacios que algunos lectores agregan al frente.
+// Formato AR: puntos cada 3 digitos desde la derecha ("23456789" -> "23.456.789").
+// El parser ya garantiza 6-9 digitos, pero se defiende igual: si entra
+// algo no numerico se devuelve tal cual, la pantalla no tira error.
+export function formatDni(document: string): string {
+  if (!/^\d+$/.test(document)) return document;
+  return document.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
 export function parseArgentineDni(raw: string): DniData | null {
   if (typeof raw !== 'string' || raw.length === 0) return null;
   const parts = raw

@@ -6,6 +6,7 @@ import {
   isDenialReason,
   isDuplicateScan,
   isWithinRecurringSchedule,
+  formatDni,
   parseArgentineDni,
   parseToken,
   toScanResult,
@@ -489,9 +490,14 @@ describe('toScanResult', () => {
     });
   });
 
-  it('mapea NEEDS_ENROLLMENT preservando invitationId, token y lotCode del server', () => {
+  it('mapea NEEDS_ENROLLMENT preservando invitationId, token, lotCode y guestName del server', () => {
     const outcome = toScanResult(
-      { result: 'NEEDS_ENROLLMENT', invitationId: 'inv-123', lot: { code: 'A-14' } },
+      {
+        result: 'NEEDS_ENROLLMENT',
+        invitationId: 'inv-123',
+        lot: { code: 'A-14' },
+        guest: { name: 'Maria Lopez' },
+      },
       TOKEN,
     );
     expect(outcome).toEqual({
@@ -501,6 +507,24 @@ describe('toScanResult', () => {
         invitationId: 'inv-123',
         token: TOKEN,
         lotCode: 'A-14',
+        guestName: 'Maria Lopez',
+      },
+    });
+  });
+
+  it('NEEDS_ENROLLMENT sin guest deja guestName en null (server viejo o rama sin nombre)', () => {
+    const outcome = toScanResult(
+      { result: 'NEEDS_ENROLLMENT', invitationId: 'inv-123' },
+      TOKEN,
+    );
+    expect(outcome).toEqual({
+      kind: 'result',
+      value: {
+        status: 'needs_enrollment',
+        invitationId: 'inv-123',
+        token: TOKEN,
+        lotCode: null,
+        guestName: null,
       },
     });
   });
@@ -517,6 +541,29 @@ describe('toScanResult', () => {
 
   it('respuesta sin result devuelve empty (caller puede caer al offline)', () => {
     expect(toScanResult({}, TOKEN)).toEqual({ kind: 'empty' });
+  });
+});
+
+describe('formatDni', () => {
+  it('formatea 8 digitos con puntos cada 3 desde la derecha', () => {
+    expect(formatDni('23456789')).toBe('23.456.789');
+  });
+
+  it('formatea 7 digitos', () => {
+    expect(formatDni('1234567')).toBe('1.234.567');
+  });
+
+  it('formatea 6 digitos (documentos viejos)', () => {
+    expect(formatDni('123456')).toBe('123.456');
+  });
+
+  it('formatea 9 digitos (documentos nuevos)', () => {
+    expect(formatDni('123456789')).toBe('123.456.789');
+  });
+
+  it('devuelve el input sin tocar si tiene no-digitos (defensa)', () => {
+    expect(formatDni('12A45678')).toBe('12A45678');
+    expect(formatDni('')).toBe('');
   });
 });
 
