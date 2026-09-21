@@ -6,6 +6,9 @@
     "web",
     "packages/*"
   ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "npm --workspace mobile run start",
     "start:web": "npm --workspace web run dev",
