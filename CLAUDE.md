@@ -132,6 +132,13 @@ funcion que decide si alguien entra al barrio.
 Un issue = una rama = un PR. Ramas `feature/`, `fix/`, `refactor/` desde `develop`.
 Conventional Commits. Scopes: `scanner`, `invitation`, `access`, `ui`, `offline`, `admin`.
 
+**Antes de proponer trabajo, chequear si ya existe un PR abierto que lo
+cubra.** `gh pr list` antes de armar una rama nueva — especialmente para
+lo que puede estar en marcha por otro flujo (PRs del bot de drift en
+`chore/expo-doctor-drift-auto`, PRs de otro colaborador, chores
+automatizados). Duplicar el trabajo del bot pasó ya y es peor que perder
+30 segundos revisando la lista.
+
 ```
 feat(scanner): agregar verificacion ed25519 offline
 
