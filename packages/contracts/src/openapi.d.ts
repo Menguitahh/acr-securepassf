@@ -20,6 +20,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stays/{id}/mark-warned": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["markWarned"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stays/{id}/close": {
         parameters: {
             query?: never;
@@ -752,6 +768,12 @@ export interface components {
             /** Format: int64 */
             minutesRemaining?: number;
         };
+        MarkStayWarnedResponse: {
+            /** Format: uuid */
+            stayId?: string;
+            /** Format: date-time */
+            warnedAt?: string;
+        };
         CloseStayRequest: {
             /** Format: uuid */
             gateId: string;
@@ -1186,9 +1208,17 @@ export interface components {
             enrolledAt?: string;
             /** Format: uuid */
             enrollmentId?: string;
+            subjectKind?: string;
             guest?: components["schemas"]["Guest"];
+            worker?: components["schemas"]["Worker"];
         };
         Guest: {
+            name?: string;
+            document?: string;
+        };
+        Worker: {
+            /** Format: uuid */
+            userId?: string;
             name?: string;
             document?: string;
         };
@@ -1198,9 +1228,9 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
-            nonEmpty?: boolean;
-            scheduleBundled?: boolean;
             dailyOrderValid?: boolean;
+            scheduleBundled?: boolean;
+            nonEmpty?: boolean;
         };
         UpdateWorkerResponse: {
             /** Format: uuid */
@@ -1430,6 +1460,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["NotifyResidentResponse"];
+                };
+            };
+        };
+    };
+    markWarned: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MarkStayWarnedResponse"];
                 };
             };
         };
@@ -2367,7 +2419,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description Turno abierto del guardia */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2375,6 +2427,13 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ShiftResponse"];
                 };
+            };
+            /** @description El guardia no tiene turno abierto */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
