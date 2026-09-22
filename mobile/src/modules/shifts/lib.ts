@@ -5,6 +5,19 @@ export function isOpenShift(shift: Shift | null | undefined): shift is Shift {
   return typeof shift.id === 'string' && !shift.endedAt;
 }
 
+// Parseo de GET /shifts/current. 204 = sin turno abierto (estado valido,
+// nunca error). Cualquier otra combinacion sin data o con error del server
+// es falla real -> throw para que la query caiga a ErrorState.
+export function parseCurrentShift(
+  status: number,
+  data: Shift | undefined,
+  error: unknown,
+): Shift | null {
+  if (status === 204) return null;
+  if (error || !data) throw new Error('No se pudo cargar el turno actual.');
+  return data;
+}
+
 export function elapsedMinutes(startedAtIso: string | undefined, now: number): number | null {
   if (!startedAtIso) return null;
   const started = Date.parse(startedAtIso);

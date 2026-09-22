@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { elapsedMinutes, formatElapsed, isOpenShift, pickCloseDialog } from '@/modules/shifts/lib';
+import {
+  elapsedMinutes,
+  formatElapsed,
+  isOpenShift,
+  parseCurrentShift,
+  pickCloseDialog,
+} from '@/modules/shifts/lib';
 import type { Shift } from '@/modules/shifts/types';
 
 describe('isOpenShift', () => {
@@ -92,5 +98,29 @@ describe('pickCloseDialog', () => {
       kind: 'confirm-with-open',
       count: 2,
     });
+  });
+});
+
+describe('parseCurrentShift', () => {
+  const shift: Shift = { id: 'abc', startedAt: '2026-08-22T10:00:00Z' };
+
+  it('204 devuelve null (sin turno abierto es estado valido)', () => {
+    expect(parseCurrentShift(204, undefined, undefined)).toBeNull();
+  });
+
+  it('200 con data devuelve el shift', () => {
+    expect(parseCurrentShift(200, shift, undefined)).toEqual(shift);
+  });
+
+  it('error del server tira', () => {
+    expect(() => parseCurrentShift(500, undefined, { status: 500 })).toThrow(
+      'No se pudo cargar el turno actual.',
+    );
+  });
+
+  it('200 sin data ni error tira (respuesta rota)', () => {
+    expect(() => parseCurrentShift(200, undefined, undefined)).toThrow(
+      'No se pudo cargar el turno actual.',
+    );
   });
 });
