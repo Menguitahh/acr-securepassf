@@ -18,6 +18,7 @@ import { GraduateMinorModal } from '@/modules/family/components/graduate-minor-m
 import { WEEKDAY_LABELS } from '@/modules/worker/data';
 import { useWorkers } from '@/modules/worker/hooks';
 import { AddWorkerModal } from '@/modules/worker/components/add-worker-modal';
+import { EditWorkerModal } from '@/modules/worker/components/edit-worker-modal';
 
 type Feedback = { message: string; tone: 'success' | 'warning' | 'info' } | null;
 
@@ -42,6 +43,7 @@ export default function FamilyMembersScreen() {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addWorkerOpen, setAddWorkerOpen] = useState(false);
+  const [editWorkerTarget, setEditWorkerTarget] = useState<Worker | null>(null);
   const [graduateTarget, setGraduateTarget] = useState<Minor | null>(null);
 
   const showFeedback = (message: string, tone: 'success' | 'warning' | 'info' = 'success') => {
@@ -210,7 +212,12 @@ export default function FamilyMembersScreen() {
           ) : (
             <View className="gap-3">
               {workers.map((w) => (
-                <WorkerRow key={w.userId ?? ''} worker={w} />
+                <WorkerRow
+                  key={w.userId ?? ''}
+                  worker={w}
+                  isOwner={isOwner}
+                  onEdit={() => setEditWorkerTarget(w)}
+                />
               ))}
             </View>
           )}
@@ -247,11 +254,32 @@ export default function FamilyMembersScreen() {
           onFeedback={showFeedback}
         />
       ) : null}
+      {isOwner ? (
+        // key={worker.userId}: remontar el modal cuando cambia el trabajador
+        // para que el prefill del useState arranque con datos frescos, sin
+        // useEffect de sync.
+        <EditWorkerModal
+          key={editWorkerTarget?.userId ?? 'none'}
+          visible={editWorkerTarget !== null}
+          onClose={() => setEditWorkerTarget(null)}
+          lotId={lotId}
+          worker={editWorkerTarget}
+          onFeedback={showFeedback}
+        />
+      ) : null}
     </View>
   );
 }
 
-function WorkerRow({ worker }: { worker: Worker }) {
+function WorkerRow({
+  worker,
+  isOwner,
+  onEdit,
+}: {
+  worker: Worker;
+  isOwner: boolean;
+  onEdit: () => void;
+}) {
   const days = (worker.weekdays ?? [])
     .slice()
     .sort((a, b) => a - b)
@@ -260,8 +288,8 @@ function WorkerRow({ worker }: { worker: Worker }) {
     .join(' ');
   const inactive = worker.active === false;
 
-  return (
-    <View className="gap-1 border-b border-border pb-3 last:border-b-0 last:pb-0">
+  const body = (
+    <>
       <View className="flex-row items-center justify-between gap-2">
         <View className="flex-1">
           <Text className="text-body font-semibold leading-[22px] text-text-primary">
@@ -280,7 +308,28 @@ function WorkerRow({ worker }: { worker: Worker }) {
       <Text className="text-footnote leading-[18px] text-text-muted">
         {days || 'Sin días'} · {worker.dailyFrom ?? '--:--'}–{worker.dailyUntil ?? '--:--'}
       </Text>
-    </View>
+    </>
+  );
+
+  if (!isOwner) {
+    return (
+      <View className="gap-1 border-b border-border pb-3 last:border-b-0 last:pb-0">{body}</View>
+    );
+  }
+
+  // Fila activa e inactiva: ambas responden al tap. La inactiva abre en modo
+  // lectura (banner + guardar deshabilitado). No pressable en inactivos
+  // dejaria al titular con la duda "esta roto o es a proposito".
+  return (
+    <Pressable
+      onPress={onEdit}
+      hitSlop={4}
+      accessibilityRole="button"
+      accessibilityLabel={`Editar ${worker.fullName ?? 'trabajador'}`}
+      className="gap-1 border-b border-border pb-3 last:border-b-0 last:pb-0 active:opacity-60"
+    >
+      {body}
+    </Pressable>
   );
 }
 

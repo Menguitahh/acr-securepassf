@@ -28,6 +28,34 @@ export function toneForOutcome(
   return 'success';
 }
 
+type UpdateOutcome = NonNullable<components['schemas']['UpdateWorkerResponse']['outcome']>;
+
+// Solo UPDATED es alcanzable desde el edit modal (no manda `active`).
+// DEACTIVATED / ALREADY_INACTIVE / ALREADY_ACTIVE quedan para el flujo
+// de baja/reactivacion (E).
+const UPDATE_OUTCOME_MESSAGES: Record<UpdateOutcome, string> = {
+  UPDATED: 'Cambios guardados.',
+  DEACTIVATED: 'Trabajador dado de baja.',
+  ALREADY_INACTIVE: 'El trabajador ya estaba inactivo.',
+  ALREADY_ACTIVE: 'El trabajador ya estaba activo.',
+};
+
+export function messageForUpdateOutcome(
+  response: components['schemas']['UpdateWorkerResponse'],
+): string {
+  const outcome = response.outcome;
+  if (!outcome) return 'Cambios guardados.';
+  return UPDATE_OUTCOME_MESSAGES[outcome];
+}
+
+export function toneForUpdateOutcome(
+  outcome: UpdateOutcome | undefined,
+): 'success' | 'warning' | 'info' {
+  if (outcome === 'DEACTIVATED') return 'warning';
+  if (outcome === 'ALREADY_INACTIVE' || outcome === 'ALREADY_ACTIVE') return 'info';
+  return 'success';
+}
+
 // Mensajes para 409 UserOnboardingConflictException. USER_SUSPENDED /
 // USER_DELETED requieren accion humana (contacto con admin del barrio).
 // EMAIL_TAKEN es el caso comun: el email ya esta con otro DNI, el titular

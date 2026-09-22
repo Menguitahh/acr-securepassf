@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { fromHHmm, toHHmm, validateWorkerForm, type WorkerFormInput } from '@/modules/worker/lib';
+import {
+  fromHHmm,
+  toHHmm,
+  validateWorkerForm,
+  validateWorkerSchedule,
+  type WorkerFormInput,
+} from '@/modules/worker/lib';
 
 function at(hour: number, minute = 0): Date {
   const d = new Date();
@@ -89,6 +95,49 @@ describe('validateWorkerForm', () => {
   it('rechaza until == from', () => {
     expect(
       validateWorkerForm(base({ dailyFrom: at(10), dailyUntil: at(10) })),
+    ).toBe('DAILY_ORDER_INVALID');
+  });
+});
+
+describe('validateWorkerSchedule', () => {
+  it('acepta un horario completo', () => {
+    expect(
+      validateWorkerSchedule({
+        service: 'jardineria',
+        weekdays: [1, 3, 5],
+        dailyFrom: at(8),
+        dailyUntil: at(18),
+      }),
+    ).toBeNull();
+  });
+
+  it('rechaza campos vacios sin exigir identidad', () => {
+    expect(
+      validateWorkerSchedule({ service: '', weekdays: [1], dailyFrom: at(8), dailyUntil: at(18) }),
+    ).toBe('SERVICE_REQUIRED');
+    expect(
+      validateWorkerSchedule({
+        service: 'x',
+        weekdays: [],
+        dailyFrom: at(8),
+        dailyUntil: at(18),
+      }),
+    ).toBe('WEEKDAYS_REQUIRED');
+    expect(
+      validateWorkerSchedule({
+        service: 'x',
+        weekdays: [1],
+        dailyFrom: null,
+        dailyUntil: at(18),
+      }),
+    ).toBe('DAILY_TIMES_REQUIRED');
+    expect(
+      validateWorkerSchedule({
+        service: 'x',
+        weekdays: [1],
+        dailyFrom: at(18),
+        dailyUntil: at(8),
+      }),
     ).toBe('DAILY_ORDER_INVALID');
   });
 });

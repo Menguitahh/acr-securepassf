@@ -18,14 +18,17 @@ export function fromHHmm(hhmm: string): Date | null {
   return now;
 }
 
-export type WorkerFormInput = {
-  fullName: string;
-  dni: string;
-  email: string;
+export type WorkerScheduleInput = {
   service: string;
   weekdays: number[];
   dailyFrom: Date | null;
   dailyUntil: Date | null;
+};
+
+export type WorkerFormInput = WorkerScheduleInput & {
+  fullName: string;
+  dni: string;
+  email: string;
 };
 
 export type WorkerFormError =
@@ -37,6 +40,16 @@ export type WorkerFormError =
   | 'WEEKDAYS_REQUIRED'
   | 'DAILY_TIMES_REQUIRED'
   | 'DAILY_ORDER_INVALID';
+
+// Solo servicio + weekdays + horarios. Es lo que edita el titular en el edit
+// modal (los datos de identidad no cambian) y lo unico que el PATCH acepta.
+export function validateWorkerSchedule(input: WorkerScheduleInput): WorkerFormError | null {
+  if (input.service.trim().length === 0) return 'SERVICE_REQUIRED';
+  if (input.weekdays.length === 0) return 'WEEKDAYS_REQUIRED';
+  if (!input.dailyFrom || !input.dailyUntil) return 'DAILY_TIMES_REQUIRED';
+  if (toHHmm(input.dailyUntil) <= toHHmm(input.dailyFrom)) return 'DAILY_ORDER_INVALID';
+  return null;
+}
 
 // Espeja las restricciones de AddWorkerRequest.java + la validacion cross-field
 // isDailyOrderValid. Todo lo que aca deje pasar, el server tambien lo acepta;
@@ -50,11 +63,7 @@ export function validateWorkerForm(input: WorkerFormInput): WorkerFormError | nu
   if (input.dni.trim().length === 0) return 'DNI_REQUIRED';
   if (input.email.trim().length === 0) return 'EMAIL_REQUIRED';
   if (!isValidEmail(input.email.trim())) return 'EMAIL_INVALID';
-  if (input.service.trim().length === 0) return 'SERVICE_REQUIRED';
-  if (input.weekdays.length === 0) return 'WEEKDAYS_REQUIRED';
-  if (!input.dailyFrom || !input.dailyUntil) return 'DAILY_TIMES_REQUIRED';
-  if (toHHmm(input.dailyUntil) <= toHHmm(input.dailyFrom)) return 'DAILY_ORDER_INVALID';
-  return null;
+  return validateWorkerSchedule(input);
 }
 
 export const FORM_ERROR_MESSAGES: Record<WorkerFormError, string> = {
