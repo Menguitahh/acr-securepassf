@@ -15,11 +15,15 @@ import { computeAgeYears } from '@/modules/family/age';
 import { messageForReactivation, messageForUpdateOutcome } from '@/modules/family/messages';
 import { AddPersonModal } from '@/modules/family/components/add-person-modal';
 import { GraduateMinorModal } from '@/modules/family/components/graduate-minor-modal';
+import { WEEKDAY_LABELS } from '@/modules/worker/data';
+import { useWorkers } from '@/modules/worker/hooks';
+import { AddWorkerModal } from '@/modules/worker/components/add-worker-modal';
 
 type Feedback = { message: string; tone: 'success' | 'warning' | 'info' } | null;
 
 type FamilyMember = components['schemas']['FamilyMemberResponse'];
 type Minor = components['schemas']['MinorResponse'];
+type Worker = components['schemas']['WorkerResponse'];
 
 export default function FamilyMembersScreen() {
   const { lotId: rawLotId } = useLocalSearchParams<{ lotId: string }>();
@@ -27,6 +31,7 @@ export default function FamilyMembersScreen() {
 
   const membersQ = useFamilyMembers(lotId);
   const minorsQ = useMinors(lotId);
+  const workersQ = useWorkers(lotId);
   const user = useSessionStore((state) => state.user);
   const updateMember = useUpdateFamilyMember(lotId);
   const deleteMinor = useDeleteMinor(lotId);
@@ -36,14 +41,15 @@ export default function FamilyMembersScreen() {
 
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [addWorkerOpen, setAddWorkerOpen] = useState(false);
   const [graduateTarget, setGraduateTarget] = useState<Minor | null>(null);
 
   const showFeedback = (message: string, tone: 'success' | 'warning' | 'info' = 'success') => {
     setFeedback({ message, tone });
   };
 
-  if (membersQ.isError || minorsQ.isError) {
-    const err = membersQ.error ?? minorsQ.error;
+  if (membersQ.isError || minorsQ.isError || workersQ.isError) {
+    const err = membersQ.error ?? minorsQ.error ?? workersQ.error;
     return (
       <View className="flex-1 bg-bg-base">
         <ScreenHeader title={lotTitle(lot?.code)} back />
@@ -53,12 +59,13 @@ export default function FamilyMembersScreen() {
       </View>
     );
   }
-  if (membersQ.isLoading || minorsQ.isLoading) {
+  if (membersQ.isLoading || minorsQ.isLoading || workersQ.isLoading) {
     return <View className="flex-1 bg-bg-base"><Spinner /></View>;
   }
 
   const members = membersQ.data ?? [];
   const minors = minorsQ.data ?? [];
+  const workers = workersQ.data ?? [];
 
   const confirmRemoveMember = (memberId: string, fullName: string) => {
     Alert.alert(
@@ -189,6 +196,25 @@ export default function FamilyMembersScreen() {
             </View>
           )}
         </Card>
+
+        <SectionHeader
+          title="Trabajadores"
+          actionLabel={isOwner ? '+ Agregar' : null}
+          onAction={() => setAddWorkerOpen(true)}
+        />
+        <Card>
+          {workers.length === 0 ? (
+            <Text className="text-body leading-[22px] text-text-muted">
+              Sin trabajadores habilitados en este lote.
+            </Text>
+          ) : (
+            <View className="gap-3">
+              {workers.map((w) => (
+                <WorkerRow key={w.userId ?? ''} worker={w} />
+              ))}
+            </View>
+          )}
+        </Card>
       </ScrollView>
 
       {isOwner ? (
@@ -213,6 +239,47 @@ export default function FamilyMembersScreen() {
           onFeedback={showFeedback}
         />
       ) : null}
+      {isOwner ? (
+        <AddWorkerModal
+          visible={addWorkerOpen}
+          onClose={() => setAddWorkerOpen(false)}
+          lotId={lotId}
+          onFeedback={showFeedback}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+function WorkerRow({ worker }: { worker: Worker }) {
+  const days = (worker.weekdays ?? [])
+    .slice()
+    .sort((a, b) => a - b)
+    .map((iso) => WEEKDAY_LABELS[iso - 1]?.label ?? '')
+    .filter((s) => s.length > 0)
+    .join(' ');
+  const inactive = worker.active === false;
+
+  return (
+    <View className="gap-1 border-b border-border pb-3 last:border-b-0 last:pb-0">
+      <View className="flex-row items-center justify-between gap-2">
+        <View className="flex-1">
+          <Text className="text-body font-semibold leading-[22px] text-text-primary">
+            {worker.fullName ?? 'Sin nombre'}
+          </Text>
+          <Text className="text-footnote leading-[18px] text-text-muted">
+            {worker.service ?? 'Sin servicio'}
+          </Text>
+        </View>
+        {inactive ? (
+          <Text className="rounded-full bg-bg-elevated px-2.5 py-1 text-footnote text-text-muted">
+            Inactivo
+          </Text>
+        ) : null}
+      </View>
+      <Text className="text-footnote leading-[18px] text-text-muted">
+        {days || 'Sin días'} · {worker.dailyFrom ?? '--:--'}–{worker.dailyUntil ?? '--:--'}
+      </Text>
     </View>
   );
 }
