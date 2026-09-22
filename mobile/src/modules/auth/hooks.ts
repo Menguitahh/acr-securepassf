@@ -1,15 +1,18 @@
 import { useCallback, useState } from 'react';
+import { Alert } from 'react-native';
 
 import { api, authRequest } from '@/common/api/client';
 import { isProblemDetail } from '@/common/api/problem';
-import { wipeLocalDatabase } from '@/common/db/database';
 import { hasRole, toSessionUser } from '@/modules/auth/lib';
+import { resolveOutboxFlush, type FlushDecision, type LogoutOutcome } from '@/modules/auth/logout';
 import { useSessionStore } from '@/modules/auth/session-store';
 import {
   clearSession,
   loadTokens,
   saveSession,
 } from '@/modules/auth/session-storage';
+import { countPendingEvents } from '@/modules/offline/outbox';
+import { syncOutbox } from '@/modules/offline/sync';
 
 export function useLogin() {
   const [isPending, setIsPending] = useState(false);
@@ -57,7 +60,36 @@ export function useLogin() {
   return { login, isPending, error };
 }
 
-export function useLogout() {
+function promptOutboxDecision(pending: number): Promise<FlushDecision> {
+  const label = pending === 1 ? 'ingreso sin sincronizar' : 'ingresos sin sincronizar';
+  return new Promise((resolve) => {
+    Alert.alert(
+      `Hay ${pending} ${label}`,
+      'Si cerrás sesión ahora, van a quedar en la cola local hasta que el próximo guardia sincronice — y ese guardia va a aparecer como responsable en la bitácora.',
+      [
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve('cancel') },
+        { text: 'Reintentar', onPress: () => resolve('retry') },
+        {
+          text: 'Cerrar sesión igual',
+          style: 'destructive',
+          onPress: () => resolve('proceed'),
+        },
+      ],
+      { cancelable: false },
+    );
+  });
+}
+
+// Cierra sesion del guardia preservando el outbox (los eventos son de la
+// garita, no del guardia). Si hay eventos sin sincronizar, intenta un
+// ultimo drain con timeout; si quedan, pregunta al guardia como seguir.
+//
+// NO llama wipeLocalDatabase: la data local es gate-scoped y persiste
+// entre guardias. Wipe al cambiar de barrio se hace en el login (#121).
+//
+// Retorna 'cancelled' si el guardia aborto en el prompt: caller debe
+// dejarlo en la pantalla actual sin limpiar sesion.
+export function useLogout(): () => Promise<LogoutOutcome> {
   return useCallback(async () => {
     const tokens = await loadTokens();
     if (tokens) {
@@ -71,11 +103,25 @@ export function useLogout() {
         // El logout local avanza aunque el server no responda.
       }
     }
+
     const user = useSessionStore.getState().user;
     if (user && hasRole(user, 'GUARD')) {
-      wipeLocalDatabase();
+      const outcome = await resolveOutboxFlush({
+        syncOutbox,
+        countPending: countPendingEvents,
+        promptDecision: promptOutboxDecision,
+      });
+      if (outcome === 'cancelled') return 'cancelled';
     }
-    await clearSession();
+
+    try {
+      await clearSession();
+    } catch {
+      // Si el storage falla, forzamos signOut en memoria: mejor una sesion
+      // volatil que el guardia trabado. El proximo boot re-hidrata desde
+      // storage — si sigue roto, sale al login por sesion inexistente.
+    }
     useSessionStore.getState().signOut();
+    return 'closed';
   }, []);
 }
