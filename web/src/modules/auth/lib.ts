@@ -1,5 +1,6 @@
 import type { components } from "@securepass/contracts";
 
+import { isValidTimeZone } from "@/common/lib/datetime";
 import { ADMIN_ROLE, LOGIN_ERRORS } from "@/modules/auth/data";
 import type { SessionUser } from "@/modules/auth/types";
 
@@ -12,10 +13,12 @@ export function toSessionUser(
 ): SessionUser | null {
   if (!payload.id || !payload.fullName || !payload.neighborhoodId) return null;
   if (!payload.roles) return null;
+  if (!isValidTimeZone(payload.neighborhoodTimezone)) return null;
   return {
     id: payload.id,
     fullName: payload.fullName,
     neighborhoodId: payload.neighborhoodId,
+    neighborhoodTimezone: payload.neighborhoodTimezone,
     roles: payload.roles,
   };
 }
@@ -25,6 +28,9 @@ export function isSessionUser(value: unknown): value is SessionUser {
   if (!("id" in value) || typeof value.id !== "string") return false;
   if (!("fullName" in value) || typeof value.fullName !== "string") return false;
   if (!("neighborhoodId" in value) || typeof value.neighborhoodId !== "string") return false;
+  // Sesiones guardadas antes de este campo no validan: login de nuevo.
+  if (!("neighborhoodTimezone" in value) || typeof value.neighborhoodTimezone !== "string") return false;
+  if (!isValidTimeZone(value.neighborhoodTimezone)) return false;
   if (!("roles" in value) || !Array.isArray(value.roles)) return false;
   return value.roles.every((role) => typeof role === "string");
 }

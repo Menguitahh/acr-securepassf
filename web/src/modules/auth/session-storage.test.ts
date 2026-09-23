@@ -9,6 +9,7 @@ const user: SessionUser = {
   id: "u1",
   fullName: "Ana Admin",
   neighborhoodId: "n1",
+  neighborhoodTimezone: "America/Argentina/Mendoza",
   roles: ["ADMIN"],
 };
 const tokens = { accessToken: "A0", refreshToken: "R0" };
@@ -41,6 +42,14 @@ describe("session storage", () => {
     localStorage.setItem(USER_KEY, "{no es json");
     expect(loadSession()).toBeNull();
     localStorage.setItem(USER_KEY, JSON.stringify({ id: "u1" }));
+    expect(loadSession()).toBeNull();
+  });
+
+  it("sesion guardada antes de neighborhoodTimezone no valida", () => {
+    saveSession(tokens, user);
+    const legacy: Record<string, unknown> = { ...user };
+    delete legacy.neighborhoodTimezone;
+    localStorage.setItem(USER_KEY, JSON.stringify(legacy));
     expect(loadSession()).toBeNull();
   });
 

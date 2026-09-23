@@ -28,6 +28,12 @@ describe("toSessionUser / isAdmin", () => {
     expect(toSessionUser({ id: "u1", fullName: "Ana", neighborhoodTimezone: "America/Argentina/Mendoza" })).toBeNull();
   });
 
+  it("rechaza una timezone que Intl no conoce", () => {
+    expect(
+      toSessionUser({ id: "u1", fullName: "Ana", neighborhoodId: "n1", neighborhoodTimezone: "Marte/Olympus", roles: ["ADMIN"] }),
+    ).toBeNull();
+  });
+
   it("detecta ADMIN entre varios roles", () => {
     const user = toSessionUser({
       id: "u1",
@@ -37,6 +43,6 @@ describe("toSessionUser / isAdmin", () => {
       roles: ["RESIDENT_OWNER", "ADMIN"],
     });
     expect(user && isAdmin(user)).toBe(true);
-    expect(isAdmin({ id: "u1", fullName: "Ana", neighborhoodId: "n1", roles: ["RESIDENT_OWNER"] })).toBe(false);
+    expect(isAdmin({ id: "u1", fullName: "Ana", neighborhoodId: "n1", neighborhoodTimezone: "America/Argentina/Mendoza", roles: ["RESIDENT_OWNER"] })).toBe(false);
   });
 });
