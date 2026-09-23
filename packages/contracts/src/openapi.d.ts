@@ -1271,7 +1271,7 @@ export interface components {
             street?: string;
             number?: string;
         };
-        Item: {
+        OpenStay: {
             /** Format: uuid */
             id?: string;
             /** Format: uuid */
@@ -1289,7 +1289,7 @@ export interface components {
             exitRequestedAt?: string;
         };
         OpenStaysResponse: {
-            stays?: components["schemas"]["Item"][];
+            stays?: components["schemas"]["OpenStay"][];
         };
         WorkerQrResponse: {
             /** Format: uuid */
@@ -1424,8 +1424,25 @@ export interface components {
             kid?: string;
             publicKey?: string;
         };
+        AccessLogItem: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            lotId?: string;
+            lotCode?: string;
+            direction?: string;
+            subjectType?: string;
+            result?: string;
+            denialReason?: string;
+            subjectName?: string;
+            subjectDocument?: string;
+            /** Format: int32 */
+            companions?: number;
+            /** Format: date-time */
+            capturedAt?: string;
+        };
         AccessLogsResponse: {
-            items?: components["schemas"]["Item"][];
+            items?: components["schemas"]["AccessLogItem"][];
             /** Format: int32 */
             page?: number;
             /** Format: int32 */
