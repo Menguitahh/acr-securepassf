@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/common/components/coming-soon";
+import { OverviewView } from "@/modules/overview/overview-view";
 
 export default function OccupancyPage() {
-  return <ComingSoon title="Ocupación" />;
+  return <OverviewView />;
 }
