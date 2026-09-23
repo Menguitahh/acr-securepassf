@@ -35,15 +35,15 @@ quién puede generar accesos al barrio.
 ```
 securepassf/
 ├── mobile/              app Expo / React Native (guardia + residente)
-├── web/                 dashboard admin en Next.js (sin implementar)
+├── web/                 dashboard admin en Next.js
 ├── packages/contracts/  tipos TypeScript generados del OpenAPI del backend
 └── .github/workflows/   CI y el cron que detecta drift del SDK
 ```
 
-`mobile/` es donde está prácticamente todo el código hoy. `web/` es el
-scaffold de `create-next-app` sin tocar: la idea es que sea el panel del
-administrador del barrio (métricas de ocupación, bitácora de accesos,
-alertas de permanencia), pero todavía no se arrancó.
+`mobile/` es la app del guardia y del residente. `web/` es el panel del
+administrador del barrio: login con rol `ADMIN`, ocupación, afluencia por
+hora, denegados y permanencias excedidas. La decisión de auth de web
+(dónde viven los tokens, refresh, limitaciones) está en `web/docs/auth.md`.
 
 `packages/contracts` no se escribe a mano. Es un único `.d.ts` generado
 desde el `openapi.json` del backend, y las dos apps lo consumen como
@@ -78,7 +78,7 @@ levantar un emulador.
 | Cliente HTTP | openapi-fetch tipado con `@securepass/contracts` |
 | Cripto | @noble/ed25519 (v3) |
 | Tests | Vitest |
-| Web | Next.js 16, React 19, Tailwind 4 |
+| Web | Next.js 16, React 19, Tailwind 4, Recharts, TanStack Table v9 |
 
 Node 22. npm workspaces.
 
@@ -216,7 +216,7 @@ backend.
 Las variables `EXPO_PUBLIC_*` se inlinean en el bundle al arrancar, así que
 después de editarlas hay que reiniciar con `--clear`.
 
-### Correr
+### Correr mobile
 
 Siempre desde `mobile/`, nunca desde la raíz del monorepo: Expo no
 encuentra el entry point y falla buscando un `App.tsx` que no existe.
@@ -254,15 +254,51 @@ Cualquier feature que toque cámara, SQLite, permisos nativos o
 notificaciones se verifica en el development build. Expo Go puede
 resolverlos distinto que el binario real.
 
+### Web (dashboard admin)
+
+`web/.env.local` (copiar de `web/.env.example`):
+
+```
+NEXT_PUBLIC_API_URL=http://localhost:8080
+```
+
+Si falta, el default es `http://localhost:8080`. A diferencia de mobile,
+acá `localhost` está bien: el dashboard corre en el navegador de tu misma
+máquina. Las variables `NEXT_PUBLIC_*` se inlinean al arrancar, así que
+después de editarlas hay que reiniciar `next dev`.
+
+El backend tiene que permitir el origen del dashboard por CORS, en el
+`.env` de `securepassb`:
+
+```
+SECUREPASS_CORS_ALLOWED_ORIGINS=http://localhost:8081,http://localhost:3000
+```
+
+CORS compara el origen **exacto**. Abrí el dashboard en
+`http://localhost:3000`: desde `http://127.0.0.1:3000` o la IP de la red
+local el backend rechaza el preflight (403), el navegador bloquea el
+request y el login muestra "No se pudo conectar con el servidor" aunque el
+backend esté arriba. En la consola del navegador aparece como error de
+CORS. Para abrirlo desde otro origen, agregalo a la lista.
+
+```bash
+npm --workspace web run dev     # http://localhost:3000
+```
+
+Con el seed de desarrollo del backend, el admin es `admin@dev.local` /
+`admin123`. Un usuario sin rol `ADMIN` (por ejemplo `owner@test.com`) se
+rechaza en el login con un mensaje de permisos.
+
 ## Tests
 
 ```bash
 npm run typecheck --workspaces
 npm run lint --workspaces
 cd mobile && npm test
+npm --workspace web run test
 ```
 
-El CI corre eso más `expo-doctor`.
+El CI corre eso más `next build` de web y `expo-doctor`.
 
 ### Lo que los tests NO prueban
 
