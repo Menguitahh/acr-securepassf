@@ -612,6 +612,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/reports/access-logs.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["accessLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/metrics/traffic": {
         parameters: {
             query?: never;
@@ -1228,8 +1244,8 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
-            dailyOrderValid?: boolean;
             scheduleBundled?: boolean;
+            dailyOrderValid?: boolean;
             nonEmpty?: boolean;
         };
         UpdateWorkerResponse: {
@@ -1290,6 +1306,25 @@ export interface components {
         };
         OpenStaysResponse: {
             stays?: components["schemas"]["OpenStay"][];
+        };
+        ShiftSummaryResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            neighborhoodId?: string;
+            /** Format: uuid */
+            gateId?: string;
+            gateName?: string;
+            /** Format: uuid */
+            guardId?: string;
+            guardFullName?: string;
+            /** Format: date-time */
+            startedAt?: string;
+            /** Format: date-time */
+            endedAt?: string;
+            handoverNotes?: string;
+            /** Format: int64 */
+            accessCount?: number;
         };
         WorkerQrResponse: {
             /** Format: uuid */
@@ -2422,7 +2457,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ShiftResponse"][];
+                    "*/*": components["schemas"]["ShiftSummaryResponse"][];
                 };
             };
         };
@@ -2535,6 +2570,38 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["InvitationResponse"];
                 };
+            };
+        };
+    };
+    accessLogs: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                lotId?: string;
+                result?: "ALLOWED" | "DENIED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Hay demasiados exports en curso; reintentar tras Retry-After */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
