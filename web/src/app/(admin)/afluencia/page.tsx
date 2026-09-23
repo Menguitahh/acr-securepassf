@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/common/components/coming-soon";
+import { TrafficView } from "@/modules/traffic/traffic-view";
 
 export default function InflowPage() {
-  return <ComingSoon title="Afluencia" />;
+  return <TrafficView />;
 }
