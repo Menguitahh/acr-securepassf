@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/common/components/coming-soon";
+import { OverstaysView } from "@/modules/overstays/overstays-view";
 
 export default function StaysPage() {
-  return <ComingSoon title="Permanencia" />;
+  return <OverstaysView />;
 }
