@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 
 import type { components } from '@securepass/contracts';
 
@@ -64,6 +64,44 @@ function EditWorkerModalInner({
   const isPending = updateWorker.isPending;
   const disabled = inactive || isPending;
 
+  const deactivate = () => {
+    if (inactive) return;
+    setFormError(null);
+    updateWorker.mutate(
+      { active: false },
+      {
+        onSuccess: (result) => {
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          onFeedback(messageForUpdateOutcome(result), toneForUpdateOutcome(result.outcome));
+          onClose();
+        },
+        onError: (serverError) => {
+          setFormError(
+            serverError instanceof Error
+              ? serverError.message
+              : 'No se pudo dar de baja al trabajador. Intentá de nuevo.',
+          );
+        },
+      },
+    );
+  };
+
+  const confirmDeactivate = () => {
+    Alert.alert(
+      'Dar de baja al trabajador',
+      // El copy no menciona como reactivar: eso va en el banner del
+      // inactivo, no aca. Nombrarlo en la confirmacion ablanda la
+      // decision. El "si no trabaja en otros lotes" refleja el
+      // aislamiento cross-lote real del server (revocacion del JTI
+      // solo cuando countActiveByUser llega a 0).
+      `¿Sacar a ${worker.fullName ?? 'este trabajador'} de este lote? Si no trabaja en otros lotes del barrio, su QR queda revocado.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Dar de baja', style: 'destructive', onPress: deactivate },
+      ],
+    );
+  };
+
   const submit = () => {
     if (inactive) return;
     setFormError(null);
@@ -116,7 +154,7 @@ function EditWorkerModalInner({
           {inactive ? (
             <View className="rounded-xl border border-border bg-bg-elevated px-4 py-3">
               <Text className="text-body leading-[22px] text-text-primary">
-                Trabajador inactivo. Podés ver los datos pero no editarlos hasta reactivarlo.
+                Trabajador inactivo. Para reactivarlo, usá + Agregar con sus datos.
               </Text>
             </View>
           ) : null}
@@ -155,6 +193,21 @@ function EditWorkerModalInner({
             disabled={disabled}
             variant="primary"
           />
+
+          {inactive ? null : (
+            <Pressable
+              onPress={confirmDeactivate}
+              disabled={isPending}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Dar de baja al trabajador"
+              className="self-center py-2 active:opacity-60 disabled:opacity-40"
+            >
+              <Text className="text-footnote leading-[18px] text-text-muted">
+                Dar de baja
+              </Text>
+            </Pressable>
+          )}
         </ScrollView>
       </View>
     </Modal>
