@@ -38,6 +38,9 @@ jobs:
       - name: eslint
         run: npm run lint --workspaces --if-present
 
+      - name: next build
+        run: npm --workspace web run build
+
       - name: vitest
         working-directory: mobile
         run: npm run test
