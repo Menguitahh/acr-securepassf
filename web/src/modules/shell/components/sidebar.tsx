@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+import { logout } from "@/modules/auth/session";
+import { useSessionStore } from "@/modules/auth/session-store";
 import { NAV_ITEMS } from "../data";
 import { isActiveRoute } from "../lib";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const session = useSessionStore((state) => state.session);
 
   return (
     <nav aria-label="Secciones" className="flex w-56 shrink-0 flex-col gap-1 border-r border-border bg-bg-surface p-3">
@@ -26,6 +30,18 @@ export function Sidebar() {
           </Link>
         );
       })}
+      <div className="mt-auto flex flex-col gap-2 border-t border-border pt-3">
+        {session.status === "signedIn" && (
+          <p className="truncate px-3 text-sm text-text-muted">{session.user.fullName}</p>
+        )}
+        <button
+          type="button"
+          onClick={logout}
+          className="flex min-h-12 items-center rounded-md px-3 text-left text-sm text-text-muted hover:text-text-primary focus-visible:outline-2 focus-visible:outline-text-primary"
+        >
+          Cerrar sesión
+        </button>
+      </div>
     </nav>
   );
 }

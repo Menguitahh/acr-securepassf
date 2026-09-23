@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { QueryProvider } from "@/common/providers/query-provider";
+import { SessionBootstrap } from "@/modules/auth/components/session-bootstrap";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,7 +12,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className="h-full antialiased">
       <body className="min-h-full bg-bg-base font-sans text-text-primary">
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <SessionBootstrap />
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );

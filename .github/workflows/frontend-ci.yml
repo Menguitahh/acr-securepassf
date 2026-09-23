@@ -45,6 +45,9 @@ jobs:
         working-directory: mobile
         run: npm run test
 
+      - name: vitest web
+        run: npm --workspace web run test
+
       - name: expo-doctor
         working-directory: mobile
         run: npx expo-doctor
