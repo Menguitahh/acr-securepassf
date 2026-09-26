@@ -30,8 +30,17 @@ beforeEach(() => {
 });
 
 describe("requestExport", () => {
-  it("200 devuelve el CSV como blob con el nombre del rango elegido", async () => {
-    const { run } = await setup(async () => new Response(CSV, { status: 200, headers: { "Content-Type": "text/csv" } }));
+  it("200 devuelve el CSV como blob con el nombre que manda el backend", async () => {
+    const { run } = await setup(
+      async () =>
+        new Response(CSV, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/csv",
+            "Content-Disposition": 'attachment; filename="access-logs-2026-09-17-2026-09-23-backend.csv"',
+          },
+        }),
+    );
 
     const outcome = await run();
 
@@ -43,6 +52,16 @@ describe("requestExport", () => {
     const bytes = new Uint8Array(await outcome.blob.arrayBuffer());
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     expect(await outcome.blob.text()).toBe(CSV.slice(1));
+    expect(outcome.fileName).toBe("access-logs-2026-09-17-2026-09-23-backend.csv");
+  });
+
+  it("sin Content-Disposition baja igual, con el nombre del rango elegido", async () => {
+    const { run } = await setup(async () => new Response(CSV, { status: 200, headers: { "Content-Type": "text/csv" } }));
+
+    const outcome = await run();
+
+    expect(outcome.kind).toBe("file");
+    if (outcome.kind !== "file") return;
     expect(outcome.fileName).toBe("access-logs-2026-09-17-2026-09-23.csv");
   });
 

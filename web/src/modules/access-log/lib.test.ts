@@ -1,9 +1,29 @@
 import { describe, expect, it } from "vitest";
 
-import { busyMessage, exportFileName, exportNotice, retryAfterSeconds } from "@/modules/access-log/lib";
+import {
+  busyMessage,
+  exportFileName,
+  exportNotice,
+  fileNameFromDisposition,
+  retryAfterSeconds,
+} from "@/modules/access-log/lib";
+
+describe("fileNameFromDisposition", () => {
+  it("lee el filename entre comillas que manda el backend", () => {
+    expect(fileNameFromDisposition('attachment; filename="access-logs-2026-09-17-2026-09-23.csv"')).toBe(
+      "access-logs-2026-09-17-2026-09-23.csv",
+    );
+  });
+
+  it("sin header o sin filename devuelve null", () => {
+    expect(fileNameFromDisposition(null)).toBeNull();
+    expect(fileNameFromDisposition("attachment")).toBeNull();
+    expect(fileNameFromDisposition('attachment; filename=""')).toBeNull();
+  });
+});
 
 describe("exportFileName", () => {
-  it("usa las fechas inclusivas que eligio el admin, no el fin exclusivo del backend", () => {
+  it("usa las fechas inclusivas que eligio el admin", () => {
     expect(exportFileName({ from: "2026-09-17", to: "2026-09-23" })).toBe("access-logs-2026-09-17-2026-09-23.csv");
   });
 });

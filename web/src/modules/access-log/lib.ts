@@ -2,10 +2,16 @@ import type { DateRange } from "@/common/date-range/types";
 import { EXPORT_MESSAGES } from "@/modules/access-log/data";
 import type { ExportNotice, ExportOutcome } from "@/modules/access-log/types";
 
-// El nombre sale de las fechas que eligio el admin (inclusivas, hora del
-// barrio). El backend arma el suyo con fechas UTC del rango [from, to) y
-// termina un dia despues; igual no lo podemos leer: CORS no expone
-// Content-Disposition.
+// El nombre lo arma el backend, que conoce la zona del barrio
+// (securepassb#198). Solo la forma que manda: filename="...", sin filename*.
+export function fileNameFromDisposition(header: string | null): string | null {
+  const match = header?.match(/filename="([^"]+)"/i);
+  return match?.[1] ?? null;
+}
+
+// Fallback si el header no llega (CORS sin Expose-Headers, proxy): el CSV
+// ya esta descargado, no se pierde por el nombre. Mismas fechas inclusivas
+// que eligio el admin.
 export function exportFileName(range: DateRange): string {
   return `access-logs-${range.from}-${range.to}.csv`;
 }

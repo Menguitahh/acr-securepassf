@@ -1,6 +1,6 @@
 import { api } from "@/common/api/client";
 import type { DateRange, InstantRange } from "@/common/date-range/types";
-import { exportFileName, retryAfterSeconds } from "@/modules/access-log/lib";
+import { exportFileName, fileNameFromDisposition, retryAfterSeconds } from "@/modules/access-log/lib";
 import type { ExportOutcome, ResultFilter } from "@/modules/access-log/types";
 
 // Por api (y no un <a href>): la descarga necesita el Bearer y el refresh
@@ -30,7 +30,8 @@ export async function requestExport(
   }
   if (response.status === 422) return { kind: "invalidRange" };
   if (!response.ok || !(data instanceof Blob)) return { kind: "error" };
-  return { kind: "file", blob: data, fileName: exportFileName(range) };
+  const fileName = fileNameFromDisposition(response.headers.get("Content-Disposition")) ?? exportFileName(range);
+  return { kind: "file", blob: data, fileName };
 }
 
 // ponytail: el CSV entero pasa por memoria como blob antes de guardarse.
