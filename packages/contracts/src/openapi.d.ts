@@ -612,6 +612,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/reports/access-logs.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["accessLogsXlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/reports/access-logs.csv": {
         parameters: {
             query?: never;
@@ -1244,9 +1260,9 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
-            scheduleBundled?: boolean;
             dailyOrderValid?: boolean;
             nonEmpty?: boolean;
+            scheduleBundled?: boolean;
         };
         UpdateWorkerResponse: {
             /** Format: uuid */
@@ -2570,6 +2586,45 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["InvitationResponse"];
                 };
+            };
+        };
+    };
+    accessLogsXlsx: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                lotId?: string;
+                result?: "ALLOWED" | "DENIED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            /** @description Rango invalido o mas filas que el limite del XLSX; usar el CSV o reducir el rango */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Hay demasiados exports en curso; reintentar tras Retry-After */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
