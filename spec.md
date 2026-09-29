@@ -463,7 +463,9 @@ CREATE TABLE access_logs (
                     CHECK (denial_reason IN (
                         'INVALID_SIGNATURE','NOT_YET_VALID','EXPIRED',
                         'ALREADY_USED','REVOKED','OUT_OF_SCHEDULE',
-                        'LOT_SUSPENDED','REPLAY','UNKNOWN')),
+                        'LOT_SUSPENDED','REPLAY','DOCUMENT_MISMATCH','UNKNOWN')),
+                    -- DOCUMENT_MISMATCH (V4): el DNI cargado al enrolar no es el de la
+                    -- invitacion o del trabajador detras del QR ("le prestaron el QR")
 
     subject_name    VARCHAR(140),
     subject_document VARCHAR(20),
