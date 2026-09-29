@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/common/components/coming-soon";
+import { DeniedView } from "@/modules/denied/denied-view";
 
 export default function DeniedPage() {
-  return <ComingSoon title="Denegados" />;
+  return <DeniedView />;
 }

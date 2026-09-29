@@ -1,5 +1,5 @@
 import { EmptyState } from "@/common/components/empty-state";
-import type { DenialRow } from "@/modules/overview/types";
+import type { DenialRow } from "@/common/denials/types";
 
 interface Props {
   rows: DenialRow[];
