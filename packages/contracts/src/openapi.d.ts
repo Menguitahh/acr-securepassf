@@ -1342,6 +1342,15 @@ export interface components {
             /** Format: int64 */
             accessCount?: number;
         };
+        ShiftsResponse: {
+            items?: components["schemas"]["ShiftSummaryResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            total?: number;
+        };
         WorkerQrResponse: {
             /** Format: uuid */
             jti?: string;
@@ -2460,6 +2469,7 @@ export interface operations {
                 gateId?: string;
                 from?: string;
                 to?: string;
+                page?: number;
             };
             header?: never;
             path?: never;
@@ -2473,7 +2483,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ShiftSummaryResponse"][];
+                    "*/*": components["schemas"]["ShiftsResponse"];
                 };
             };
         };
@@ -2796,6 +2806,7 @@ export interface operations {
                 to?: string;
                 lotId?: string;
                 result?: string;
+                reason?: "INVALID_SIGNATURE" | "NOT_YET_VALID" | "EXPIRED" | "ALREADY_USED" | "REVOKED" | "OUT_OF_SCHEDULE" | "LOT_SUSPENDED" | "REPLAY" | "DOCUMENT_MISMATCH" | "UNKNOWN";
                 page?: number;
             };
             header?: never;
@@ -2811,6 +2822,15 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AccessLogsResponse"];
+                };
+            };
+            /** @description reason fuera del enum, o reason junto con result=ALLOWED: no existe un acceso permitido con motivo de denegacion */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": unknown;
                 };
             };
         };
