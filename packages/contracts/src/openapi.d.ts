@@ -1500,6 +1500,7 @@ export interface components {
             companions?: number;
             /** Format: date-time */
             capturedAt?: string;
+            passHolderName?: string;
         };
         AccessLogsResponse: {
             items?: components["schemas"]["AccessLogItem"][];
