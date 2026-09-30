@@ -1130,6 +1130,8 @@ export interface components {
             capturedAt: string;
             /** Format: uuid */
             clientEventId: string;
+            /** Format: uuid */
+            lotId?: string;
         };
         GuestDetail: {
             name?: string;
@@ -1188,6 +1190,8 @@ export interface components {
             capturedAt: string;
             localDecision?: string;
             documentNumber?: string;
+            /** Format: uuid */
+            lotId?: string;
         };
         SyncAccessRequest: {
             /** Format: uuid */
@@ -1198,7 +1202,7 @@ export interface components {
             /** Format: uuid */
             clientEventId?: string;
             /** @enum {string} */
-            result?: "ALLOWED" | "DENIED" | "ENROLLED";
+            result?: "ALLOWED" | "DENIED" | "ENROLLED" | "REJECTED";
             /** @enum {string} */
             reason?: "INVALID_SIGNATURE" | "NOT_YET_VALID" | "EXPIRED" | "ALREADY_USED" | "REVOKED" | "OUT_OF_SCHEDULE" | "LOT_SUSPENDED" | "REPLAY" | "DOCUMENT_MISMATCH" | "UNKNOWN";
             /** Format: uuid */
@@ -1206,6 +1210,8 @@ export interface components {
             /** Format: uuid */
             enrollmentId?: string;
             clockSkew?: boolean;
+            /** @enum {string} */
+            rejection?: "INVALID_LOT";
         };
         SyncAccessResponse: {
             results?: components["schemas"]["EventResult"][];

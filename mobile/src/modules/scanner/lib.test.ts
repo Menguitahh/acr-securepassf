@@ -539,6 +539,30 @@ describe('toScanResult', () => {
     expect(outcome).toEqual({ kind: 'unknown', result: 'PENDING_APPROVAL' });
   });
 
+  // securepassb#218: trabajador con varios lotes en franja. Hasta que el
+  // scanner con red maneje trabajadores (E) y exista el picker (F), tiene
+  // que caer en unknown: ni allowed, ni needs_enrollment, ni empty (que
+  // dispararia el offline). La respuesta trae worker.lots, que no debe
+  // confundirse con un ingreso.
+  it('NEEDS_LOT_SELECTION de trabajador devuelve unknown (fail-closed hasta E y F)', () => {
+    const outcome = toScanResult(
+      {
+        result: 'NEEDS_LOT_SELECTION',
+        subjectKind: 'WORKER',
+        worker: {
+          userId: 'user-w',
+          name: 'Carlos Diaz',
+          lots: [
+            { lotId: 'lot-1', code: 'L-1' },
+            { lotId: 'lot-2', code: 'L-2' },
+          ],
+        },
+      },
+      TOKEN,
+    );
+    expect(outcome).toEqual({ kind: 'unknown', result: 'NEEDS_LOT_SELECTION' });
+  });
+
   it('respuesta sin result devuelve empty (caller puede caer al offline)', () => {
     expect(toScanResult({}, TOKEN)).toEqual({ kind: 'empty' });
   });

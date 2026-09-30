@@ -51,6 +51,25 @@ describe('resolveScan', () => {
     expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();
   });
 
+  it('server responde NEEDS_LOT_SELECTION (securepassb#218): denied UNKNOWN, sin offline ni outbox', async () => {
+    const deps = makeDeps({
+      postValidate: vi.fn().mockResolvedValue({
+        data: {
+          result: 'NEEDS_LOT_SELECTION',
+          subjectKind: 'WORKER',
+          worker: { userId: 'user-w', lots: [{ lotId: 'lot-1', code: 'L-1' }, { lotId: 'lot-2', code: 'L-2' }] },
+        },
+        error: undefined,
+      }),
+    });
+
+    const outcome = await resolveScan('SP1.token', 'cid-1', deps);
+
+    expect(outcome).toEqual({ status: 'denied', reason: 'UNKNOWN', message: UNKNOWN_RESULT_MESSAGE });
+    expect(deps.buildOfflineContext).not.toHaveBeenCalled();
+    expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();
+  });
+
   it('server responde con result desconocido: no llama al offline, devuelve denied UNKNOWN', async () => {
     const deps = makeDeps({
       postValidate: vi.fn().mockResolvedValue({
