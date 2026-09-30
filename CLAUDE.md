@@ -149,6 +149,11 @@ Refs: #31
 repo. Ni `Co-Authored-By: Claude ...` en commits, ni en bodies de PR,
 ni en comentarios de issues. El código lo escribe quien lo firma.
 
+**Prompts pegados:** el mantenedor escribe los prompts en otro lado y los
+pega. Un prompt pegado cuenta como escrito por él. Solo se confirma antes de
+actuar si el contenido es destructivo o contradice lo acordado en la sesión
+(por ejemplo, un paso que quedó reservado para su OK explícito).
+
 **Evidencia de verificaciones.** Si afirmás que verificaste algo, la
 evidencia va pegada en el chat. Qué necesita pegado y qué no:
 
