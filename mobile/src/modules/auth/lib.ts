@@ -15,6 +15,13 @@ export function initials(fullName: string): string {
     .join('');
 }
 
+// Lotes donde el usuario vive (securepassb#216). lots[] tambien trae las
+// casas donde trabaja (kind WORKER), para la app del trabajador; en las
+// pantallas de residente esas darian 403 porque el JWT no las incluye.
+export function residentLots(user: SessionUser): SessionUser['lots'] {
+  return user.lots.filter((lot) => lot.kind !== 'WORKER');
+}
+
 export function isResident(user: SessionUser): boolean {
   return user.roles.some(
     (role) => role === 'RESIDENT_OWNER' || role === 'RESIDENT_MEMBER',

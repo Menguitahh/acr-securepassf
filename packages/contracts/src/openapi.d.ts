@@ -1014,6 +1014,10 @@ export interface components {
             code?: string;
             canInvite?: boolean;
             isOwner?: boolean;
+            /** @enum {string} */
+            kind: "OWNER" | "MEMBER" | "WORKER";
+            service?: string;
+            schedule?: components["schemas"]["SchedulePayload"];
         };
         RefreshResponse: {
             accessToken?: string;
@@ -1021,6 +1025,11 @@ export interface components {
             /** Format: int64 */
             expiresIn?: number;
             user?: components["schemas"]["UserPayload"];
+        };
+        SchedulePayload: {
+            weekdays?: number[];
+            dailyFrom?: string;
+            dailyUntil?: string;
         };
         UserPayload: {
             /** Format: uuid */
