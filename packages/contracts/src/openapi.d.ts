@@ -1464,6 +1464,10 @@ export interface components {
             /** Format: date-time */
             revokedAt?: string;
         };
+        PermissionsSyncResponse: {
+            permissions?: components["schemas"]["WorkerPermissionSyncResponse"][];
+            enrolledUserIds?: string[];
+        };
         WorkerPermissionSyncResponse: {
             /** Format: uuid */
             userId?: string;
@@ -2775,7 +2779,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["WorkerPermissionSyncResponse"][];
+                    "*/*": components["schemas"]["PermissionsSyncResponse"];
                 };
             };
         };
