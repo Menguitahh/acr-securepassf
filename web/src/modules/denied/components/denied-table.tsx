@@ -6,7 +6,7 @@ interface Props {
   timeZone: string;
 }
 
-const HEADERS = ["Hora", "Persona", "Documento", "Lote", "Tipo", "Sentido"];
+const HEADERS = ["Hora", "Pase", "Documento", "Lote", "Tipo", "Sentido"];
 
 export function DeniedTable({ rows, timeZone }: Props) {
   return (
@@ -27,7 +27,7 @@ export function DeniedTable({ rows, timeZone }: Props) {
               <td className="px-4 whitespace-nowrap tabular-nums">
                 {formatInTz(row.capturedAt, timeZone, TABLE_DATE_TIME)}
               </td>
-              <td className="px-4">{row.subjectName}</td>
+              <td className="px-4">{row.pass}</td>
               <td className="px-4 tabular-nums">{row.subjectDocument}</td>
               <td className="px-4">{row.lotCode}</td>
               <td className="px-4">{row.subjectType}</td>

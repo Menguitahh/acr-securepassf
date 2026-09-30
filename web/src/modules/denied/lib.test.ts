@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DAY_ERRORS } from "@/modules/denied/data";
-import { checkDay, toDeniedLogPage } from "@/modules/denied/lib";
+import { checkDay, passLabel, toDeniedLogPage } from "@/modules/denied/lib";
 
 const MZA = "America/Argentina/Mendoza";
 // 2026-09-29 10:00 en Mendoza.
@@ -38,13 +38,13 @@ describe("toDeniedLogPage", () => {
         {
           id: "l1",
           capturedAt: "2026-09-23T13:00:00Z",
-          subjectName: "Juan Gómez",
+          passHolderName: "Juan Gómez",
           subjectDocument: "30111222",
           lotCode: "M4-L12",
           subjectType: "GUEST",
           direction: "IN",
           result: "DENIED",
-          denialReason: "EXPIRED",
+          denialReason: "DOCUMENT_MISMATCH",
         },
       ],
       page: 0,
@@ -56,7 +56,7 @@ describe("toDeniedLogPage", () => {
         {
           id: "l1",
           capturedAt: "2026-09-23T13:00:00Z",
-          subjectName: "Juan Gómez",
+          pass: "Pase de: Juan Gómez",
           subjectDocument: "30111222",
           lotCode: "M4-L12",
           subjectType: "Invitado",
@@ -79,11 +79,30 @@ describe("toDeniedLogPage", () => {
       items: [{ id: "l1", capturedAt: "2026-09-23T13:00:00Z", subjectType: "DELIVERY" }],
     }).rows;
     expect(row).toMatchObject({
-      subjectName: "Sin nombre",
-      subjectDocument: "Sin documento",
-      lotCode: "Sin lote",
+      pass: "Pase sin registrar",
+      subjectDocument: "",
+      lotCode: "",
       subjectType: "DELIVERY",
       direction: "Sin sentido",
     });
+  });
+});
+
+describe("passLabel", () => {
+  it("con titular muestra de quien es el pase, sea cual sea el motivo", () => {
+    expect(passLabel("Ana Ruiz", "EXPIRED")).toBe("Pase de: Ana Ruiz");
+    expect(passLabel("Ana Ruiz", "UNKNOWN")).toBe("Pase de: Ana Ruiz");
+  });
+
+  it("sin titular, firma invalida o pase inexistente no se pueden atribuir", () => {
+    expect(passLabel(undefined, "INVALID_SIGNATURE")).toBe("No identificable");
+    expect(passLabel(undefined, "UNKNOWN")).toBe("No identificable");
+  });
+
+  it("sin titular y con otro motivo es una fila anterior al vinculo, no una no identificable", () => {
+    expect(passLabel(undefined, "NOT_YET_VALID")).toBe("Pase sin registrar");
+    expect(passLabel(undefined, "REPLAY")).toBe("Pase sin registrar");
+    expect(passLabel("", "EXPIRED")).toBe("Pase sin registrar");
+    expect(passLabel(undefined, undefined)).toBe("Pase sin registrar");
   });
 });

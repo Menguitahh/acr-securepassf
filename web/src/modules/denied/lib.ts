@@ -2,7 +2,13 @@ import type { components } from "@securepass/contracts";
 
 import { checkRange, todayIn } from "@/common/date-range/lib";
 import { BACKEND_PAGE_SIZE } from "@/common/lib/pagination";
-import { DAY_ERRORS, DIRECTION_LABELS, SUBJECT_TYPE_LABELS } from "@/modules/denied/data";
+import {
+  DAY_ERRORS,
+  DIRECTION_LABELS,
+  PASS_LABELS,
+  SUBJECT_TYPE_LABELS,
+  UNIDENTIFIABLE_REASONS,
+} from "@/modules/denied/data";
 import type { DayCheck, DeniedLogPage, DeniedLogRow } from "@/modules/denied/types";
 
 // El conteo por motivo (overview?date=) y el drill-down (access-logs) tienen
@@ -17,6 +23,12 @@ export function checkDay(date: string, timeZone: string, now: Date): DayCheck {
   return { ok: true, ...check.instants };
 }
 
+export function passLabel(holder: string | undefined, reason: string | undefined): string {
+  if (holder) return PASS_LABELS.holder + holder;
+  if (UNIDENTIFIABLE_REASONS.includes(reason ?? "")) return PASS_LABELS.unidentifiable;
+  return PASS_LABELS.unrecorded;
+}
+
 // Filas sin id o sin hora se descartan en vez de romper la tabla; total y
 // size salen del server, no de las filas que quedaron.
 // Los `??` completan campos que el contrato marca opcionales aunque el
@@ -28,9 +40,11 @@ export function toDeniedLogPage(data: components["schemas"]["AccessLogsResponse"
       {
         id: item.id,
         capturedAt: item.capturedAt,
-        subjectName: item.subjectName || "Sin nombre",
-        subjectDocument: item.subjectDocument || "Sin documento",
-        lotCode: item.lotCode || "Sin lote",
+        pass: passLabel(item.passHolderName, item.denialReason),
+        // Documento solo viene en DOCUMENT_MISMATCH (el DNI que cargo el
+        // guardia) y lote solo con pase identificado: vacio es el caso normal.
+        subjectDocument: item.subjectDocument ?? "",
+        lotCode: item.lotCode ?? "",
         subjectType: SUBJECT_TYPE_LABELS[item.subjectType ?? ""] ?? item.subjectType ?? "Sin tipo",
         direction: DIRECTION_LABELS[item.direction ?? ""] ?? item.direction ?? "Sin sentido",
       },

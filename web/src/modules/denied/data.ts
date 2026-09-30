@@ -12,6 +12,18 @@ export const DIRECTION_LABELS: Record<string, string> = {
   OUT: "Egreso",
 };
 
+// #164: un denegado no prueba quien se presento, prueba que pase. Sin
+// titular, la firma invalida o el pase inexistente no se pueden atribuir;
+// cualquier otro motivo es una fila de antes de securepassb#210, cuando el
+// pase se conocia pero no se guardaba el vinculo.
+export const UNIDENTIFIABLE_REASONS: readonly string[] = ["INVALID_SIGNATURE", "UNKNOWN"];
+
+export const PASS_LABELS = {
+  holder: "Pase de: ",
+  unidentifiable: "No identificable",
+  unrecorded: "Pase sin registrar",
+} as const;
+
 export const DAY_ERRORS = {
   missing: "Elegí un día.",
   future: "Elegí hoy o un día anterior.",

@@ -1,7 +1,7 @@
 export type DeniedLogRow = {
   id: string;
   capturedAt: string;
-  subjectName: string;
+  pass: string;
   subjectDocument: string;
   lotCode: string;
   subjectType: string;
