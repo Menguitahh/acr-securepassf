@@ -42,4 +42,10 @@ export const MIGRATIONS: string[] = [
     notification_id TEXT
   );
   `,
+  // #166: el cursor de revocaciones sale del revokedAt del server, no de
+  // la hora del telefono. Las filas viejas quedan en NULL y el proximo
+  // sync las vuelve a pedir desde cero para completarlo.
+  `
+  ALTER TABLE revoked_cache ADD COLUMN revoked_at TEXT;
+  `,
 ];

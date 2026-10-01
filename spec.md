@@ -898,7 +898,8 @@ CREATE TABLE signing_keys_cache (
 
 CREATE TABLE revoked_cache (
   jti         TEXT PRIMARY KEY,
-  synced_at   TEXT NOT NULL
+  synced_at   TEXT NOT NULL,
+  revoked_at  TEXT            -- revokedAt del server; MAX(revoked_at) es el cursor de since
 );
 ```
 
