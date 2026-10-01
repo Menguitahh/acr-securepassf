@@ -20,7 +20,7 @@ export function useAccessLogExport() {
   );
 
   const mutation = useMutation({
-    mutationFn: ({ range, instants, result }: ExportRequest) => requestExport(range, instants, result),
+    mutationFn: ({ format, range, instants, result }: ExportRequest) => requestExport(format, range, instants, result),
     onSuccess: (outcome) => {
       if (outcome.kind === "file") saveBlob(outcome.blob, outcome.fileName);
       if (outcome.kind === "busy" && outcome.retryAfterSeconds !== null) {

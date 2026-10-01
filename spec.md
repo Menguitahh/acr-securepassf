@@ -855,6 +855,7 @@ POST /api/v1/access/sync
 | POST | `/admin/lots/{id}/members` | Vincular usuario a lote |
 | GET/POST/PATCH | `/admin/users` | Altas de guardias y residentes |
 | GET | `/admin/reports/access-logs.csv` | Export |
+| GET | `/admin/reports/access-logs.xlsx` | Export para leer e imprimir en Excel (securepassb#195). Mismos parámetros, rango máximo, límite de concurrencia y auditoría que el CSV. 422 con `rule: export-rows` si el filtro supera el límite de filas del XLSX |
 
 ### 7.6 Códigos de error
 
@@ -1273,7 +1274,7 @@ Formato: `US-<n>` → issue. Prioridad: **P0** bloqueante del MVP, **P1** necesa
 | US-29 | Como admin quiero ver afluencia por franja horaria. | P1 | Buckets de hora; rango configurable; separación peatonal/vehicular queda para v2 (sin patente no se distingue de forma fiable). |
 | US-30 | Como admin quiero ver los accesos denegados y su motivo. | P1 | Agrupados por `denial_reason`; drill-down al log individual. |
 | US-31 | Como admin quiero alertas de permanencia excedida. | P1 | BR-08; listado con lote, invitado y horas transcurridas. |
-| US-32 | Como admin quiero exportar la bitácora. | P1 | CSV con rango de fechas; la exportación queda registrada en auditoría. |
+| US-32 | Como admin quiero exportar la bitácora. | P1 | CSV con rango de fechas; la exportación queda registrada en auditoría. Excel (XLSX) para lectura con el mismo rango (securepassb#195). |
 | US-33 | Como admin quiero ver la bitácora de turnos de guardias. | P2 | Turno, guardia, garita, cantidad de accesos, nota de entrega. |
 
 ---
