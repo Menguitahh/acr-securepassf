@@ -6,13 +6,14 @@ import { Input } from '@/common/components/input';
 import { Spinner } from '@/common/components/spinner';
 import { DniCamera } from '@/modules/scanner/components/dni-camera';
 import { formatDni, parseArgentineDni } from '@/modules/scanner/lib';
-import type { DniData } from '@/modules/scanner/types';
+import type { DniData, EnrollmentSubject } from '@/modules/scanner/types';
 
 type EnrollmentScreenProps = {
   // Nombre desde la invitacion (server, #111). Null si el server no lo
   // emitio (offline o server viejo): se degrada a la UI anterior (solo
   // input del DNI) — cruce visual imposible sin el nombre esperado.
   invitationName: string | null;
+  subjectKind: EnrollmentSubject['kind'];
   isSubmitting: boolean;
   error: string | null;
   onSubmit: (documentNumber: string) => void;
@@ -36,6 +37,7 @@ type Mode =
 
 export function EnrollmentScreen({
   invitationName,
+  subjectKind,
   isSubmitting,
   error,
   onSubmit,
@@ -162,8 +164,8 @@ export function EnrollmentScreen({
           </Text>
         ) : (
           <Text className="text-body text-text-muted">
-            Primera vez que ingresa este invitado. Cargá el numero de documento
-            para completar el ingreso.
+            Primera vez que ingresa este {subjectKind === 'worker' ? 'trabajador' : 'invitado'}.
+            Cargá el numero de documento para completar el ingreso.
           </Text>
         )}
         <Input

@@ -901,6 +901,24 @@ CREATE TABLE revoked_cache (
   synced_at   TEXT NOT NULL,
   revoked_at  TEXT            -- revokedAt del server; MAX(revoked_at) es el cursor de since
 );
+
+-- WBS-118: padron de trabajadores de GET /access/permissions/sync.
+-- Se reemplaza completo en cada sync exitoso (se pide sin `since`).
+CREATE TABLE worker_permissions_cache (
+  user_id      TEXT NOT NULL,
+  jti          TEXT NOT NULL,
+  lot_id       TEXT NOT NULL,
+  lot_code     TEXT NOT NULL,
+  weekdays     TEXT NOT NULL,        -- JSON, ISO 1..7
+  daily_from   TEXT NOT NULL,
+  daily_until  TEXT NOT NULL,
+  timezone     TEXT,                 -- tz de la fila: franja y zona viajan juntas
+  PRIMARY KEY (user_id, lot_id)
+);
+
+CREATE TABLE worker_enrollments_cache (
+  user_id TEXT PRIMARY KEY
+);
 ```
 
 ### 8.2 Algoritmo de validación local
@@ -942,6 +960,15 @@ falta su guard clause, el pase se deniega. El costo de un falso
 permitido (un desconocido adentro) es mayor que el de un falso denegado
 (un registro manual en garita). `UNKNOWN` se agrega a los motivos
 producibles offline.
+
+**Rama del trabajador (WBS-118).** Un token `st: 'W'` no trae ventana,
+lote ni cupo. Después de firma y revocación, todo sale de
+`worker_permissions_cache`: sin filas para `s` con el mismo `jti` →
+`WORKER_NOT_SYNCED` (cache viejo o token rotado, fail-closed); fila sin
+tz → `NEIGHBORHOOD_TZ_MISSING`; ningún lote en franja con la tz de cada
+fila → `OUT_OF_SCHEDULE`; sin enrolar → pide DNI como al invitado; si no,
+permitido con los lotes en franja, que se muestran como información
+(el guardia no elige hasta que el backend acepte `lotId`, WBS-119).
 
 ### 8.3 Limitaciones aceptadas del modo offline
 

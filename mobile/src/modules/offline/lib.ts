@@ -1,7 +1,12 @@
 import type { components } from '@securepass/contracts';
 
 import { BACKOFF_SCHEDULE_MS } from '@/modules/offline/data';
-import type { OutboxEvent } from '@/modules/offline/types';
+import type {
+  OutboxEvent,
+  WorkerCacheSnapshot,
+  WorkerPermissionRow,
+} from '@/modules/offline/types';
+import type { EnrollmentSubject } from '@/modules/scanner/types';
 
 export function backoffDelayFor(attempts: number): number {
   const index = Math.min(Math.max(attempts, 0), BACKOFF_SCHEDULE_MS.length - 1);
@@ -218,4 +223,71 @@ export function toSyncEvent(
     // Tests: "regresion: evento con documentNumber no viaja sin el DNI".
     ...(event.documentNumber !== null ? { documentNumber: event.documentNumber } : {}),
   };
+}
+
+// Respuesta de /access/permissions/sync lista para reemplazar el cache.
+// Null si la respuesta no trae las dos listas: no es un padron vacio, es
+// una respuesta rota, y el cache anterior tiene que quedar. Una lista
+// vacia si es valida y vacia el cache (todos dados de baja).
+// Filas sin los campos de franja se descartan: ese trabajador sale como
+// WORKER_NOT_SYNCED, que es fail-closed.
+export function toWorkerCacheSnapshot(
+  data: components['schemas']['PermissionsSyncResponse'],
+): WorkerCacheSnapshot | null {
+  if (!Array.isArray(data.permissions) || !Array.isArray(data.enrolledUserIds)) return null;
+  const permissions = data.permissions.flatMap((p): WorkerPermissionRow[] => {
+    if (!p.userId || !p.jti || !p.lotId || !p.lotCode) return [];
+    if (!p.weekdays?.length || !p.dailyFrom || !p.dailyUntil) return [];
+    return [
+      {
+        userId: p.userId,
+        jti: p.jti,
+        lotId: p.lotId,
+        lotCode: p.lotCode,
+        weekdays: p.weekdays,
+        dailyFrom: p.dailyFrom,
+        dailyUntil: p.dailyUntil,
+        timezone: p.timezone || null,
+      },
+    ];
+  });
+  return { permissions, enrolledUserIds: data.enrolledUserIds.filter((id) => id.length > 0) };
+}
+
+// weekdays viaja a SQLite como JSON. Algo que no sea una lista de enteros
+// devuelve [] y scheduleContains lo evalua como fuera de franja.
+export function parseWeekdays(text: string): number[] {
+  try {
+    const value: unknown = JSON.parse(text);
+    if (!Array.isArray(value)) return [];
+    return value.filter((day): day is number => Number.isInteger(day));
+  } catch {
+    return [];
+  }
+}
+
+// A quien pertenece el enrolamiento de un evento del outbox, leido del
+// token: el trabajador por `s`, el invitado por `i`. Sin verificar firma:
+// solo decide que fila local borrar cuando el server rechaza el DNI.
+// Parse minimo del SP1 para no importar scanner/lib (ciclo). Un token
+// corrupto devuelve null y no se borra nada: el sync no debe romper.
+export function extractEnrollmentSubject(token: string): EnrollmentSubject | null {
+  try {
+    const body = token.startsWith('SP1.') ? token.slice(4) : token;
+    const [payloadPart] = body.split('.');
+    if (!payloadPart) return null;
+    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const bin = atob(padded);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const json: unknown = JSON.parse(new TextDecoder().decode(bytes));
+    if (typeof json !== 'object' || json === null) return null;
+    if ('st' in json && json.st === 'W') {
+      return 's' in json && typeof json.s === 'string' ? { kind: 'worker', userId: json.s } : null;
+    }
+    return 'i' in json && typeof json.i === 'string' ? { kind: 'guest', invitationId: json.i } : null;
+  } catch {
+    return null;
+  }
 }

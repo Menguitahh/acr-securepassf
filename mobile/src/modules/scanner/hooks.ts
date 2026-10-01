@@ -7,18 +7,19 @@ import { useSessionStore } from '@/modules/auth/session-store';
 import {
   enqueueOfflineEnrollment,
   isInvitationEnrolled,
-  recordEnrollment,
+  recordSubjectEnrollment,
 } from '@/modules/offline/enrollments-cache';
 import { hasValidGate } from '@/modules/offline/lib';
 import { useOfflineStore } from '@/modules/offline/offline-store';
 import { enqueueOutboxEvent } from '@/modules/offline/outbox';
+import { isWorkerEnrolled, workerPermissionsFor } from '@/modules/offline/worker-cache';
 import { GATE_ID } from '@/modules/scanner/data';
 import { isDuplicateScan, parseToken } from '@/modules/scanner/lib';
 import { resolveScan } from '@/modules/scanner/scan-flow';
-import type { OfflineContext, ScanResult } from '@/modules/scanner/types';
+import type { EnrollmentSubject, OfflineContext, ScanResult } from '@/modules/scanner/types';
 
 type EnrollmentContext = {
-  invitationId: string;
+  subject: EnrollmentSubject;
   token: string;
   // Nombre desde la invitacion (securepassb#173). Se usa en la pantalla
   // de enrolamiento para el cruce visual contra el nombre del PDF417.
@@ -51,6 +52,8 @@ function buildOfflineContext(): OfflineContext {
     localUses,
     isEnrolled: isInvitationEnrolled,
     neighborhoodTimezone: useSessionStore.getState().user?.neighborhoodTimezone ?? null,
+    workerPermissions: workerPermissionsFor,
+    isWorkerEnrolled,
   };
 }
 
@@ -100,7 +103,7 @@ export function useQrScanner() {
       const outcome = await validateScannedToken(token, Crypto.randomUUID());
       if (outcome.status === 'needs_enrollment') {
         setEnrollment({
-          invitationId: outcome.invitationId,
+          subject: outcome.subject,
           token: outcome.token,
           invitationName: outcome.guestName,
         });
@@ -143,11 +146,11 @@ export function useQrScanner() {
           return;
         }
         if (data.result === 'ALLOWED') {
-          recordEnrollment(enrollment.invitationId, documentNumber);
+          recordSubjectEnrollment(enrollment.subject, documentNumber);
           setEnrollment(null);
           setResult({
             status: 'allowed',
-            guestName: data.guest?.name ?? null,
+            guestName: data.guest?.name ?? data.worker?.name ?? null,
             lotCode: null,
           });
           return;
@@ -159,7 +162,9 @@ export function useQrScanner() {
         const reason = data.reason ?? '';
         if (/MISMATCH/i.test(reason)) {
           setEnrollmentError(
-            'El DNI no coincide con el que espera la invitacion. Verificá el numero o registrá el ingreso manualmente.',
+            enrollment.subject.kind === 'worker'
+              ? 'El DNI no coincide con el del trabajador. Verificá el numero o registrá el ingreso manualmente.'
+              : 'El DNI no coincide con el que espera la invitacion. Verificá el numero o registrá el ingreso manualmente.',
           );
         } else {
           setEnrollmentError(
@@ -178,7 +183,7 @@ export function useQrScanner() {
         // cache local al procesar la respuesta MISMATCH.
         enqueueOfflineEnrollment({
           clientEventId: Crypto.randomUUID(),
-          invitationId: enrollment.invitationId,
+          subject: enrollment.subject,
           token: enrollment.token,
           gateId: hasValidGate(gateId) ? gateId : null,
           documentNumber,

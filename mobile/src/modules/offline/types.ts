@@ -12,3 +12,20 @@ export type OutboxEvent = {
   // evento, un solo clientEventId. Null en eventos de acceso normales.
   documentNumber: string | null;
 };
+
+// Fila de worker_permissions_cache, ya validada desde /access/permissions/sync.
+export type WorkerPermissionRow = {
+  userId: string;
+  jti: string;
+  lotId: string;
+  lotCode: string;
+  weekdays: number[];
+  dailyFrom: string;
+  dailyUntil: string;
+  timezone: string | null;
+};
+
+export type WorkerCacheSnapshot = {
+  permissions: WorkerPermissionRow[];
+  enrolledUserIds: string[];
+};

@@ -96,7 +96,7 @@ export async function resolveScan(
     // que la decision real (allowed o denied) exista.
     return {
       status: 'needs_enrollment',
-      invitationId: decision.invitationId,
+      subject: decision.subject,
       token,
       lotCode: null,
       // Offline no conoce el nombre: el QR no lleva PII (spec 5.1).
@@ -105,10 +105,12 @@ export async function resolveScan(
     };
   }
 
+  // El cupo es de la invitacion: el token del trabajador no lleva `m`.
   if (decision.status === 'allowed') {
     const parsed = deps.parseToken(token);
     if (parsed) deps.recordLocalUse(parsed.payload.j, context);
   }
+  const allowed = decision.status === 'allowed' || decision.status === 'allowed_worker';
 
   deps.enqueueOutboxEvent({
     clientEventId,
@@ -117,7 +119,7 @@ export async function resolveScan(
     direction: 'IN',
     companions: null,
     capturedAt,
-    localDecision: decision.status === 'allowed' ? 'ALLOWED' : 'DENIED',
+    localDecision: allowed ? 'ALLOWED' : 'DENIED',
     documentNumber: null,
   });
   deps.refreshPendingCount();
@@ -125,6 +127,11 @@ export async function resolveScan(
   if (decision.status === 'allowed') {
     // Offline no conoce nombre ni lote: el QR no lleva PII (spec 5.1).
     return { status: 'allowed', guestName: null, lotCode: null };
+  }
+  if (decision.status === 'allowed_worker') {
+    // Los lotes en franja, como informacion. El guardia no elige: la
+    // eleccion no llegaria al backend (WBS-119 espera lotId).
+    return { status: 'allowed', guestName: null, lotCode: decision.lotCodes.join(', ') };
   }
   return decision;
 }

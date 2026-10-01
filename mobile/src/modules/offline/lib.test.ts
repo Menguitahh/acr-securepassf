@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   backoffDelayFor,
   classifyOrphanOutboxRows,
+  extractEnrollmentSubject,
   hasValidGate,
   isOutboxEvent,
+  parseWeekdays,
   runSyncCycle,
   toSyncEvent,
+  toWorkerCacheSnapshot,
   type OutboxOrphanRow,
   type SyncCycleDeps,
 } from '@/modules/offline/lib';
@@ -446,5 +449,82 @@ describe('classifyOrphanOutboxRows (#83)', () => {
       removeEmpty: [],
       removeStale: [],
     });
+  });
+});
+
+describe('toWorkerCacheSnapshot', () => {
+  const row = {
+    userId: 'u1',
+    jti: 'j1',
+    lotId: 'l1',
+    lotCode: 'M4-L12',
+    weekdays: [1, 2],
+    dailyFrom: '08:00',
+    dailyUntil: '12:00',
+    timezone: 'America/Argentina/Mendoza',
+  };
+
+  it('mapea las filas completas y los enrolados', () => {
+    expect(toWorkerCacheSnapshot({ permissions: [row], enrolledUserIds: ['u1'] })).toEqual({
+      permissions: [row],
+      enrolledUserIds: ['u1'],
+    });
+  });
+
+  it('listas vacias son un padron vacio, no una respuesta rota', () => {
+    expect(toWorkerCacheSnapshot({ permissions: [], enrolledUserIds: [] })).toEqual({
+      permissions: [],
+      enrolledUserIds: [],
+    });
+  });
+
+  it('sin alguna de las dos listas la respuesta esta rota: null', () => {
+    expect(toWorkerCacheSnapshot({ permissions: [row] })).toBeNull();
+    expect(toWorkerCacheSnapshot({ enrolledUserIds: ['u1'] })).toBeNull();
+    expect(toWorkerCacheSnapshot({})).toBeNull();
+  });
+
+  it('descarta filas sin identidad o sin franja; sin tz queda null', () => {
+    const { userId: _u, ...sinUsuario } = row;
+    const { timezone: _t, ...sinTz } = row;
+    const snapshot = toWorkerCacheSnapshot({
+      permissions: [sinUsuario, { ...row, weekdays: [] }, { ...row, dailyFrom: '' }, sinTz],
+      enrolledUserIds: ['u1', ''],
+    });
+    expect(snapshot).toEqual({ permissions: [{ ...row, timezone: null }], enrolledUserIds: ['u1'] });
+  });
+});
+
+describe('parseWeekdays', () => {
+  it('lee la lista guardada y devuelve [] ante cualquier otra cosa', () => {
+    expect(parseWeekdays('[1,3,5]')).toEqual([1, 3, 5]);
+    expect(parseWeekdays('[1,"x",2.5,7]')).toEqual([1, 7]);
+    expect(parseWeekdays('{"a":1}')).toEqual([]);
+    expect(parseWeekdays('no es json')).toEqual([]);
+  });
+});
+
+describe('extractEnrollmentSubject', () => {
+  const token = (payload: object) =>
+    `SP1.${btoa(JSON.stringify(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}.firma`;
+
+  it('el token del trabajador identifica al usuario', () => {
+    expect(extractEnrollmentSubject(token({ st: 'W', s: 'u1' }))).toEqual({ kind: 'worker', userId: 'u1' });
+  });
+
+  it('el token de invitacion identifica la invitacion', () => {
+    expect(extractEnrollmentSubject(token({ i: 'inv-1', l: 'l1' }))).toEqual({
+      kind: 'guest',
+      invitationId: 'inv-1',
+    });
+  });
+
+  it('un W sin usuario no cae a la rama de invitacion aunque traiga i', () => {
+    expect(extractEnrollmentSubject(token({ st: 'W', i: 'inv-1' }))).toBeNull();
+  });
+
+  it('token corrupto devuelve null', () => {
+    expect(extractEnrollmentSubject('SP1.!!!.x')).toBeNull();
+    expect(extractEnrollmentSubject('')).toBeNull();
   });
 });

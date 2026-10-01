@@ -2,6 +2,7 @@ import * as Network from 'expo-network';
 import { useEffect, useRef } from 'react';
 
 import { syncAccessCache } from '@/modules/offline/access-cache';
+import { syncWorkerCache } from '@/modules/offline/worker-cache';
 import { PRUNE_NULL_GATE_MAX_AGE_MS, SYNC_INTERVAL_MS } from '@/modules/offline/data';
 import { useOfflineStore } from '@/modules/offline/offline-store';
 import { pruneOrphanOutboxEvents } from '@/modules/offline/outbox';
@@ -83,13 +84,17 @@ export function useOutboxSync() {
   }, [refreshPendingCount]);
 }
 
-// Baja claves publicas y revocados para la validacion offline (spec 8.2).
+// Baja claves publicas, revocados y padron de trabajadores para la
+// validacion offline (spec 8.2, WBS-118).
 // Se refresca al montar y cada vez que vuelve la red.
 export function useAccessCacheSync() {
   useEffect(() => {
     void syncAccessCache();
+    void syncWorkerCache();
     const subscription = Network.addNetworkStateListener((state) => {
-      if (isOnline(state)) void syncAccessCache();
+      if (!isOnline(state)) return;
+      void syncAccessCache();
+      void syncWorkerCache();
     });
     return () => subscription.remove();
   }, []);
