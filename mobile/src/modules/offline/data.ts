@@ -1,4 +1,24 @@
+import type { LocalDenialReason } from '@/modules/offline/types';
+
 export const SYNC_BATCH_SIZE = 50;
+
+// Motivos que acepta el server en localDenialReason. `satisfies` rompe tsc
+// si el contrato agrega uno y aca falta.
+export const LOCAL_DENIAL_REASONS = {
+  INVALID_SIGNATURE: true,
+  NOT_YET_VALID: true,
+  EXPIRED: true,
+  ALREADY_USED: true,
+  REVOKED: true,
+  OUT_OF_SCHEDULE: true,
+  LOT_SUSPENDED: true,
+  REPLAY: true,
+  DOCUMENT_MISMATCH: true,
+  NOT_ENROLLED: true,
+  WORKER_NOT_SYNCED: true,
+  NEIGHBORHOOD_TZ_MISSING: true,
+  UNKNOWN: true,
+} as const satisfies Record<LocalDenialReason, true>;
 
 export const SYNC_INTERVAL_MS = 60000;
 
