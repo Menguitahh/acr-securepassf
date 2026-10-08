@@ -1,16 +1,15 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { getNotifications } from '@/common/notifications/safe';
+import { queryClient } from '@/common/query/client';
 import { bindFocusManagerToAppState } from '@/common/query/focus-manager';
 import { useSessionStore } from '@/modules/auth/session-store';
 import { useRegisterDeviceOnSignIn } from '@/modules/devices/hooks';
 
 import '../global.css';
-
-const queryClient = new QueryClient();
 
 export default function RootLayout() {
   const restore = useSessionStore((state) => state.restore);

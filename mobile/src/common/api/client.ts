@@ -3,25 +3,9 @@ import type { paths } from '@securepass/contracts';
 
 import { API_BASE_URL } from '@/modules/auth/data';
 import { toSessionUser } from '@/modules/auth/lib';
+import { endSession } from '@/modules/auth/session';
 import { useSessionStore } from '@/modules/auth/session-store';
-import {
-  clearSession,
-  loadTokens,
-  saveTokens,
-  saveUser,
-} from '@/modules/auth/session-storage';
-
-export const api = createClient<paths>({ baseUrl: API_BASE_URL });
-
-api.use({
-  async onRequest({ request }) {
-    const tokens = await loadTokens();
-    if (tokens) {
-      request.headers.set('Authorization', `Bearer ${tokens.accessToken}`);
-    }
-    return request;
-  },
-});
+import { loadTokens, saveTokens, saveUser } from '@/modules/auth/session-storage';
 
 export class SessionExpiredError extends Error {
   constructor() {
@@ -29,17 +13,43 @@ export class SessionExpiredError extends Error {
   }
 }
 
-export async function refreshSession(): Promise<void> {
-  const tokens = await loadTokens();
-  if (!tokens) throw new SessionExpiredError();
+// Sin Bearer ni retry: el refresh no puede disparar otro refresh.
+const publicApi = createClient<paths>({ baseUrl: API_BASE_URL });
 
-  const { data, error } = await api.POST('/api/v1/auth/refresh', {
-    body: { refreshToken: tokens.refreshToken },
-  });
-  if (error || !data.accessToken || !data.refreshToken) {
-    await clearSession();
+// Login y refresh son publicos: ni Bearer (uno vencido puede hacer que el
+// filtro JWT rechace el request) ni refresh ante un 401 (un 401 del login
+// son credenciales malas, no un access vencido).
+const PUBLIC_AUTH_PATHS = ['/api/v1/auth/login', '/api/v1/auth/refresh'];
+
+function isPublicAuth(request: Request): boolean {
+  return PUBLIC_AUTH_PATHS.some((path) => request.url.endsWith(path));
+}
+
+async function loadAccessToken(): Promise<string | null> {
+  return (await loadTokens())?.accessToken ?? null;
+}
+
+async function refresh(): Promise<string> {
+  const tokens = await loadTokens();
+  if (!tokens) {
+    await endSession('expired');
     throw new SessionExpiredError();
   }
+
+  // Error de red: publicApi rechaza y se propaga sin tocar la sesion. Solo
+  // un rechazo explicito del server la termina. Un 5xx (deploy, Redis
+  // caido) tampoco: el refresh sigue siendo valido (#131, parte 3).
+  const { data, response } = await publicApi.POST('/api/v1/auth/refresh', {
+    body: { refreshToken: tokens.refreshToken },
+  });
+  if (response.status === 400 || response.status === 401) {
+    await endSession('expired');
+    throw new SessionExpiredError();
+  }
+  if (!data?.accessToken || !data.refreshToken) {
+    throw new Error(`Refresh sin tokens (HTTP ${response.status})`);
+  }
+
   await saveTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
   // El backend incluye user en /auth/refresh desde securepassb#155 para
   // propagar neighborhoodTimezone (y cualquier futuro cambio del perfil)
@@ -52,16 +62,58 @@ export async function refreshSession(): Promise<void> {
       useSessionStore.getState().signIn(user);
     }
   }
+  return data.accessToken;
 }
 
-type ApiResult = { error?: { status?: number } | undefined };
+// Single-flight: el refresh rota el token y el backend revoca la familia
+// entera si ve uno ya rotado. Dos refresh en paralelo = guardia afuera
+// (#131). Todos los 401 simultaneos esperan esta misma promesa. Mismo
+// diseno que web/src/common/api/client.ts (#126).
+let inFlight: Promise<string> | null = null;
 
-export async function authRequest<T extends ApiResult>(
-  request: () => Promise<T>,
-): Promise<T> {
-  const result = await request();
-  if (result.error?.status !== 401) return result;
+function refreshOnce(): Promise<string> {
+  inFlight ??= refresh().finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
 
-  await refreshSession();
+function withBearer(request: Request, token: string | null): Request {
+  if (token && !request.headers.has('Authorization')) {
+    request.headers.set('Authorization', `Bearer ${token}`);
+  }
+  return request;
+}
+
+async function authFetch(request: Request): Promise<Response> {
+  if (isPublicAuth(request)) return fetch(request);
+
+  const sentWith = await loadAccessToken();
+  // El body de un Request se lee una sola vez: el reintento sale del clon.
+  const retry = request.clone();
+  const response = await fetch(withBearer(request, sentWith));
+  if (response.status !== 401) return response;
+
+  // 401 tardio: otro request ya refresco mientras este viajaba con el
+  // access viejo. Reintentar con el actual, sin gastar otro refresh.
+  const current = await loadAccessToken();
+  const token = current && current !== sentWith ? current : await refreshOnce();
+
+  // Un solo reintento. Si vuelve 401, seguir refrescando seria un loop.
+  const retried = await fetch(withBearer(retry, token));
+  if (retried.status === 401) {
+    await endSession('expired');
+    throw new SessionExpiredError();
+  }
+  return retried;
+}
+
+// Toda llamada pasa por authFetch: no hay forma de olvidarse del refresh.
+export const api = createClient<paths>({ baseUrl: API_BASE_URL, fetch: authFetch });
+
+// Pass-through temporal: el refresh lo hace authFetch. Se saca en #140,
+// cuando mergeen los PRs abiertos que lo importan (#123, #124, #90). NO
+// volver a reintentar aca: cada request reintentaria dos veces.
+export async function authRequest<T>(request: () => Promise<T>): Promise<T> {
   return request();
 }
