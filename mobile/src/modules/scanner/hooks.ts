@@ -15,8 +15,13 @@ import { enqueueOutboxEvent } from '@/modules/offline/outbox';
 import { isWorkerEnrolled, workerPermissionsFor } from '@/modules/offline/worker-cache';
 import { GATE_ID } from '@/modules/scanner/data';
 import { isDuplicateScan, parseToken } from '@/modules/scanner/lib';
-import { resolveScan } from '@/modules/scanner/scan-flow';
-import type { EnrollmentSubject, OfflineContext, ScanResult } from '@/modules/scanner/types';
+import { notEnrolledEvent, resolveScan } from '@/modules/scanner/scan-flow';
+import type {
+  EnrollmentSubject,
+  OfflineContext,
+  OfflineScan,
+  ScanResult,
+} from '@/modules/scanner/types';
 
 type EnrollmentContext = {
   subject: EnrollmentSubject;
@@ -25,6 +30,10 @@ type EnrollmentContext = {
   // de enrolamiento para el cruce visual contra el nombre del PDF417.
   // Null cuando el server no lo emite (offline o server viejo).
   invitationName: string | null;
+  // Lote que devolvio el validate. EnrollResponse no lo trae, asi que se
+  // arrastra desde aca para mostrarlo en el resultado. Null offline.
+  lotCode: string | null;
+  offlineScan: OfflineScan | null;
 };
 
 function buildOfflineContext(): OfflineContext {
@@ -94,8 +103,13 @@ export function useQrScanner() {
 
   const onScan = useCallback(async (token: string) => {
     if (pendingRef.current) return;
-    if (isDuplicateScan(lastScanRef.current, token, Date.now())) return;
-    lastScanRef.current = { token, at: Date.now() };
+    // La ventana de duplicado corre desde la ultima vez que se vio el QR, no
+    // desde el primer escaneo: mientras el invitado siga mostrando el pase
+    // que acaba de entrar, no se relee (verde y enseguida rojo).
+    const now = Date.now();
+    const duplicate = isDuplicateScan(lastScanRef.current, token, now);
+    lastScanRef.current = { token, at: now };
+    if (duplicate) return;
 
     pendingRef.current = true;
     setIsPending(true);
@@ -106,6 +120,8 @@ export function useQrScanner() {
           subject: outcome.subject,
           token: outcome.token,
           invitationName: outcome.guestName,
+          lotCode: outcome.lotCode,
+          offlineScan: outcome.offlineScan,
         });
         setEnrollmentError(null);
       } else {
@@ -151,7 +167,7 @@ export function useQrScanner() {
           setResult({
             status: 'allowed',
             guestName: data.guest?.name ?? data.worker?.name ?? null,
-            lotCode: null,
+            lotCode: enrollment.lotCode,
           });
           return;
         }
@@ -205,11 +221,29 @@ export function useQrScanner() {
   );
 
   const cancelEnrollment = useCallback(() => {
+    // Sin DNI no entra. Si el escaneo lo decidio la garita sin red, el
+    // rechazo tiene que llegar al server como cualquier otro DENIED.
+    if (enrollment?.offlineScan) {
+      enqueueOutboxEvent(
+        notEnrolledEvent(
+          enrollment.token,
+          enrollment.offlineScan,
+          hasValidGate(GATE_ID) ? GATE_ID : null,
+        ),
+      );
+      useOfflineStore.getState().refreshPendingCount();
+    }
     setEnrollment(null);
     setEnrollmentError(null);
-  }, []);
+  }, [enrollment]);
 
-  const dismiss = useCallback(() => setResult(null), []);
+  const dismiss = useCallback(() => {
+    // Con el resultado en pantalla la camara no mira: la ventana arranca de
+    // nuevo al volver, si no el resultado se come 2.5 s de los 3.
+    const last = lastScanRef.current;
+    if (last) lastScanRef.current = { token: last.token, at: Date.now() };
+    setResult(null);
+  }, []);
 
   return {
     result,

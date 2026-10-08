@@ -15,5 +15,10 @@ export const DENIAL_LABELS = {
   // permitido): es el mismo uso del pase reclamado por dos escaneos.
   REPLAY: "Pase usado dos veces",
   DOCUMENT_MISMATCH: "Documento no coincide",
+  // Motivos que solo decide la garita sin red. Mismo texto que el xlsx
+  // del backend (AccessLogXlsxSheet.label).
+  NOT_ENROLLED: "Sin enrolamiento",
+  WORKER_NOT_SYNCED: "Trabajador no cargado en la garita",
+  NEIGHBORHOOD_TZ_MISSING: "Garita sin zona horaria del barrio",
   UNKNOWN: "Motivo desconocido",
 } as const satisfies Record<DenialReason, string>;

@@ -6,7 +6,7 @@ import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import QRCode from 'react-native-qrcode-svg';
-import Svg, { Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { G, Rect, Text as SvgText } from 'react-native-svg';
 
 import { Button } from '@/common/components/button';
 import { ErrorState } from '@/common/components/error-state';
@@ -87,9 +87,9 @@ export default function InvitationDetailScreen() {
               viewBox={`0 0 ${CARD_WIDTH} ${CARD_HEIGHT}`}
             >
               <Rect width={CARD_WIDTH} height={CARD_HEIGHT} rx={16} fill="#fafafa" />
-              <Svg x={(CARD_WIDTH - QR_SIZE) / 2} y={30}>
+              <G transform={`translate(${(CARD_WIDTH - QR_SIZE) / 2}, 30)`}>
                 <QRCode value={data.qrToken} size={QR_SIZE} />
-              </Svg>
+              </G>
               {lines.map((line, index) => (
                 <SvgText
                   key={line}

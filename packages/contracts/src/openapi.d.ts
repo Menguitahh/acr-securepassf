@@ -1188,7 +1188,13 @@ export interface components {
             companions?: number;
             /** Format: date-time */
             capturedAt: string;
-            localDecision?: string;
+            /** @enum {string} */
+            localDecision: "ALLOWED" | "DENIED";
+            /**
+             * @description Obligatorio si y solo si localDecision es DENIED
+             * @enum {string}
+             */
+            localDenialReason?: "INVALID_SIGNATURE" | "NOT_YET_VALID" | "EXPIRED" | "ALREADY_USED" | "REVOKED" | "OUT_OF_SCHEDULE" | "LOT_SUSPENDED" | "REPLAY" | "DOCUMENT_MISMATCH" | "NOT_ENROLLED" | "WORKER_NOT_SYNCED" | "NEIGHBORHOOD_TZ_MISSING" | "UNKNOWN";
             documentNumber?: string;
             /** Format: uuid */
             lotId?: string;
@@ -1204,14 +1210,14 @@ export interface components {
             /** @enum {string} */
             result?: "ALLOWED" | "DENIED" | "ENROLLED" | "REJECTED";
             /** @enum {string} */
-            reason?: "INVALID_SIGNATURE" | "NOT_YET_VALID" | "EXPIRED" | "ALREADY_USED" | "REVOKED" | "OUT_OF_SCHEDULE" | "LOT_SUSPENDED" | "REPLAY" | "DOCUMENT_MISMATCH" | "UNKNOWN";
+            reason?: "INVALID_SIGNATURE" | "NOT_YET_VALID" | "EXPIRED" | "ALREADY_USED" | "REVOKED" | "OUT_OF_SCHEDULE" | "LOT_SUSPENDED" | "REPLAY" | "DOCUMENT_MISMATCH" | "NOT_ENROLLED" | "WORKER_NOT_SYNCED" | "NEIGHBORHOOD_TZ_MISSING" | "UNKNOWN";
             /** Format: uuid */
             logId?: string;
             /** Format: uuid */
             enrollmentId?: string;
             clockSkew?: boolean;
             /** @enum {string} */
-            rejection?: "INVALID_LOT";
+            rejection?: "INVALID_LOT" | "INVALID_LOCAL_DECISION";
         };
         SyncAccessResponse: {
             results?: components["schemas"]["EventResult"][];
@@ -1247,6 +1253,8 @@ export interface components {
             clientEventId: string;
             /** Format: date-time */
             capturedAt?: string;
+            /** Format: uuid */
+            lotId?: string;
         };
         EnrollResponse: {
             result?: string;
@@ -2826,7 +2834,7 @@ export interface operations {
                 to?: string;
                 lotId?: string;
                 result?: string;
-                reason?: "INVALID_SIGNATURE" | "NOT_YET_VALID" | "EXPIRED" | "ALREADY_USED" | "REVOKED" | "OUT_OF_SCHEDULE" | "LOT_SUSPENDED" | "REPLAY" | "DOCUMENT_MISMATCH" | "UNKNOWN";
+                reason?: "INVALID_SIGNATURE" | "NOT_YET_VALID" | "EXPIRED" | "ALREADY_USED" | "REVOKED" | "OUT_OF_SCHEDULE" | "LOT_SUSPENDED" | "REPLAY" | "DOCUMENT_MISMATCH" | "NOT_ENROLLED" | "WORKER_NOT_SYNCED" | "NEIGHBORHOOD_TZ_MISSING" | "UNKNOWN";
                 page?: number;
             };
             header?: never;
