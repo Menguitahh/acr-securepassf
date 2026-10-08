@@ -513,6 +513,7 @@ describe('toScanResult', () => {
         token: TOKEN,
         lotCode: 'A-14',
         guestName: 'Maria Lopez',
+        offlineScan: null,
       },
     });
   });
@@ -530,6 +531,7 @@ describe('toScanResult', () => {
         token: TOKEN,
         lotCode: null,
         guestName: null,
+        offlineScan: null,
       },
     });
   });

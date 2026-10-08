@@ -65,7 +65,7 @@ export function EnrollmentScreen({
     return (
       <View className="flex-1 bg-bg-base">
         <DniCamera onScan={handleDniScan} />
-        <View className="absolute inset-x-0 top-12 items-center gap-2 px-6">
+        <View className="absolute inset-x-0 top-20 items-center gap-2 px-6">
           {invitationName ? (
             <Text className="rounded-md bg-bg-elevated/90 px-4 py-2 text-body text-text-primary">
               Invitación: {invitationName}

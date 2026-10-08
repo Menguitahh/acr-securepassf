@@ -1,3 +1,5 @@
+export const SESSION_EXPIRED_MESSAGE = 'Tu sesión expiró. Ingresá de nuevo para seguir.';
+
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
 
 // Etiquetas de rol para UI. La union de roles del backend es cerrada

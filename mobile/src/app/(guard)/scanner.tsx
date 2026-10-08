@@ -7,6 +7,7 @@ import { Spinner } from '@/common/components/spinner';
 import { QueueStatus } from '@/modules/offline/components/queue-status';
 import { useAccessCacheSync, useOutboxSync } from '@/modules/offline/hooks';
 import { EnrollmentScreen } from '@/modules/scanner/components/enrollment-screen';
+import { GuardToolbar } from '@/modules/scanner/components/guard-toolbar';
 import { QrCamera } from '@/modules/scanner/components/qr-camera';
 import { ScanResultScreen } from '@/modules/scanner/components/scan-result-screen';
 import { useQrScanner } from '@/modules/scanner/hooks';
@@ -30,12 +31,24 @@ export default function ScannerScreen() {
   useOutboxSync();
   useAccessCacheSync();
 
+  const toolbar = (
+    <GuardToolbar>
+      <Button label="Manual" onPress={() => router.push('/(guard)/manual')} />
+      <Button label="Turno" onPress={() => router.push('/(guard)/shifts')} />
+      <Button label="Presentes" onPress={() => router.push('/(guard)/stays')} />
+      <LogoutButton />
+    </GuardToolbar>
+  );
+
   // Sin turno abierto, escanear deja el ingreso sin shift_id: se pierde
   // la trazabilidad de quien estaba en garita. Se bloquea todo el flujo
   // (camara + enrolamiento) hasta que abra un turno.
   if (!shift.isLoading && !isOpenShift(shift.data)) {
     return (
       <View className="flex-1 bg-bg-base">
+        <GuardToolbar>
+          <LogoutButton />
+        </GuardToolbar>
         <View className="flex-1 items-center justify-center gap-4 px-6">
           <Text className="text-center text-2xl font-semibold text-text-primary">
             No hay turno abierto
@@ -50,9 +63,6 @@ export default function ScannerScreen() {
             onPress={() => router.push('/(guard)/shifts')}
           />
         </View>
-        <View className="absolute right-4 top-12 flex-row gap-2">
-          <LogoutButton />
-        </View>
       </View>
     );
   }
@@ -60,6 +70,7 @@ export default function ScannerScreen() {
   if (enrollment !== null) {
     return (
       <View className="flex-1 bg-bg-base">
+        {toolbar}
         <EnrollmentScreen
           invitationName={enrollment.invitationName}
           subjectKind={enrollment.subject.kind}
@@ -68,30 +79,26 @@ export default function ScannerScreen() {
           onSubmit={submitEnrollment}
           onCancel={cancelEnrollment}
         />
-        <View className="absolute right-4 top-12 flex-row gap-2">
-          <Button label="Manual" onPress={() => router.push('/(guard)/manual')} />
-          <Button label="Turno" onPress={() => router.push('/(guard)/shifts')} />
-          <Button label="Presentes" onPress={() => router.push('/(guard)/stays')} />
-          <LogoutButton />
-        </View>
       </View>
     );
   }
 
+  // El resultado ocupa la pantalla entera (spec 9.3) y se cierra solo en
+  // 2.5 s: no lleva toolbar encima.
+  if (result !== null) return <ScanResultScreen result={result} onDismiss={dismiss} />;
+
   return (
     <View className="flex-1 bg-bg-base">
-      {result === null && !isPending ? <QrCamera onScan={onScan} /> : null}
-      {isPending ? (
-        <View className="absolute inset-0 items-center justify-center bg-bg-base/80">
-          <Spinner />
-        </View>
-      ) : null}
-      {result !== null ? <ScanResultScreen result={result} onDismiss={dismiss} /> : null}
-      <QueueStatus />
-      <View className="absolute right-4 top-12 flex-row gap-2">
-        <Button label="Turno" onPress={() => router.push('/(guard)/shifts')} />
-        <Button label="Presentes" onPress={() => router.push('/(guard)/stays')} />
-        <LogoutButton />
+      {toolbar}
+      <View className="flex-1">
+        {isPending ? (
+          <View className="flex-1 items-center justify-center">
+            <Spinner />
+          </View>
+        ) : (
+          <QrCamera onScan={onScan} />
+        )}
+        <QueueStatus />
       </View>
     </View>
   );

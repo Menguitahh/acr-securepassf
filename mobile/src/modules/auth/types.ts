@@ -14,6 +14,10 @@ export type SessionUser = {
 
 export type SessionStatus = 'restoring' | 'signedOut' | 'signedIn';
 
+// Por que se corto la sesion, para explicarlo en el login. null: el usuario
+// cerro sesion, o nunca la tuvo.
+export type SignOutReason = 'expired' | null;
+
 export type ReassignDecision = 'reassign' | 'cancel';
 
 export type NeighborhoodCheckOutcome = 'continue' | 'cancelled';
