@@ -86,16 +86,38 @@ export function useOutboxSync() {
 
 // Baja claves publicas, revocados y padron de trabajadores para la
 // validacion offline (spec 8.2, WBS-118).
-// Se refresca al montar y cada vez que vuelve la red.
+// Se refresca al montar, cada SYNC_INTERVAL_MS y al volver la red. Sin el
+// intervalo, con la red estable no habia eventos y una revocacion podia
+// tardar horas en llegar al cache offline (US-14 pide la proxima sync,
+// <= 60 s). Solo la transicion offline -> online dispara: el listener
+// emite por cualquier cambio de estado, no solo al volver la red.
 export function useAccessCacheSync() {
+  const syncingRef = useRef(false);
+
   useEffect(() => {
-    void syncAccessCache();
-    void syncWorkerCache();
+    const attemptSync = async () => {
+      if (syncingRef.current) return;
+      syncingRef.current = true;
+      try {
+        await Promise.all([syncAccessCache(), syncWorkerCache()]);
+      } finally {
+        syncingRef.current = false;
+      }
+    };
+
+    let wasOnline = true;
+    const interval = setInterval(() => void attemptSync(), SYNC_INTERVAL_MS);
     const subscription = Network.addNetworkStateListener((state) => {
-      if (!isOnline(state)) return;
-      void syncAccessCache();
-      void syncWorkerCache();
+      const online = isOnline(state);
+      if (online && !wasOnline) void attemptSync();
+      wasOnline = online;
     });
-    return () => subscription.remove();
+
+    void attemptSync();
+
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
   }, []);
 }
