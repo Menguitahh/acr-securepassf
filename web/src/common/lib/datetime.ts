@@ -1,5 +1,15 @@
 const LOCALE = "es-AR";
 
+// Horas en las tablas del admin ("mar 23 sept 10:00"), en la zona del barrio.
+export const TABLE_DATE_TIME = {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+} as const;
+
 // Intl tira RangeError con una zona que no conoce. Se valida al armar la
 // sesion, asi ningun formateo posterior puede romper la pagina por la tz.
 export function isValidTimeZone(timeZone: string): boolean {

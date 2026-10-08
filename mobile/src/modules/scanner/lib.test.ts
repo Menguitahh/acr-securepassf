@@ -12,7 +12,7 @@ import {
   toScanResult,
   validateOffline,
 } from '@/modules/scanner/lib';
-import type { OfflineContext, TokenPayload } from '@/modules/scanner/types';
+import type { InvitationPayload, OfflineContext, TokenPayload, WorkerPermission } from '@/modules/scanner/types';
 
 const NOW = 1755540000;
 
@@ -43,7 +43,7 @@ function makeToken(payload: TokenPayload, secretKey: Uint8Array): string {
   return `${TOKEN_PREFIX}${toBase64Url(payloadBytes)}.${toBase64Url(signature)}`;
 }
 
-function basePayload(overrides: Partial<TokenPayload> = {}): TokenPayload {
+function basePayload(overrides: Partial<InvitationPayload> = {}): InvitationPayload {
   return {
     v: 1,
     k: 'a1b2c3d4',
@@ -70,6 +70,8 @@ function makeContext(overrides: Partial<OfflineContext> = {}): OfflineContext {
     // sobreescriben esta funcion.
     isEnrolled: () => true,
     neighborhoodTimezone: 'America/Argentina/Mendoza',
+    workerPermissions: () => [],
+    isWorkerEnrolled: () => true,
     ...overrides,
   };
 }
@@ -185,7 +187,7 @@ describe('validateOffline - needs_enrollment', () => {
     const ctx = makeContext({ keys, isEnrolled: () => false });
     expect(validateOffline(token, ctx)).toEqual({
       status: 'needs_enrollment',
-      invitationId: payload.i,
+      subject: { kind: 'guest', invitationId: payload.i },
     });
   });
 
@@ -398,12 +400,13 @@ describe('token real emitido por el backend', () => {
 
   it('parsea el payload recurrente y verifica la firma con la clave real', () => {
     const parsed = parseToken(realToken);
-    expect(parsed).not.toBeNull();
-    expect(parsed?.payload.t).toBe('R');
-    expect(parsed?.payload.w).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    expect(parsed?.payload.df).toBe('00:00');
-    expect(parsed?.payload.du).toBe('23:59');
-    expect(parsed?.payload.m).toBe(200);
+    expect(parsed?.payload).toMatchObject({
+      t: 'R',
+      w: [1, 2, 3, 4, 5, 6, 7],
+      df: '00:00',
+      du: '23:59',
+      m: 200,
+    });
   });
 
   it('valida offline el token real dentro de su ventana', () => {
@@ -414,6 +417,8 @@ describe('token real emitido por el backend', () => {
       localUses: () => 0,
       isEnrolled: () => true,
       neighborhoodTimezone: 'America/Argentina/Mendoza',
+      workerPermissions: () => [],
+      isWorkerEnrolled: () => true,
     });
     expect(decision).toEqual({ status: 'allowed' });
   });
@@ -504,10 +509,11 @@ describe('toScanResult', () => {
       kind: 'result',
       value: {
         status: 'needs_enrollment',
-        invitationId: 'inv-123',
+        subject: { kind: 'guest', invitationId: 'inv-123' },
         token: TOKEN,
         lotCode: 'A-14',
         guestName: 'Maria Lopez',
+        offlineScan: null,
       },
     });
   });
@@ -521,10 +527,11 @@ describe('toScanResult', () => {
       kind: 'result',
       value: {
         status: 'needs_enrollment',
-        invitationId: 'inv-123',
+        subject: { kind: 'guest', invitationId: 'inv-123' },
         token: TOKEN,
         lotCode: null,
         guestName: null,
+        offlineScan: null,
       },
     });
   });
@@ -537,6 +544,30 @@ describe('toScanResult', () => {
   it('un result que no reconocemos devuelve unknown (fail-closed, NO offline)', () => {
     const outcome = toScanResult({ result: 'PENDING_APPROVAL' }, TOKEN);
     expect(outcome).toEqual({ kind: 'unknown', result: 'PENDING_APPROVAL' });
+  });
+
+  // securepassb#218: trabajador con varios lotes en franja. Hasta que el
+  // scanner con red maneje trabajadores (E) y exista el picker (F), tiene
+  // que caer en unknown: ni allowed, ni needs_enrollment, ni empty (que
+  // dispararia el offline). La respuesta trae worker.lots, que no debe
+  // confundirse con un ingreso.
+  it('NEEDS_LOT_SELECTION de trabajador devuelve unknown (fail-closed hasta E y F)', () => {
+    const outcome = toScanResult(
+      {
+        result: 'NEEDS_LOT_SELECTION',
+        subjectKind: 'WORKER',
+        worker: {
+          userId: 'user-w',
+          name: 'Carlos Diaz',
+          lots: [
+            { lotId: 'lot-1', code: 'L-1' },
+            { lotId: 'lot-2', code: 'L-2' },
+          ],
+        },
+      },
+      TOKEN,
+    );
+    expect(outcome).toEqual({ kind: 'unknown', result: 'NEEDS_LOT_SELECTION' });
   });
 
   it('respuesta sin result devuelve empty (caller puede caer al offline)', () => {
@@ -650,7 +681,7 @@ describe('validateOffline - RECURRING usa la tz del barrio (#64)', () => {
   // 2026-03-03 13:00 UTC (martes): 10:00 en Mza, 22:00 en Tokio.
   const INSTANT_TUE_1300Z = Math.floor(new Date('2026-03-03T13:00:00Z').getTime() / 1000);
 
-  function recurringPayload(): TokenPayload {
+  function recurringPayload(): InvitationPayload {
     return basePayload({
       t: 'R',
       f: INSTANT_TUE_1300Z - 3600,
@@ -688,11 +719,11 @@ describe('validateOffline - RECURRING usa la tz del barrio (#64)', () => {
   // Ahora el guard devuelve false y el flujo denega, no crashea.
   it('isWithinRecurringSchedule fail-closed con payload R sin franja', () => {
     const ctx = makeContext({ neighborhoodTimezone: 'America/Argentina/Mendoza' });
-    const sinCampos: TokenPayload = basePayload({ t: 'R' });
-    const sinDias: TokenPayload = basePayload({ t: 'R', df: '08:00', du: '12:00' });
-    const sinFrom: TokenPayload = basePayload({ t: 'R', w: [2], du: '12:00' });
-    const sinUntil: TokenPayload = basePayload({ t: 'R', w: [2], df: '08:00' });
-    const diasVacios: TokenPayload = basePayload({ t: 'R', w: [], df: '08:00', du: '12:00' });
+    const sinCampos: InvitationPayload = basePayload({ t: 'R' });
+    const sinDias: InvitationPayload = basePayload({ t: 'R', df: '08:00', du: '12:00' });
+    const sinFrom: InvitationPayload = basePayload({ t: 'R', w: [2], du: '12:00' });
+    const sinUntil: InvitationPayload = basePayload({ t: 'R', w: [2], df: '08:00' });
+    const diasVacios: InvitationPayload = basePayload({ t: 'R', w: [], df: '08:00', du: '12:00' });
     expect(isWithinRecurringSchedule(sinCampos, ctx)).toBe(false);
     expect(isWithinRecurringSchedule(sinDias, ctx)).toBe(false);
     expect(isWithinRecurringSchedule(sinFrom, ctx)).toBe(false);
@@ -712,5 +743,127 @@ describe('validateOffline - RECURRING usa la tz del barrio (#64)', () => {
       neighborhoodTimezone: null,
     });
     expect(validateOffline(token, ctx)).toMatchObject({ reason: 'NEIGHBORHOOD_TZ_MISSING' });
+  });
+});
+
+describe('validateOffline - trabajador (WBS-118)', () => {
+  const secretKey = utils.randomSecretKey();
+  const keys = { a1b2c3d4: toBase64Url(getPublicKey(secretKey)) };
+  const USER = '5a4b3c2d-5555-4666-8777-888899990000';
+  const JTI = '1f2e3d4c-6666-4777-9888-999900001111';
+  // Martes 13:00Z: 10:00 en Mendoza (dentro de 08-12), 22:00 en Tokio (fuera).
+  const TUE_1300Z = Math.floor(new Date('2026-03-03T13:00:00Z').getTime() / 1000);
+
+  const workerToken = (overrides: Record<string, unknown> = {}) => {
+    const payload = { v: 1, k: 'a1b2c3d4', j: JTI, n: 'b1a2c3d4-2222-4333-9444-555566667777', st: 'W', s: USER, ...overrides };
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    return `${TOKEN_PREFIX}${toBase64Url(bytes)}.${toBase64Url(sign(bytes, secretKey))}`;
+  };
+
+  const permission = (overrides: Partial<WorkerPermission> = {}): WorkerPermission => ({
+    jti: JTI,
+    lotCode: 'M4-L12',
+    weekdays: [2],
+    dailyFrom: '08:00',
+    dailyUntil: '12:00',
+    timezone: 'America/Argentina/Mendoza',
+    ...overrides,
+  });
+
+  const ctxWith = (permissions: WorkerPermission[], overrides: Partial<OfflineContext> = {}) =>
+    makeContext({
+      keys,
+      now: TUE_1300Z,
+      workerPermissions: (userId) => (userId === USER ? permissions : []),
+      ...overrides,
+    });
+
+  it('en franja, enrolado y sincronizado entra y devuelve los lotes en franja', () => {
+    expect(validateOffline(workerToken(), ctxWith([permission()]))).toEqual({
+      status: 'allowed_worker',
+      lotCodes: ['M4-L12'],
+    });
+  });
+
+  it('con varios lotes devuelve solo los que estan en franja', () => {
+    const ctx = ctxWith([
+      permission({ lotCode: 'M4-L12' }),
+      permission({ lotCode: 'M7-L03', dailyFrom: '14:00', dailyUntil: '18:00' }),
+      permission({ lotCode: 'M9-L01', weekdays: [2, 3] }),
+    ]);
+    expect(validateOffline(workerToken(), ctx)).toEqual({
+      status: 'allowed_worker',
+      lotCodes: ['M4-L12', 'M9-L01'],
+    });
+  });
+
+  it('evalua la franja con la tz de la fila, no con la de la sesion', () => {
+    // Sesion en Mendoza, fila en Tokio: el mismo instante queda fuera.
+    const tokio = ctxWith([permission({ timezone: 'Asia/Tokyo' })]);
+    expect(validateOffline(workerToken(), tokio)).toMatchObject({ reason: 'OUT_OF_SCHEDULE' });
+    // Sesion sin tz, fila en Mendoza: entra igual.
+    const sinTzDeSesion = ctxWith([permission()], { neighborhoodTimezone: null });
+    expect(validateOffline(workerToken(), sinTzDeSesion)).toMatchObject({ status: 'allowed_worker' });
+  });
+
+  it('fuera de franja deniega OUT_OF_SCHEDULE', () => {
+    const ctx = ctxWith([permission({ weekdays: [1, 3, 4, 5, 6, 7] })]);
+    expect(validateOffline(workerToken(), ctx)).toMatchObject({ reason: 'OUT_OF_SCHEDULE' });
+  });
+
+  it('fila sin tz deniega NEIGHBORHOOD_TZ_MISSING', () => {
+    const ctx = ctxWith([permission({ timezone: null })]);
+    expect(validateOffline(workerToken(), ctx)).toMatchObject({ reason: 'NEIGHBORHOOD_TZ_MISSING' });
+  });
+
+  it('sin permisos en cache deniega WORKER_NOT_SYNCED con el copy acordado', () => {
+    expect(validateOffline(workerToken(), ctxWith([]))).toEqual({
+      status: 'denied',
+      reason: 'WORKER_NOT_SYNCED',
+      message: 'Este trabajador todavía no está cargado en este dispositivo. Registrá el ingreso manualmente.',
+    });
+  });
+
+  it('permisos de otro jti (cache viejo o token rotado) deniega WORKER_NOT_SYNCED', () => {
+    const ctx = ctxWith([permission({ jti: '00000000-0000-4000-8000-000000000000' })]);
+    expect(validateOffline(workerToken(), ctx)).toMatchObject({ reason: 'WORKER_NOT_SYNCED' });
+  });
+
+  it('jti revocado deniega REVOKED aunque el cache lo tenga en franja', () => {
+    const ctx = ctxWith([permission()], { revoked: new Set([JTI]) });
+    expect(validateOffline(workerToken(), ctx)).toMatchObject({ reason: 'REVOKED' });
+  });
+
+  it('no enrolado pide DNI del trabajador', () => {
+    const ctx = ctxWith([permission()], { isWorkerEnrolled: () => false });
+    expect(validateOffline(workerToken(), ctx)).toEqual({
+      status: 'needs_enrollment',
+      subject: { kind: 'worker', userId: USER },
+    });
+  });
+
+  it('no enrolado y fuera de franja deniega antes de pedir DNI', () => {
+    const ctx = ctxWith([permission({ weekdays: [1] })], { isWorkerEnrolled: () => false });
+    expect(validateOffline(workerToken(), ctx)).toMatchObject({ reason: 'OUT_OF_SCHEDULE' });
+  });
+
+  it.each([
+    ['subType desconocido', { st: 'X' }],
+    ['sin sub', { s: undefined }],
+    ['con campos de invitacion', { i: '7e6f5d4c-4444-4555-b666-777788889999' }],
+    ['con cupo', { m: 1 }],
+  ])('token W malformado (%s) deniega INVALID_SIGNATURE', (_, overrides) => {
+    expect(validateOffline(workerToken(overrides), ctxWith([permission()]))).toMatchObject({
+      reason: 'INVALID_SIGNATURE',
+    });
+  });
+
+  it('firmado por otra clave deniega INVALID_SIGNATURE', () => {
+    const otra = makeContext({
+      keys: { a1b2c3d4: toBase64Url(getPublicKey(utils.randomSecretKey())) },
+      now: TUE_1300Z,
+      workerPermissions: () => [permission()],
+    });
+    expect(validateOffline(workerToken(), otra)).toMatchObject({ reason: 'INVALID_SIGNATURE' });
   });
 });

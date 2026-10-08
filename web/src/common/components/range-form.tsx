@@ -1,4 +1,4 @@
-import type { DateRange } from "@/modules/traffic/types";
+import type { DateRange } from "@/common/date-range/types";
 
 interface Props {
   range: DateRange;

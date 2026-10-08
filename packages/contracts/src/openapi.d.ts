@@ -612,6 +612,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/reports/access-logs.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["accessLogsXlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/reports/access-logs.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["accessLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/metrics/traffic": {
         parameters: {
             query?: never;
@@ -982,6 +1014,10 @@ export interface components {
             code?: string;
             canInvite?: boolean;
             isOwner?: boolean;
+            /** @enum {string} */
+            kind: "OWNER" | "MEMBER" | "WORKER";
+            service?: string;
+            schedule?: components["schemas"]["SchedulePayload"];
         };
         RefreshResponse: {
             accessToken?: string;
@@ -989,6 +1025,11 @@ export interface components {
             /** Format: int64 */
             expiresIn?: number;
             user?: components["schemas"]["UserPayload"];
+        };
+        SchedulePayload: {
+            weekdays?: number[];
+            dailyFrom?: string;
+            dailyUntil?: string;
         };
         UserPayload: {
             /** Format: uuid */
@@ -1089,6 +1130,8 @@ export interface components {
             capturedAt: string;
             /** Format: uuid */
             clientEventId: string;
+            /** Format: uuid */
+            lotId?: string;
         };
         GuestDetail: {
             name?: string;
@@ -1145,8 +1188,16 @@ export interface components {
             companions?: number;
             /** Format: date-time */
             capturedAt: string;
-            localDecision?: string;
+            /** @enum {string} */
+            localDecision: "ALLOWED" | "DENIED";
+            /**
+             * @description Obligatorio si y solo si localDecision es DENIED
+             * @enum {string}
+             */
+            localDenialReason?: "INVALID_SIGNATURE" | "NOT_YET_VALID" | "EXPIRED" | "ALREADY_USED" | "REVOKED" | "OUT_OF_SCHEDULE" | "LOT_SUSPENDED" | "REPLAY" | "DOCUMENT_MISMATCH" | "NOT_ENROLLED" | "WORKER_NOT_SYNCED" | "NEIGHBORHOOD_TZ_MISSING" | "UNKNOWN";
             documentNumber?: string;
+            /** Format: uuid */
+            lotId?: string;
         };
         SyncAccessRequest: {
             /** Format: uuid */
@@ -1157,14 +1208,16 @@ export interface components {
             /** Format: uuid */
             clientEventId?: string;
             /** @enum {string} */
-            result?: "ALLOWED" | "DENIED" | "ENROLLED";
+            result?: "ALLOWED" | "DENIED" | "ENROLLED" | "REJECTED";
             /** @enum {string} */
-            reason?: "INVALID_SIGNATURE" | "NOT_YET_VALID" | "EXPIRED" | "ALREADY_USED" | "REVOKED" | "OUT_OF_SCHEDULE" | "LOT_SUSPENDED" | "REPLAY" | "DOCUMENT_MISMATCH" | "UNKNOWN";
+            reason?: "INVALID_SIGNATURE" | "NOT_YET_VALID" | "EXPIRED" | "ALREADY_USED" | "REVOKED" | "OUT_OF_SCHEDULE" | "LOT_SUSPENDED" | "REPLAY" | "DOCUMENT_MISMATCH" | "NOT_ENROLLED" | "WORKER_NOT_SYNCED" | "NEIGHBORHOOD_TZ_MISSING" | "UNKNOWN";
             /** Format: uuid */
             logId?: string;
             /** Format: uuid */
             enrollmentId?: string;
             clockSkew?: boolean;
+            /** @enum {string} */
+            rejection?: "INVALID_LOT" | "INVALID_LOCAL_DECISION";
         };
         SyncAccessResponse: {
             results?: components["schemas"]["EventResult"][];
@@ -1200,6 +1253,8 @@ export interface components {
             clientEventId: string;
             /** Format: date-time */
             capturedAt?: string;
+            /** Format: uuid */
+            lotId?: string;
         };
         EnrollResponse: {
             result?: string;
@@ -1229,8 +1284,8 @@ export interface components {
             dailyUntil?: string;
             active?: boolean;
             dailyOrderValid?: boolean;
-            scheduleBundled?: boolean;
             nonEmpty?: boolean;
+            scheduleBundled?: boolean;
         };
         UpdateWorkerResponse: {
             /** Format: uuid */
@@ -1271,7 +1326,7 @@ export interface components {
             street?: string;
             number?: string;
         };
-        Item: {
+        OpenStay: {
             /** Format: uuid */
             id?: string;
             /** Format: uuid */
@@ -1289,7 +1344,35 @@ export interface components {
             exitRequestedAt?: string;
         };
         OpenStaysResponse: {
-            stays?: components["schemas"]["Item"][];
+            stays?: components["schemas"]["OpenStay"][];
+        };
+        ShiftSummaryResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            neighborhoodId?: string;
+            /** Format: uuid */
+            gateId?: string;
+            gateName?: string;
+            /** Format: uuid */
+            guardId?: string;
+            guardFullName?: string;
+            /** Format: date-time */
+            startedAt?: string;
+            /** Format: date-time */
+            endedAt?: string;
+            handoverNotes?: string;
+            /** Format: int64 */
+            accessCount?: number;
+        };
+        ShiftsResponse: {
+            items?: components["schemas"]["ShiftSummaryResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            total?: number;
         };
         WorkerQrResponse: {
             /** Format: uuid */
@@ -1404,6 +1487,10 @@ export interface components {
             /** Format: date-time */
             revokedAt?: string;
         };
+        PermissionsSyncResponse: {
+            permissions?: components["schemas"]["WorkerPermissionSyncResponse"][];
+            enrolledUserIds?: string[];
+        };
         WorkerPermissionSyncResponse: {
             /** Format: uuid */
             userId?: string;
@@ -1424,8 +1511,26 @@ export interface components {
             kid?: string;
             publicKey?: string;
         };
+        AccessLogItem: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            lotId?: string;
+            lotCode?: string;
+            direction?: string;
+            subjectType?: string;
+            result?: string;
+            denialReason?: string;
+            subjectName?: string;
+            subjectDocument?: string;
+            /** Format: int32 */
+            companions?: number;
+            /** Format: date-time */
+            capturedAt?: string;
+            passHolderName?: string;
+        };
         AccessLogsResponse: {
-            items?: components["schemas"]["Item"][];
+            items?: components["schemas"]["AccessLogItem"][];
             /** Format: int32 */
             page?: number;
             /** Format: int32 */
@@ -2392,6 +2497,7 @@ export interface operations {
                 gateId?: string;
                 from?: string;
                 to?: string;
+                page?: number;
             };
             header?: never;
             path?: never;
@@ -2405,7 +2511,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ShiftResponse"][];
+                    "*/*": components["schemas"]["ShiftsResponse"];
                 };
             };
         };
@@ -2521,6 +2627,77 @@ export interface operations {
             };
         };
     };
+    accessLogsXlsx: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                lotId?: string;
+                result?: "ALLOWED" | "DENIED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            /** @description Rango invalido o mas filas que el limite del XLSX; usar el CSV o reducir el rango */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Hay demasiados exports en curso; reintentar tras Retry-After */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    accessLogs: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                lotId?: string;
+                result?: "ALLOWED" | "DENIED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Hay demasiados exports en curso; reintentar tras Retry-After */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     traffic: {
         parameters: {
             query: {
@@ -2625,7 +2802,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["WorkerPermissionSyncResponse"][];
+                    "*/*": components["schemas"]["PermissionsSyncResponse"];
                 };
             };
         };
@@ -2657,6 +2834,7 @@ export interface operations {
                 to?: string;
                 lotId?: string;
                 result?: string;
+                reason?: "INVALID_SIGNATURE" | "NOT_YET_VALID" | "EXPIRED" | "ALREADY_USED" | "REVOKED" | "OUT_OF_SCHEDULE" | "LOT_SUSPENDED" | "REPLAY" | "DOCUMENT_MISMATCH" | "NOT_ENROLLED" | "WORKER_NOT_SYNCED" | "NEIGHBORHOOD_TZ_MISSING" | "UNKNOWN";
                 page?: number;
             };
             header?: never;
@@ -2672,6 +2850,15 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AccessLogsResponse"];
+                };
+            };
+            /** @description reason fuera del enum, o reason junto con result=ALLOWED: no existe un acceso permitido con motivo de denegacion */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": unknown;
                 };
             };
         };

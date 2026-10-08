@@ -1,7 +1,14 @@
 import type { components } from '@securepass/contracts';
 
-import { BACKOFF_SCHEDULE_MS } from '@/modules/offline/data';
-import type { OutboxEvent } from '@/modules/offline/types';
+import { BACKOFF_SCHEDULE_MS, LOCAL_DENIAL_REASONS } from '@/modules/offline/data';
+import type {
+  LocalDecision,
+  LocalDenialReason,
+  OutboxEvent,
+  WorkerCacheSnapshot,
+  WorkerPermissionRow,
+} from '@/modules/offline/types';
+import type { EnrollmentSubject } from '@/modules/scanner/types';
 
 export function backoffDelayFor(attempts: number): number {
   const index = Math.min(Math.max(attempts, 0), BACKOFF_SCHEDULE_MS.length - 1);
@@ -14,7 +21,7 @@ export function backoffDelayFor(attempts: number): number {
 // configure.
 //
 // Fuente unica del predicado. Antes de este helper, tres puntos evaluaban
-// gateId con expresiones distintas — `isOutboxEvent` aceptaba null OR
+// gateId con expresiones distintas — el parser del outbox aceptaba null OR
 // cualquier string (incluso ''), el peek filter usaba `!== null` (deja
 // pasar ''), y `toSyncEvent` usaba `!gateId` (elimina ''). Con
 // EXPO_PUBLIC_GATE_ID= en .env, un evento con `gateId=''` pasaba el
@@ -95,33 +102,57 @@ function extractGateIdFromPayload(payload: string): string | null | undefined {
   }
 }
 
-export function isOutboxEvent(value: unknown): value is OutboxEvent {
-  if (typeof value !== 'object' || value === null) return false;
-  if (!('clientEventId' in value) || typeof value.clientEventId !== 'string') return false;
-  if (!('token' in value) || typeof value.token !== 'string') return false;
+function isLocalDenialReason(value: unknown): value is LocalDenialReason {
+  return typeof value === 'string' && Object.keys(LOCAL_DENIAL_REASONS).includes(value);
+}
+
+// Lee una fila del outbox. Null si no tiene la forma de un evento.
+// Las filas DENIED encoladas antes de que existiera localDenialReason no
+// traen motivo: salen como UNKNOWN en vez de descartarse, porque el
+// rechazo igual tiene que llegar al server.
+export function parseOutboxEvent(value: unknown): OutboxEvent | null {
+  if (typeof value !== 'object' || value === null) return null;
+  if (!('clientEventId' in value) || typeof value.clientEventId !== 'string') return null;
+  if (!('token' in value) || typeof value.token !== 'string') return null;
   if (!('gateId' in value) || (value.gateId !== null && !hasValidGate(value.gateId))) {
-    return false;
+    return null;
   }
   if (!('direction' in value) || (value.direction !== 'IN' && value.direction !== 'OUT')) {
-    return false;
+    return null;
   }
   if (!('companions' in value) || (typeof value.companions !== 'number' && value.companions !== null)) {
-    return false;
+    return null;
   }
-  if (!('capturedAt' in value) || typeof value.capturedAt !== 'string') return false;
-  if (
-    !('localDecision' in value) ||
-    (value.localDecision !== 'ALLOWED' && value.localDecision !== 'DENIED')
-  ) {
-    return false;
-  }
+  if (!('capturedAt' in value) || typeof value.capturedAt !== 'string') return null;
   if (
     !('documentNumber' in value) ||
     (value.documentNumber !== null && !hasNonEmptyString(value.documentNumber))
   ) {
-    return false;
+    return null;
   }
-  return true;
+  if (!('localDecision' in value)) return null;
+  let decision: LocalDecision;
+  if (value.localDecision === 'ALLOWED') {
+    decision = { localDecision: 'ALLOWED' };
+  } else if (value.localDecision === 'DENIED') {
+    const reason = 'localDenialReason' in value ? value.localDenialReason : undefined;
+    decision = {
+      localDecision: 'DENIED',
+      localDenialReason: isLocalDenialReason(reason) ? reason : 'UNKNOWN',
+    };
+  } else {
+    return null;
+  }
+  return {
+    ...decision,
+    clientEventId: value.clientEventId,
+    token: value.token,
+    gateId: value.gateId,
+    direction: value.direction,
+    companions: value.companions,
+    capturedAt: value.capturedAt,
+    documentNumber: value.documentNumber,
+  };
 }
 
 function hasNonEmptyString(value: unknown): value is string {
@@ -210,6 +241,7 @@ export function toSyncEvent(
     direction: event.direction,
     capturedAt: event.capturedAt,
     localDecision: event.localDecision,
+    ...(event.localDecision === 'DENIED' ? { localDenialReason: event.localDenialReason } : {}),
     ...(event.companions !== null ? { companions: event.companions } : {}),
     // Invariante estructural (#27): un evento con documentNumber es un
     // enrolamiento diferido; el server lo procesa como enrolamiento +
@@ -218,4 +250,71 @@ export function toSyncEvent(
     // Tests: "regresion: evento con documentNumber no viaja sin el DNI".
     ...(event.documentNumber !== null ? { documentNumber: event.documentNumber } : {}),
   };
+}
+
+// Respuesta de /access/permissions/sync lista para reemplazar el cache.
+// Null si la respuesta no trae las dos listas: no es un padron vacio, es
+// una respuesta rota, y el cache anterior tiene que quedar. Una lista
+// vacia si es valida y vacia el cache (todos dados de baja).
+// Filas sin los campos de franja se descartan: ese trabajador sale como
+// WORKER_NOT_SYNCED, que es fail-closed.
+export function toWorkerCacheSnapshot(
+  data: components['schemas']['PermissionsSyncResponse'],
+): WorkerCacheSnapshot | null {
+  if (!Array.isArray(data.permissions) || !Array.isArray(data.enrolledUserIds)) return null;
+  const permissions = data.permissions.flatMap((p): WorkerPermissionRow[] => {
+    if (!p.userId || !p.jti || !p.lotId || !p.lotCode) return [];
+    if (!p.weekdays?.length || !p.dailyFrom || !p.dailyUntil) return [];
+    return [
+      {
+        userId: p.userId,
+        jti: p.jti,
+        lotId: p.lotId,
+        lotCode: p.lotCode,
+        weekdays: p.weekdays,
+        dailyFrom: p.dailyFrom,
+        dailyUntil: p.dailyUntil,
+        timezone: p.timezone || null,
+      },
+    ];
+  });
+  return { permissions, enrolledUserIds: data.enrolledUserIds.filter((id) => id.length > 0) };
+}
+
+// weekdays viaja a SQLite como JSON. Algo que no sea una lista de enteros
+// devuelve [] y scheduleContains lo evalua como fuera de franja.
+export function parseWeekdays(text: string): number[] {
+  try {
+    const value: unknown = JSON.parse(text);
+    if (!Array.isArray(value)) return [];
+    return value.filter((day): day is number => Number.isInteger(day));
+  } catch {
+    return [];
+  }
+}
+
+// A quien pertenece el enrolamiento de un evento del outbox, leido del
+// token: el trabajador por `s`, el invitado por `i`. Sin verificar firma:
+// solo decide que fila local borrar cuando el server rechaza el DNI.
+// Parse minimo del SP1 para no importar scanner/lib (ciclo). Un token
+// corrupto devuelve null y no se borra nada: el sync no debe romper.
+export function extractEnrollmentSubject(token: string): EnrollmentSubject | null {
+  try {
+    const body = token.startsWith('SP1.') ? token.slice(4) : token;
+    const [payloadPart] = body.split('.');
+    if (!payloadPart) return null;
+    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const bin = atob(padded);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const json: unknown = JSON.parse(new TextDecoder().decode(bytes));
+    if (typeof json !== 'object' || json === null) return null;
+    if ('st' in json && json.st === 'W') {
+      return 's' in json && typeof json.s === 'string' ? { kind: 'worker', userId: json.s } : null;
+    }
+    return 'i' in json && typeof json.i === 'string' ? { kind: 'guest', invitationId: json.i } : null;
+  } catch {
+    return null;
+  }
 }

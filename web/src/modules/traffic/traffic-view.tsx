@@ -5,12 +5,13 @@ import { useState } from "react";
 import { EmptyState } from "@/common/components/empty-state";
 import { ErrorState } from "@/common/components/error-state";
 import { LoadingState } from "@/common/components/loading-state";
+import { RangeForm } from "@/common/components/range-form";
+import { checkRange, defaultRange } from "@/common/date-range/lib";
+import type { DateRange } from "@/common/date-range/types";
 import { useSessionStore } from "@/modules/auth/session-store";
-import { RangeForm } from "@/modules/traffic/components/range-form";
 import { TrafficChart } from "@/modules/traffic/components/traffic-chart";
 import { useTraffic } from "@/modules/traffic/hooks";
-import { checkRange, defaultRange, summarize } from "@/modules/traffic/lib";
-import type { DateRange } from "@/modules/traffic/types";
+import { summarize } from "@/modules/traffic/lib";
 
 export function TrafficView() {
   const session = useSessionStore((state) => state.session);

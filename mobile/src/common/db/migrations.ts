@@ -42,4 +42,29 @@ export const MIGRATIONS: string[] = [
     notification_id TEXT
   );
   `,
+  // #166: el cursor de revocaciones sale del revokedAt del server, no de
+  // la hora del telefono. Las filas viejas quedan en NULL y el proximo
+  // sync las vuelve a pedir desde cero para completarlo.
+  `
+  ALTER TABLE revoked_cache ADD COLUMN revoked_at TEXT;
+  `,
+  // WBS-118: permisos WORKER y trabajadores enrolados para validar sin red.
+  // Se reemplazan completos en cada sync (worker-cache.ts).
+  `
+  CREATE TABLE worker_permissions_cache (
+    user_id      TEXT NOT NULL,
+    jti          TEXT NOT NULL,
+    lot_id       TEXT NOT NULL,
+    lot_code     TEXT NOT NULL,
+    weekdays     TEXT NOT NULL,
+    daily_from   TEXT NOT NULL,
+    daily_until  TEXT NOT NULL,
+    timezone     TEXT,
+    PRIMARY KEY (user_id, lot_id)
+  );
+
+  CREATE TABLE worker_enrollments_cache (
+    user_id TEXT PRIMARY KEY
+  );
+  `,
 ];

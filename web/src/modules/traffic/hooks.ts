@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/common/api/client";
 import { fillHourlyBuckets } from "@/modules/traffic/lib";
-import type { InstantRange } from "@/modules/traffic/types";
+import type { InstantRange } from "@/common/date-range/types";
 
 export function useTraffic(range: InstantRange) {
   return useQuery({

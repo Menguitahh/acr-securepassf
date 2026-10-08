@@ -1,8 +1,8 @@
 import type { components } from "@securepass/contracts";
 import { createColumnHelper, type TableOptions } from "@tanstack/react-table";
 
-import { formatInTz } from "@/common/lib/datetime";
-import { INITIAL_SORTING, OVERSTAY_FEATURES, STAY_TIME } from "@/modules/overstays/data";
+import { formatInTz, TABLE_DATE_TIME } from "@/common/lib/datetime";
+import { INITIAL_SORTING, OVERSTAY_FEATURES } from "@/modules/overstays/data";
 import type { OverstayRow } from "@/modules/overstays/types";
 
 const column = createColumnHelper<typeof OVERSTAY_FEATURES, OverstayRow>();
@@ -54,7 +54,7 @@ export function overstayTableOptions(
       column.accessor("enteredAt", {
         header: "Entró",
         sortFn: "text",
-        cell: (info) => formatInTz(info.getValue(), timeZone, STAY_TIME),
+        cell: (info) => formatInTz(info.getValue(), timeZone, TABLE_DATE_TIME),
       }),
       column.accessor("minutesElapsed", {
         header: "Tiempo adentro",
@@ -64,7 +64,7 @@ export function overstayTableOptions(
       column.accessor("expectedUntil", {
         header: "Esperado hasta",
         sortFn: "text",
-        cell: (info) => formatInTz(info.getValue(), timeZone, STAY_TIME),
+        cell: (info) => formatInTz(info.getValue(), timeZone, TABLE_DATE_TIME),
       }),
     ]),
   };

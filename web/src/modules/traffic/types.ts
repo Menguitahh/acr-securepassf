@@ -1,15 +1,3 @@
-export type DateRange = {
-  from: string;
-  to: string;
-};
-
-export type InstantRange = {
-  from: string;
-  to: string;
-};
-
-export type RangeCheck = { ok: true; instants: InstantRange } | { ok: false; message: string };
-
 export type TrafficPoint = {
   start: string;
   in: number;

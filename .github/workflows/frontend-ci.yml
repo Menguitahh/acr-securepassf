@@ -5,6 +5,10 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  # #151: el PR del expo-doctor-cron lo abre GITHUB_TOKEN, y GitHub no
+  # dispara pull_request por eventos de ese token. El cron corre este CI a
+  # mano sobre la rama del bot.
+  workflow_dispatch: {}
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -14,7 +18,22 @@ jobs:
   check:
     name: check
     runs-on: ubuntu-latest
+    # #151: un run por workflow_dispatch no aparece en los checks del PR
+    # (statusCheckRollup lo ignora). Un commit status si: se ata al SHA y el
+    # PR lo muestra. Solo lo publica el run despachado por el cron.
+    permissions:
+      contents: read
+      statuses: write
     steps:
+      - name: status pendiente (dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA"
+          -f state=pending -f context="frontend-ci (dispatch)"
+          -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
       - uses: actions/checkout@v4
 
       - name: set up Node 22
@@ -51,3 +70,13 @@ jobs:
       - name: expo-doctor
         working-directory: mobile
         run: npx expo-doctor
+
+      - name: status final (dispatch)
+        if: always() && github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+        run: >-
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA"
+          -f state="$STATE" -f context="frontend-ci (dispatch)"
+          -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

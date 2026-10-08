@@ -19,5 +19,7 @@ export const DENIAL_MESSAGES: Record<DenialReason, string> = {
   REPLAY: 'Pase ya utilizado. Si es un error del sistema, registrá el ingreso manualmente.',
   NEIGHBORHOOD_TZ_MISSING:
     'Falta configuración del barrio en este dispositivo. El pase puede ser válido; registrá el ingreso manualmente.',
+  WORKER_NOT_SYNCED:
+    'Este trabajador todavía no está cargado en este dispositivo. Registrá el ingreso manualmente.',
   UNKNOWN: 'Pase no valido. Registrá el ingreso manualmente o pedí un pase nuevo.',
 };

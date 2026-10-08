@@ -7,6 +7,7 @@ import {
   initials,
   isResident,
   isSessionUser,
+  residentLots,
   toSessionUser,
 } from '@/modules/auth/lib';
 import type { SessionUser } from '@/modules/auth/types';
@@ -95,7 +96,7 @@ describe('toSessionUser', () => {
       neighborhoodId: 'n1',
       neighborhoodTimezone: 'America/Argentina/Mendoza',
       roles: ['GUARD'],
-      lots: [{ id: 'l1', code: 'M4-L12', canInvite: true, isOwner: true }],
+      lots: [{ id: 'l1', code: 'M4-L12', canInvite: true, isOwner: true, kind: 'OWNER' }],
     });
     expect(user).toEqual({
       id: 'u1',
@@ -103,7 +104,7 @@ describe('toSessionUser', () => {
       neighborhoodId: 'n1',
       neighborhoodTimezone: 'America/Argentina/Mendoza',
       roles: ['GUARD'],
-      lots: [{ id: 'l1', code: 'M4-L12', canInvite: true, isOwner: true }],
+      lots: [{ id: 'l1', code: 'M4-L12', canInvite: true, isOwner: true, kind: 'OWNER' }],
     });
   });
 
@@ -179,5 +180,19 @@ describe('isSessionUser', () => {
 
   it('rechaza neighborhoodTimezone con tipo invalido', () => {
     expect(isSessionUser({ ...baseUser, neighborhoodTimezone: 123 })).toBe(false);
+  });
+});
+
+describe('residentLots', () => {
+  it('deja afuera las casas donde trabaja: el JWT no las incluye y darian 403', () => {
+    const user: SessionUser = {
+      ...baseUser,
+      lots: [
+        { id: 'casa', code: 'M4-L12', canInvite: true, isOwner: true, kind: 'OWNER' },
+        { id: 'familia', code: 'M5-L01', canInvite: true, isOwner: false, kind: 'MEMBER' },
+        { id: 'trabajo', code: 'M9-L03', canInvite: false, isOwner: false, kind: 'WORKER' },
+      ],
+    };
+    expect(residentLots(user).map((lot) => lot.id)).toEqual(['casa', 'familia']);
   });
 });

@@ -62,6 +62,7 @@ export default function ScannerScreen() {
       <View className="flex-1 bg-bg-base">
         <EnrollmentScreen
           invitationName={enrollment.invitationName}
+          subjectKind={enrollment.subject.kind}
           isSubmitting={isEnrolling}
           error={enrollmentError}
           onSubmit={submitEnrollment}
