@@ -319,7 +319,7 @@ describe('runSyncCycle - regresion #27 enrolamiento offline viaja con DNI', () =
     // Si en algun momento toSyncEvent deja de incluir documentNumber (bug
     // o refactor), este test rompe. Ver comentario en toSyncEvent.
     const enrollmentEvent: OutboxEvent = { ...event('e-enroll'), documentNumber: '30123456' };
-    const sentToServer: Array<{ clientEventId: string; documentNumber?: string }> = [];
+    const sentToServer: { clientEventId: string; documentNumber?: string }[] = [];
     const deps: SyncCycleDeps = {
       peek: (limit) => [enrollmentEvent].slice(0, limit),
       send: async (events) => {
