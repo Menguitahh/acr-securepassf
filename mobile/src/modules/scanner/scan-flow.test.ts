@@ -2,7 +2,7 @@ import { getPublicKey, sign, utils } from '@noble/ed25519';
 import { describe, expect, it, vi } from 'vitest';
 
 import { parseToken } from '@/modules/scanner/lib';
-import { resolveScan, UNKNOWN_RESULT_MESSAGE } from '@/modules/scanner/scan-flow';
+import { notEnrolledEvent, resolveScan, UNKNOWN_RESULT_MESSAGE } from '@/modules/scanner/scan-flow';
 import type { ScanFlowDeps } from '@/modules/scanner/scan-flow';
 
 function makeDeps(overrides: Partial<ScanFlowDeps> = {}): ScanFlowDeps {
@@ -48,6 +48,7 @@ describe('resolveScan', () => {
       token: 'SP1.token',
       lotCode: 'A-14',
       guestName: null,
+      offlineScan: null,
     });
     expect(deps.buildOfflineContext).not.toHaveBeenCalled();
     expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();
@@ -234,7 +235,69 @@ describe('resolveScan - trabajador sin red (WBS-118)', () => {
       token,
       lotCode: null,
       guestName: null,
+      offlineScan: { clientEventId: 'cid-w', capturedAt: expect.any(String) },
     });
     expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();
+  });
+
+  it('fuera de franja: encola DENIED con el motivo local', async () => {
+    const deps = makeDeps({
+      postValidate: vi.fn().mockRejectedValue(new Error('network down')),
+      buildOfflineContext: vi.fn().mockReturnValue({
+        now,
+        keys: { kid1: b64(getPublicKey(secretKey)) },
+        revoked: new Set<string>(),
+        localUses: () => 0,
+        isEnrolled: () => true,
+        neighborhoodTimezone: null,
+        workerPermissions: () => [{ ...permission('M4-L12'), weekdays: [5] }],
+        isWorkerEnrolled: () => true,
+      }),
+    });
+
+    await resolveScan(token, 'cid-w', deps);
+
+    expect(deps.enqueueOutboxEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientEventId: 'cid-w',
+        localDecision: 'DENIED',
+        localDenialReason: 'OUT_OF_SCHEDULE',
+      }),
+    );
+  });
+});
+
+describe('resolveScan - motivo local en el outbox', () => {
+  it('sin red y token invalido: encola DENIED con INVALID_SIGNATURE', async () => {
+    const deps = makeDeps({
+      postValidate: vi.fn().mockRejectedValue(new Error('network down')),
+    });
+
+    await resolveScan('no-es-un-token', 'cid-x', deps);
+
+    expect(deps.enqueueOutboxEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientEventId: 'cid-x',
+        localDecision: 'DENIED',
+        localDenialReason: 'INVALID_SIGNATURE',
+      }),
+    );
+  });
+});
+
+describe('notEnrolledEvent', () => {
+  it('arma el DENIED NOT_ENROLLED con el id y la hora del escaneo original', () => {
+    const scan = { clientEventId: 'cid-scan', capturedAt: '2026-10-01T12:00:00.000Z' };
+    expect(notEnrolledEvent('SP1.token', scan, 'gate-1')).toEqual({
+      clientEventId: 'cid-scan',
+      token: 'SP1.token',
+      gateId: 'gate-1',
+      direction: 'IN',
+      companions: null,
+      capturedAt: '2026-10-01T12:00:00.000Z',
+      localDecision: 'DENIED',
+      localDenialReason: 'NOT_ENROLLED',
+      documentNumber: null,
+    });
   });
 });
