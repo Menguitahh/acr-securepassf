@@ -30,6 +30,9 @@ type EnrollmentContext = {
   // de enrolamiento para el cruce visual contra el nombre del PDF417.
   // Null cuando el server no lo emite (offline o server viejo).
   invitationName: string | null;
+  // Lote que devolvio el validate. EnrollResponse no lo trae, asi que se
+  // arrastra desde aca para mostrarlo en el resultado. Null offline.
+  lotCode: string | null;
   offlineScan: OfflineScan | null;
 };
 
@@ -112,6 +115,7 @@ export function useQrScanner() {
           subject: outcome.subject,
           token: outcome.token,
           invitationName: outcome.guestName,
+          lotCode: outcome.lotCode,
           offlineScan: outcome.offlineScan,
         });
         setEnrollmentError(null);
@@ -158,7 +162,7 @@ export function useQrScanner() {
           setResult({
             status: 'allowed',
             guestName: data.guest?.name ?? data.worker?.name ?? null,
-            lotCode: null,
+            lotCode: enrollment.lotCode,
           });
           return;
         }
