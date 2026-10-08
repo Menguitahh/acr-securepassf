@@ -10,7 +10,7 @@ export function QueueStatus() {
   if (!isOffline && pendingCount === 0) return null;
 
   return (
-    <View className="absolute left-4 top-12 items-start gap-2 pr-4">
+    <View className="absolute left-4 top-4 items-start gap-2 pr-4">
       {isOffline ? (
         <View className="rounded-full border border-border bg-bg-surface px-3 py-1">
           <Text className="text-sm text-text-primary">
