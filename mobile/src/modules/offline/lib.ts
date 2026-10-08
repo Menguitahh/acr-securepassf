@@ -1,7 +1,9 @@
 import type { components } from '@securepass/contracts';
 
-import { BACKOFF_SCHEDULE_MS } from '@/modules/offline/data';
+import { BACKOFF_SCHEDULE_MS, LOCAL_DENIAL_REASONS } from '@/modules/offline/data';
 import type {
+  LocalDecision,
+  LocalDenialReason,
   OutboxEvent,
   WorkerCacheSnapshot,
   WorkerPermissionRow,
@@ -19,7 +21,7 @@ export function backoffDelayFor(attempts: number): number {
 // configure.
 //
 // Fuente unica del predicado. Antes de este helper, tres puntos evaluaban
-// gateId con expresiones distintas — `isOutboxEvent` aceptaba null OR
+// gateId con expresiones distintas — el parser del outbox aceptaba null OR
 // cualquier string (incluso ''), el peek filter usaba `!== null` (deja
 // pasar ''), y `toSyncEvent` usaba `!gateId` (elimina ''). Con
 // EXPO_PUBLIC_GATE_ID= en .env, un evento con `gateId=''` pasaba el
@@ -100,33 +102,57 @@ function extractGateIdFromPayload(payload: string): string | null | undefined {
   }
 }
 
-export function isOutboxEvent(value: unknown): value is OutboxEvent {
-  if (typeof value !== 'object' || value === null) return false;
-  if (!('clientEventId' in value) || typeof value.clientEventId !== 'string') return false;
-  if (!('token' in value) || typeof value.token !== 'string') return false;
+function isLocalDenialReason(value: unknown): value is LocalDenialReason {
+  return typeof value === 'string' && Object.keys(LOCAL_DENIAL_REASONS).includes(value);
+}
+
+// Lee una fila del outbox. Null si no tiene la forma de un evento.
+// Las filas DENIED encoladas antes de que existiera localDenialReason no
+// traen motivo: salen como UNKNOWN en vez de descartarse, porque el
+// rechazo igual tiene que llegar al server.
+export function parseOutboxEvent(value: unknown): OutboxEvent | null {
+  if (typeof value !== 'object' || value === null) return null;
+  if (!('clientEventId' in value) || typeof value.clientEventId !== 'string') return null;
+  if (!('token' in value) || typeof value.token !== 'string') return null;
   if (!('gateId' in value) || (value.gateId !== null && !hasValidGate(value.gateId))) {
-    return false;
+    return null;
   }
   if (!('direction' in value) || (value.direction !== 'IN' && value.direction !== 'OUT')) {
-    return false;
+    return null;
   }
   if (!('companions' in value) || (typeof value.companions !== 'number' && value.companions !== null)) {
-    return false;
+    return null;
   }
-  if (!('capturedAt' in value) || typeof value.capturedAt !== 'string') return false;
-  if (
-    !('localDecision' in value) ||
-    (value.localDecision !== 'ALLOWED' && value.localDecision !== 'DENIED')
-  ) {
-    return false;
-  }
+  if (!('capturedAt' in value) || typeof value.capturedAt !== 'string') return null;
   if (
     !('documentNumber' in value) ||
     (value.documentNumber !== null && !hasNonEmptyString(value.documentNumber))
   ) {
-    return false;
+    return null;
   }
-  return true;
+  if (!('localDecision' in value)) return null;
+  let decision: LocalDecision;
+  if (value.localDecision === 'ALLOWED') {
+    decision = { localDecision: 'ALLOWED' };
+  } else if (value.localDecision === 'DENIED') {
+    const reason = 'localDenialReason' in value ? value.localDenialReason : undefined;
+    decision = {
+      localDecision: 'DENIED',
+      localDenialReason: isLocalDenialReason(reason) ? reason : 'UNKNOWN',
+    };
+  } else {
+    return null;
+  }
+  return {
+    ...decision,
+    clientEventId: value.clientEventId,
+    token: value.token,
+    gateId: value.gateId,
+    direction: value.direction,
+    companions: value.companions,
+    capturedAt: value.capturedAt,
+    documentNumber: value.documentNumber,
+  };
 }
 
 function hasNonEmptyString(value: unknown): value is string {
@@ -215,6 +241,7 @@ export function toSyncEvent(
     direction: event.direction,
     capturedAt: event.capturedAt,
     localDecision: event.localDecision,
+    ...(event.localDecision === 'DENIED' ? { localDenialReason: event.localDenialReason } : {}),
     ...(event.companions !== null ? { companions: event.companions } : {}),
     // Invariante estructural (#27): un evento con documentNumber es un
     // enrolamiento diferido; el server lo procesa como enrolamiento +

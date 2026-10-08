@@ -1,11 +1,22 @@
-export type OutboxEvent = {
+import type { components } from '@securepass/contracts';
+
+// Motivo de un rechazo decidido en la garita. Mismo vocabulario que
+// `reason` del contrato de sync.
+export type LocalDenialReason = NonNullable<components['schemas']['Event']['localDenialReason']>;
+
+// Decision local del evento: el motivo existe si y solo si es DENIED,
+// igual que lo exige el server.
+export type LocalDecision =
+  | { localDecision: 'ALLOWED' }
+  | { localDecision: 'DENIED'; localDenialReason: LocalDenialReason };
+
+export type OutboxEvent = LocalDecision & {
   clientEventId: string;
   token: string;
   gateId: string | null;
   direction: 'IN' | 'OUT';
   companions: number | null;
   capturedAt: string;
-  localDecision: 'ALLOWED' | 'DENIED';
   // DNI capturado offline cuando el server no pudo confirmar el enrolamiento
   // en el momento del scan (#27, US-36). Un evento con documentNumber es
   // a la vez el enrolamiento diferido Y el ingreso registrado — un solo

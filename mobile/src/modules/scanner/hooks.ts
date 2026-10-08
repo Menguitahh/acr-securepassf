@@ -15,8 +15,13 @@ import { enqueueOutboxEvent } from '@/modules/offline/outbox';
 import { isWorkerEnrolled, workerPermissionsFor } from '@/modules/offline/worker-cache';
 import { GATE_ID } from '@/modules/scanner/data';
 import { isDuplicateScan, parseToken } from '@/modules/scanner/lib';
-import { resolveScan } from '@/modules/scanner/scan-flow';
-import type { EnrollmentSubject, OfflineContext, ScanResult } from '@/modules/scanner/types';
+import { notEnrolledEvent, resolveScan } from '@/modules/scanner/scan-flow';
+import type {
+  EnrollmentSubject,
+  OfflineContext,
+  OfflineScan,
+  ScanResult,
+} from '@/modules/scanner/types';
 
 type EnrollmentContext = {
   subject: EnrollmentSubject;
@@ -25,6 +30,7 @@ type EnrollmentContext = {
   // de enrolamiento para el cruce visual contra el nombre del PDF417.
   // Null cuando el server no lo emite (offline o server viejo).
   invitationName: string | null;
+  offlineScan: OfflineScan | null;
 };
 
 function buildOfflineContext(): OfflineContext {
@@ -106,6 +112,7 @@ export function useQrScanner() {
           subject: outcome.subject,
           token: outcome.token,
           invitationName: outcome.guestName,
+          offlineScan: outcome.offlineScan,
         });
         setEnrollmentError(null);
       } else {
@@ -205,9 +212,21 @@ export function useQrScanner() {
   );
 
   const cancelEnrollment = useCallback(() => {
+    // Sin DNI no entra. Si el escaneo lo decidio la garita sin red, el
+    // rechazo tiene que llegar al server como cualquier otro DENIED.
+    if (enrollment?.offlineScan) {
+      enqueueOutboxEvent(
+        notEnrolledEvent(
+          enrollment.token,
+          enrollment.offlineScan,
+          hasValidGate(GATE_ID) ? GATE_ID : null,
+        ),
+      );
+      useOfflineStore.getState().refreshPendingCount();
+    }
     setEnrollment(null);
     setEnrollmentError(null);
-  }, []);
+  }, [enrollment]);
 
   const dismiss = useCallback(() => setResult(null), []);
 

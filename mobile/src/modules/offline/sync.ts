@@ -46,8 +46,11 @@ export function retryDelayMs(): number {
 //   quedo mentiroso (permitio el ingreso subsiguiente sin volver a pedir
 //   DNI). Se limpia para que el proximo scan del mismo QR vuelva a pedir
 //   DNI y el guardia pueda corregir.
+// - REJECTED + INVALID_LOCAL_DECISION: el evento salio mal armado de este
+//   cliente (decision o motivo invalidos). Reintentarlo da lo mismo: se
+//   loguea con su clientEventId para rastrear el bug y sale de la cola.
 // - Sin id no se puede accionar: se retry para no descartar por accidente.
-function classifyResults(
+export function classifyResults(
   batch: OutboxEvent[],
   results: components['schemas']['EventResult'][],
 ): SendOutcome {
@@ -61,6 +64,9 @@ function classifyResults(
     const event = eventsById.get(id);
     if (!event) continue;
 
+    if (result.result === 'REJECTED' && result.rejection === 'INVALID_LOCAL_DECISION') {
+      console.error(`[outbox] evento ${id} rechazado por INVALID_LOCAL_DECISION: bug del cliente, se descarta`);
+    }
     if (result.result === 'DENIED' && result.reason === 'DOCUMENT_MISMATCH' && event.documentNumber !== null) {
       // Enrolamiento offline rechazado por DNI que no coincide. El token
       // dice que fila borrar: la invitacion o el trabajador.

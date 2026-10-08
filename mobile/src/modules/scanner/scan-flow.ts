@@ -1,7 +1,8 @@
 import type { components } from '@securepass/contracts';
 
 import { toScanResult, validateOffline } from '@/modules/scanner/lib';
-import type { OfflineContext, ParsedToken, ScanResult } from '@/modules/scanner/types';
+import type { LocalDecision } from '@/modules/offline/types';
+import type { OfflineContext, OfflineScan, ParsedToken, ScanResult } from '@/modules/scanner/types';
 
 // Mensaje del fail-closed cuando el server responde con un `result` que
 // esta version no conoce. Le dice al guardia que hacer ahora (registro
@@ -19,14 +20,13 @@ export type ValidateApiResponse = {
   error?: unknown;
 };
 
-export type OutboxInput = {
+export type OutboxInput = LocalDecision & {
   clientEventId: string;
   token: string;
   gateId: string | null;
   direction: 'IN';
   companions: number | null;
   capturedAt: string;
-  localDecision: 'ALLOWED' | 'DENIED';
   documentNumber: string | null;
 };
 
@@ -102,6 +102,9 @@ export async function resolveScan(
       // Offline no conoce el nombre: el QR no lleva PII (spec 5.1).
       // La pantalla de enrolamiento degrada al layout sin cruce visual.
       guestName: null,
+      // Si el guardia cancela el DNI, el rechazo se encola con los datos
+      // de este escaneo (NOT_ENROLLED).
+      offlineScan: { clientEventId, capturedAt },
     };
   }
 
@@ -110,7 +113,10 @@ export async function resolveScan(
     const parsed = deps.parseToken(token);
     if (parsed) deps.recordLocalUse(parsed.payload.j, context);
   }
-  const allowed = decision.status === 'allowed' || decision.status === 'allowed_worker';
+  const local: LocalDecision =
+    decision.status === 'denied'
+      ? { localDecision: 'DENIED', localDenialReason: decision.reason }
+      : { localDecision: 'ALLOWED' };
 
   deps.enqueueOutboxEvent({
     clientEventId,
@@ -119,7 +125,7 @@ export async function resolveScan(
     direction: 'IN',
     companions: null,
     capturedAt,
-    localDecision: allowed ? 'ALLOWED' : 'DENIED',
+    ...local,
     documentNumber: null,
   });
   deps.refreshPendingCount();
@@ -134,4 +140,24 @@ export async function resolveScan(
     return { status: 'allowed', guestName: null, lotCode: decision.lotCodes.join(', ') };
   }
   return decision;
+}
+
+// El guardia cancelo el DNI de un escaneo decidido sin red: no entro, y
+// el rechazo viaja con el clientEventId y la hora del escaneo original.
+export function notEnrolledEvent(
+  token: string,
+  scan: OfflineScan,
+  gateId: string | null,
+): OutboxInput {
+  return {
+    clientEventId: scan.clientEventId,
+    token,
+    gateId,
+    direction: 'IN',
+    companions: null,
+    capturedAt: scan.capturedAt,
+    localDecision: 'DENIED',
+    localDenialReason: 'NOT_ENROLLED',
+    documentNumber: null,
+  };
 }
