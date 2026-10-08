@@ -94,8 +94,13 @@ export function useQrScanner() {
 
   const onScan = useCallback(async (token: string) => {
     if (pendingRef.current) return;
-    if (isDuplicateScan(lastScanRef.current, token, Date.now())) return;
-    lastScanRef.current = { token, at: Date.now() };
+    // La ventana de duplicado corre desde la ultima vez que se vio el QR, no
+    // desde el primer escaneo: mientras el invitado siga mostrando el pase
+    // que acaba de entrar, no se relee (verde y enseguida rojo).
+    const now = Date.now();
+    const duplicate = isDuplicateScan(lastScanRef.current, token, now);
+    lastScanRef.current = { token, at: now };
+    if (duplicate) return;
 
     pendingRef.current = true;
     setIsPending(true);
@@ -209,7 +214,13 @@ export function useQrScanner() {
     setEnrollmentError(null);
   }, []);
 
-  const dismiss = useCallback(() => setResult(null), []);
+  const dismiss = useCallback(() => {
+    // Con el resultado en pantalla la camara no mira: la ventana arranca de
+    // nuevo al volver, si no el resultado se come 2.5 s de los 3.
+    const last = lastScanRef.current;
+    if (last) lastScanRef.current = { token: last.token, at: Date.now() };
+    setResult(null);
+  }, []);
 
   return {
     result,
