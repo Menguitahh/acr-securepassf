@@ -4,13 +4,18 @@ import { Text, View } from 'react-native';
 
 import { Button } from '@/common/components/button';
 import { Input } from '@/common/components/input';
+import { SESSION_EXPIRED_MESSAGE } from '@/modules/auth/data';
 import { useLogin } from '@/modules/auth/hooks';
+import { useSessionStore } from '@/modules/auth/session-store';
 
 export default function LoginScreen() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const { login, isPending, error } = useLogin();
   const router = useRouter();
+  // Sin esto el guardia aparece en el login sin saber por que (#131).
+  const expired = useSessionStore((state) => state.signOutReason === 'expired');
+  const message = error ?? (expired ? SESSION_EXPIRED_MESSAGE : null);
 
   const onSubmit = async () => {
     const ok = await login(identifier, password);
@@ -37,7 +42,11 @@ export default function LoginScreen() {
           autoComplete="password"
           editable={!isPending}
         />
-        {error ? <Text className="text-sm text-text-primary">{error}</Text> : null}
+        {message ? (
+          <Text accessibilityRole="alert" className="text-sm text-text-primary">
+            {message}
+          </Text>
+        ) : null}
         <Button
           label={isPending ? 'Ingresando' : 'Ingresar'}
           onPress={() => void onSubmit()}

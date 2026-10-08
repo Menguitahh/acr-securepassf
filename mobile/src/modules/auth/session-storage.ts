@@ -7,6 +7,8 @@ import type { SessionUser } from '@/modules/auth/types';
 const ACCESS_TOKEN_KEY = 'securepass.access-token';
 const REFRESH_TOKEN_KEY = 'securepass.refresh-token';
 const USER_KEY = 'securepass.user';
+// Device-scoped: clearSession no la toca (#121).
+const LAST_NEIGHBORHOOD_KEY = 'securepass.last-neighborhood-id';
 
 export type StoredTokens = {
   accessToken: string;
@@ -70,4 +72,12 @@ export async function clearSession(): Promise<void> {
     SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
     AsyncStorage.removeItem(USER_KEY),
   ]);
+}
+
+export function loadLastNeighborhood(): Promise<string | null> {
+  return AsyncStorage.getItem(LAST_NEIGHBORHOOD_KEY);
+}
+
+export async function saveLastNeighborhood(neighborhoodId: string): Promise<void> {
+  await AsyncStorage.setItem(LAST_NEIGHBORHOOD_KEY, neighborhoodId);
 }

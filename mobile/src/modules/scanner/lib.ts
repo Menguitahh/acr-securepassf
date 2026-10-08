@@ -294,6 +294,7 @@ export function toScanResult(
         token,
         lotCode: response.lot?.code ?? null,
         guestName: response.guest?.name ?? null,
+        offlineScan: null,
       },
     };
   }

@@ -12,10 +12,13 @@ type ScanResultScreenProps = {
 };
 
 export function ScanResultScreen({ result, onDismiss }: ScanResultScreenProps) {
+  // Spec 9.3: Success en permitido, Error en denegado.
   const feedback =
     result.status === 'allowed'
       ? Haptics.NotificationFeedbackType.Success
-      : Haptics.NotificationFeedbackType.Warning;
+      : result.status === 'denied'
+        ? Haptics.NotificationFeedbackType.Error
+        : Haptics.NotificationFeedbackType.Warning;
 
   useEffect(() => {
     void Haptics.notificationAsync(feedback);
