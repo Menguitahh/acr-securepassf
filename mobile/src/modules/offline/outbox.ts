@@ -1,5 +1,5 @@
 import { getDb } from '@/common/db/database';
-import { classifyOrphanOutboxRows, isOutboxEvent } from '@/modules/offline/lib';
+import { classifyOrphanOutboxRows, parseOutboxEvent } from '@/modules/offline/lib';
 import type { OutboxEvent } from '@/modules/offline/types';
 
 export function enqueueOutboxEvent(event: OutboxEvent): void {
@@ -30,7 +30,8 @@ export function peekPendingEvents(limit: number): OutboxEvent[] {
     } catch {
       continue;
     }
-    if (isOutboxEvent(parsed)) events.push(parsed);
+    const event = parseOutboxEvent(parsed);
+    if (event) events.push(event);
   }
   return events;
 }

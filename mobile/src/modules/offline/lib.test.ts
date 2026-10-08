@@ -5,7 +5,7 @@ import {
   classifyOrphanOutboxRows,
   extractEnrollmentSubject,
   hasValidGate,
-  isOutboxEvent,
+  parseOutboxEvent,
   parseWeekdays,
   runSyncCycle,
   toSyncEvent,
@@ -155,47 +155,72 @@ describe('runSyncCycle - cola con red simulada', () => {
   });
 });
 
-describe('isOutboxEvent', () => {
+describe('parseOutboxEvent', () => {
   it('acepta un evento valido', () => {
-    expect(isOutboxEvent(event('e1'))).toBe(true);
+    expect(parseOutboxEvent(event('e1'))).not.toBeNull();
   });
 
   it('rechaza formas invalidas', () => {
-    expect(isOutboxEvent(null)).toBe(false);
-    expect(isOutboxEvent({ ...event('e1'), direction: 'SIDEWAYS' })).toBe(false);
-    expect(isOutboxEvent({ ...event('e1'), localDecision: 'MAYBE' })).toBe(false);
-    expect(isOutboxEvent({ clientEventId: 'e1' })).toBe(false);
+    expect(parseOutboxEvent(null)).toBeNull();
+    expect(parseOutboxEvent({ ...event('e1'), direction: 'SIDEWAYS' })).toBeNull();
+    expect(parseOutboxEvent({ ...event('e1'), localDecision: 'MAYBE' })).toBeNull();
+    expect(parseOutboxEvent({ clientEventId: 'e1' })).toBeNull();
   });
 
   it('acepta gateId=null (evento encolado antes de que el device tenga garita configurada)', () => {
-    expect(isOutboxEvent({ ...event('e1'), gateId: null })).toBe(true);
+    expect(parseOutboxEvent({ ...event('e1'), gateId: null })).not.toBeNull();
   });
 
   it('rechaza gateId="" (misconfig: EXPO_PUBLIC_GATE_ID vacio produciria perdida silenciosa)', () => {
-    expect(isOutboxEvent({ ...event('e1'), gateId: '' })).toBe(false);
+    expect(parseOutboxEvent({ ...event('e1'), gateId: '' })).toBeNull();
   });
 
   it('acepta documentNumber string en un evento de enrolamiento offline (#27)', () => {
-    expect(isOutboxEvent({ ...event('e1'), documentNumber: '30123456' })).toBe(true);
+    expect(parseOutboxEvent({ ...event('e1'), documentNumber: '30123456' })).not.toBeNull();
   });
 
   it('acepta documentNumber=null (evento de acceso normal, sin enrolamiento)', () => {
-    expect(isOutboxEvent({ ...event('e1'), documentNumber: null })).toBe(true);
+    expect(parseOutboxEvent({ ...event('e1'), documentNumber: null })).not.toBeNull();
   });
 
   it('rechaza documentNumber="" (misconfig o payload corrupto)', () => {
-    expect(isOutboxEvent({ ...event('e1'), documentNumber: '' })).toBe(false);
+    expect(parseOutboxEvent({ ...event('e1'), documentNumber: '' })).toBeNull();
   });
 
   it('rechaza documentNumber ausente (payload viejo sin migrar)', () => {
     const { documentNumber: _drop, ...withoutDoc } = event('e1');
     void _drop;
-    expect(isOutboxEvent(withoutDoc)).toBe(false);
+    expect(parseOutboxEvent(withoutDoc)).toBeNull();
+  });
+  it('conserva el motivo de un DENIED', () => {
+    const denied = { ...event('e1'), localDecision: 'DENIED', localDenialReason: 'REVOKED' };
+    expect(parseOutboxEvent(denied)).toMatchObject({
+      localDecision: 'DENIED',
+      localDenialReason: 'REVOKED',
+    });
+  });
+
+  it('fila DENIED vieja sin motivo: sale como UNKNOWN, no se descarta', () => {
+    expect(parseOutboxEvent({ ...event('e1'), localDecision: 'DENIED' })).toMatchObject({
+      clientEventId: 'e1',
+      localDecision: 'DENIED',
+      localDenialReason: 'UNKNOWN',
+    });
+  });
+
+  it('DENIED con un motivo que el contrato no conoce: UNKNOWN', () => {
+    const odd = { ...event('e1'), localDecision: 'DENIED', localDenialReason: 'toString' };
+    expect(parseOutboxEvent(odd)).toMatchObject({ localDenialReason: 'UNKNOWN' });
+  });
+
+  it('ALLOWED nunca lleva motivo, aunque la fila traiga uno', () => {
+    const stray = { ...event('e1'), localDenialReason: 'REVOKED' };
+    expect(parseOutboxEvent(stray)).not.toHaveProperty('localDenialReason');
   });
 });
 
 describe('hasValidGate', () => {
-  // Predicado unico usado en isOutboxEvent, peek filter (sync.ts) y
+  // Predicado unico usado en parseOutboxEvent, peek filter (sync.ts) y
   // toSyncEvent. Antes cada uno usaba una expresion distinta y la
   // desincronizacion dejaba pasar gateId="" a un mapping que lo tiraba,
   // con runSyncCycle borrando el clientEventId igual. Este test blinda
@@ -327,6 +352,19 @@ describe('toSyncEvent', () => {
       localDecision: 'ALLOWED',
       companions: 2,
     });
+  });
+
+  it('DENIED viaja con su motivo local', () => {
+    const mapped = toSyncEvent({
+      ...event('e1'),
+      localDecision: 'DENIED',
+      localDenialReason: 'NOT_ENROLLED',
+    });
+    expect(mapped).toMatchObject({ localDecision: 'DENIED', localDenialReason: 'NOT_ENROLLED' });
+  });
+
+  it('ALLOWED no manda localDenialReason', () => {
+    expect(toSyncEvent(event('e1'))).not.toHaveProperty('localDenialReason');
   });
 
   it('omite companions cuando es null', () => {

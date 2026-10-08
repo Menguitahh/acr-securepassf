@@ -97,6 +97,8 @@ export type AccessDecision =
   | { status: 'needs_enrollment'; subject: EnrollmentSubject }
   | { status: 'denied'; reason: DenialReason; message: string };
 
+export type OfflineScan = { clientEventId: string; capturedAt: string };
+
 export type ScanResult =
   | {
       status: 'allowed';
@@ -121,6 +123,10 @@ export type ScanResult =
       // DNI. Offline es null: el QR no lleva PII. Null tambien si el
       // server no lo emitio (ej. rama WORKER, o server viejo antes de #173).
       guestName: string | null;
+      // Datos del escaneo cuando lo decidio la garita sin red. Si el
+      // guardia cancela el DNI, el rechazo NOT_ENROLLED viaja con ellos.
+      // Null si lo decidio el server: ese escaneo ya quedo registrado alla.
+      offlineScan: OfflineScan | null;
     }
   | { status: 'denied'; reason: DenialReason; message: string };
 
