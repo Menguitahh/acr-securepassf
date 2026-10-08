@@ -13,3 +13,17 @@ export type SessionUser = {
 };
 
 export type SessionStatus = 'restoring' | 'signedOut' | 'signedIn';
+
+export type ReassignDecision = 'reassign' | 'cancel';
+
+export type NeighborhoodCheckOutcome = 'continue' | 'cancelled';
+
+export type NeighborhoodCheckDeps = {
+  // Ultimo barrio que uso este dispositivo. Device-scoped: no se borra en
+  // el logout, porque justamente sirve para detectar la reasignacion.
+  loadLastNeighborhood: () => Promise<string | null>;
+  saveLastNeighborhood: (neighborhoodId: string) => Promise<void>;
+  countPending: () => number;
+  wipeLocalDatabase: () => void;
+  promptReassign: (pending: number) => Promise<ReassignDecision>;
+};
