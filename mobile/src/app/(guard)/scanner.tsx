@@ -12,6 +12,7 @@ import { QrCamera } from '@/modules/scanner/components/qr-camera';
 import { ScanResultScreen } from '@/modules/scanner/components/scan-result-screen';
 import { useQrScanner } from '@/modules/scanner/hooks';
 import { useCurrentShift } from '@/modules/shifts/hooks';
+import { useOpenStays, useSyncStayWarnings } from '@/modules/stays/hooks';
 import { isOpenShift } from '@/modules/shifts/lib';
 
 export default function ScannerScreen() {
@@ -30,6 +31,10 @@ export default function ScannerScreen() {
   const shift = useCurrentShift();
   useOutboxSync();
   useAccessCacheSync();
+  // Avisos de permanencia (WBS-69): el guardia pasa el turno en el scanner,
+  // no en Presentes. Sin esto solo se programaban al abrir Presentes.
+  const openStays = useOpenStays();
+  useSyncStayWarnings(openStays.data);
 
   const toolbar = (
     <GuardToolbar>
