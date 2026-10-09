@@ -8,6 +8,7 @@ import { queryClient } from '@/common/query/client';
 import { bindFocusManagerToAppState } from '@/common/query/focus-manager';
 import { useSessionStore } from '@/modules/auth/session-store';
 import { useRegisterDeviceOnSignIn } from '@/modules/devices/hooks';
+import { STACK_SCREEN_OPTIONS } from '@/common/navigation/stack-options';
 
 import '../global.css';
 
@@ -43,7 +44,7 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={STACK_SCREEN_OPTIONS} />
     </QueryClientProvider>
   );
 }
