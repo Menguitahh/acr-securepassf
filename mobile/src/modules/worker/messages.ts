@@ -17,6 +17,10 @@ export function messageForAddOutcome(
 ): string {
   const outcome = response.outcome;
   if (!outcome) return 'Trabajador habilitado.';
+  // #119: sin email no hay correo de activacion.
+  if (outcome === 'CREATED_USER_AND_PERMISSION' && !response.email) {
+    return 'Trabajador habilitado. Entra mostrando su DNI en la garita.';
+  }
   return OUTCOME_MESSAGES[outcome];
 }
 

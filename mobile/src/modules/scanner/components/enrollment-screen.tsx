@@ -21,6 +21,8 @@ type EnrollmentScreenProps = {
   error: string | null;
   onSubmit: (documentNumber: string, lotId: string | null) => void;
   onCancel: () => void;
+  // #119: worker_entry = trabajador sin QR que entra por DNI (no enrola).
+  purpose?: 'enroll' | 'worker_entry';
 };
 
 // Modos: scanning (PDF417) -> scanned (confirmacion con cruce visual)
@@ -46,7 +48,9 @@ export function EnrollmentScreen({
   error,
   onSubmit,
   onCancel,
+  purpose = 'enroll',
 }: EnrollmentScreenProps) {
+  const workerEntry = purpose === 'worker_entry';
   const [mode, setMode] = useState<Mode>({ kind: 'scanning' });
   const needsLot = lots.length > 1;
   const [lotId, setLotId] = useState<string | null>(null);
@@ -109,14 +113,16 @@ export function EnrollmentScreen({
               misma columna (min-w) para saltar vertical sin buscar. Sin
               highlight de coincidencia — el juicio lo hace el guardia. */}
           <View className="gap-2">
-            <View className="flex-row gap-2">
-              <Text className="min-w-[104px] text-body text-text-muted">
-                {label}:
-              </Text>
-              <Text className="flex-1 text-body text-text-primary">
-                {invitationName ?? '—'}
-              </Text>
-            </View>
+            {workerEntry ? null : (
+              <View className="flex-row gap-2">
+                <Text className="min-w-[104px] text-body text-text-muted">
+                  {label}:
+                </Text>
+                <Text className="flex-1 text-body text-text-primary">
+                  {invitationName ?? '—'}
+                </Text>
+              </View>
+            )}
             <View className="flex-row gap-2">
               <Text className="min-w-[104px] text-body text-text-muted">
                 DNI:
@@ -168,9 +174,13 @@ export function EnrollmentScreen({
     <View className="flex-1 justify-between gap-6 bg-bg-base p-6">
       <View className="gap-4">
         <Text className="text-2xl font-semibold text-text-primary">
-          Enrolar DNI
+          {workerEntry ? 'Ingreso con DNI' : 'Enrolar DNI'}
         </Text>
-        {invitationName ? (
+        {workerEntry ? (
+          <Text className="text-body text-text-muted">
+            Trabajador sin QR. Cargá su DNI: se revisa su permiso y su horario.
+          </Text>
+        ) : invitationName ? (
           <Text className="text-body text-text-muted">
             {label}: <Text className="text-text-primary">{invitationName}</Text>
           </Text>

@@ -29,13 +29,15 @@ export type WorkerFormInput = WorkerScheduleInput & {
   fullName: string;
   dni: string;
   email: string;
+  phone: string;
 };
 
 export type WorkerFormError =
   | 'FULL_NAME_REQUIRED'
   | 'DNI_REQUIRED'
-  | 'EMAIL_REQUIRED'
+  | 'CONTACT_REQUIRED'
   | 'EMAIL_INVALID'
+  | 'PHONE_INVALID'
   | 'SERVICE_REQUIRED'
   | 'WEEKDAYS_REQUIRED'
   | 'DAILY_TIMES_REQUIRED'
@@ -61,16 +63,21 @@ export function validateWorkerSchedule(input: WorkerScheduleInput): WorkerFormEr
 export function validateWorkerForm(input: WorkerFormInput): WorkerFormError | null {
   if (input.fullName.trim().length === 0) return 'FULL_NAME_REQUIRED';
   if (input.dni.trim().length === 0) return 'DNI_REQUIRED';
-  if (input.email.trim().length === 0) return 'EMAIL_REQUIRED';
-  if (!isValidEmail(input.email.trim())) return 'EMAIL_INVALID';
+  // #119: email o telefono. Sin email no hay cuenta: entra por DNI en garita.
+  const email = input.email.trim();
+  const phone = input.phone.trim();
+  if (email.length === 0 && phone.length === 0) return 'CONTACT_REQUIRED';
+  if (email.length > 0 && !isValidEmail(email)) return 'EMAIL_INVALID';
+  if (phone.length > 0 && !/^[0-9+()\s-]{6,30}$/.test(phone)) return 'PHONE_INVALID';
   return validateWorkerSchedule(input);
 }
 
 export const FORM_ERROR_MESSAGES: Record<WorkerFormError, string> = {
   FULL_NAME_REQUIRED: 'Nombre completo requerido.',
   DNI_REQUIRED: 'DNI requerido.',
-  EMAIL_REQUIRED: 'Email requerido: el trabajador lo usa para activar su cuenta.',
+  CONTACT_REQUIRED: 'Cargá un email o un teléfono del trabajador.',
   EMAIL_INVALID: 'Email invalido. Revisá el formato.',
+  PHONE_INVALID: 'Teléfono inválido. Usá solo números, espacios, + o guiones.',
   SERVICE_REQUIRED: 'Servicio requerido (ej. jardineria, plomeria).',
   WEEKDAYS_REQUIRED: 'Elegí al menos un día de la semana.',
   DAILY_TIMES_REQUIRED: 'Cargá el horario de inicio y de fin.',

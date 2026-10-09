@@ -11,7 +11,7 @@ import { GuardToolbar } from '@/modules/scanner/components/guard-toolbar';
 import { LotSelectionScreen } from '@/modules/scanner/components/lot-selection-screen';
 import { QrCamera } from '@/modules/scanner/components/qr-camera';
 import { ScanResultScreen } from '@/modules/scanner/components/scan-result-screen';
-import { useQrScanner } from '@/modules/scanner/hooks';
+import { useQrScanner, useWorkerDocumentEntry } from '@/modules/scanner/hooks';
 import { useCurrentShift } from '@/modules/shifts/hooks';
 import { useOpenStays, useSyncStayWarnings } from '@/modules/stays/hooks';
 import { isOpenShift } from '@/modules/shifts/lib';
@@ -32,6 +32,7 @@ export default function ScannerScreen() {
     cancelLotSelection,
     dismiss,
   } = useQrScanner();
+  const dniEntry = useWorkerDocumentEntry();
   const shift = useCurrentShift();
   useOutboxSync();
   useAccessCacheSync();
@@ -42,6 +43,7 @@ export default function ScannerScreen() {
 
   const toolbar = (
     <GuardToolbar>
+      <Button label="Trabajador sin QR" onPress={dniEntry.open} />
       <Button label="Manual" onPress={() => router.push('/(guard)/manual')} />
       <Button label="Turno" onPress={() => router.push('/(guard)/shifts')} />
       <Button label="Presentes" onPress={() => router.push('/(guard)/stays')} />
@@ -74,6 +76,28 @@ export default function ScannerScreen() {
         </View>
       </View>
     );
+  }
+
+  if (dniEntry.entry !== null) {
+    return (
+      <View className="flex-1 bg-bg-base">
+        {toolbar}
+        <EnrollmentScreen
+          purpose="worker_entry"
+          invitationName={null}
+          subjectKind="worker"
+          lots={dniEntry.entry.lots}
+          isSubmitting={dniEntry.isSubmitting}
+          error={dniEntry.entry.error}
+          onSubmit={(documentNumber, lotId) => void dniEntry.submit(documentNumber, lotId)}
+          onCancel={dniEntry.cancel}
+        />
+      </View>
+    );
+  }
+
+  if (dniEntry.result !== null) {
+    return <ScanResultScreen result={dniEntry.result} onDismiss={dniEntry.dismiss} />;
   }
 
   if (enrollment !== null) {

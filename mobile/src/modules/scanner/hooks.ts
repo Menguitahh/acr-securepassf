@@ -15,7 +15,14 @@ import { enqueueOutboxEvent } from '@/modules/offline/outbox';
 import { isWorkerEnrolled, workerPermissionsFor } from '@/modules/offline/worker-cache';
 import { GATE_ID } from '@/modules/scanner/data';
 import { isDuplicateScan, parseToken } from '@/modules/scanner/lib';
-import { notEnrolledEvent, resolveLotChoice, resolveScan } from '@/modules/scanner/scan-flow';
+import {
+  DNI_FORMAT_MESSAGE,
+  DOCUMENT_ENTRY_OFFLINE_MESSAGE,
+  notEnrolledEvent,
+  resolveDocumentEntry,
+  resolveLotChoice,
+  resolveScan,
+} from '@/modules/scanner/scan-flow';
 import type { ScanFlowDeps } from '@/modules/scanner/scan-flow';
 import type {
   EnrollmentSubject,
@@ -24,6 +31,7 @@ import type {
   OfflineContext,
   OfflineScan,
   ScanResult,
+  WorkerDocumentEntry,
 } from '@/modules/scanner/types';
 
 type EnrollmentContext = {
@@ -301,4 +309,55 @@ export function useQrScanner() {
     cancelLotSelection,
     dismiss,
   };
+}
+
+// #119: trabajador sin QR (alta sin email). Solo con red: sin red el guardia
+// registra el ingreso manual, que ya va al outbox.
+export function useWorkerDocumentEntry() {
+  const [entry, setEntry] = useState<WorkerDocumentEntry | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [result, setResult] = useState<ScanResult | null>(null);
+
+  const open = useCallback(() => setEntry({ lots: [], error: null }), []);
+  const cancel = useCallback(() => setEntry(null), []);
+  const dismiss = useCallback(() => setResult(null), []);
+  const submit = useCallback(async (documentNumber: string, lotId: string | null) => {
+    const fail = (error: string) => setEntry((prev) => (prev ? { ...prev, error } : prev));
+    const gateId = GATE_ID;
+    if (!gateId) {
+      fail('Falta la garita configurada en este dispositivo.');
+      return;
+    }
+    if (!/^[0-9]{7,8}$/.test(documentNumber)) {
+      fail(DNI_FORMAT_MESSAGE);
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const { data, error, response } = await api.POST('/api/v1/access/validate-document', {
+        body: {
+          documentNumber,
+          gateId,
+          direction: 'IN',
+          capturedAt: new Date().toISOString(),
+          clientEventId: Crypto.randomUUID(),
+          ...(lotId ? { lotId } : {}),
+        },
+      });
+      const outcome = resolveDocumentEntry(data, error, response.status);
+      if (outcome.status === 'choose_lot') {
+        // El picker ya pregunta "¿A qué lote va?": no es un error.
+        setEntry({ lots: outcome.lots, error: null });
+        return;
+      }
+      setEntry(null);
+      setResult(outcome.result);
+    } catch {
+      fail(DOCUMENT_ENTRY_OFFLINE_MESSAGE);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, []);
+
+  return { entry, isSubmitting, result, open, cancel, submit, dismiss };
 }

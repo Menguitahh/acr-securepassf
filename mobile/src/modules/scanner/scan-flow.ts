@@ -2,7 +2,14 @@ import type { components } from '@securepass/contracts';
 
 import { toScanResult, validateOffline } from '@/modules/scanner/lib';
 import type { LocalDecision } from '@/modules/offline/types';
-import type { LotChoice, OfflineContext, OfflineScan, ParsedToken, ScanResult } from '@/modules/scanner/types';
+import type {
+  DocumentEntryOutcome,
+  LotChoice,
+  OfflineContext,
+  OfflineScan,
+  ParsedToken,
+  ScanResult,
+} from '@/modules/scanner/types';
 
 // Mensaje del fail-closed cuando el server responde con un `result` que
 // esta version no conoce. Le dice al guardia que hacer ahora (registro
@@ -234,4 +241,33 @@ export async function resolveLotChoice(
   });
   deps.refreshPendingCount();
   return { status: 'allowed', guestName: null, lotCode: lot.code };
+}
+
+export const NOT_A_WORKER_MESSAGE =
+  'Este DNI no tiene permiso de trabajador en el barrio. Registrá el ingreso manualmente.';
+export const DOCUMENT_ENTRY_OFFLINE_MESSAGE =
+  'Sin conexión no se puede revisar el permiso del trabajador. Registrá el ingreso manualmente.';
+export const DNI_FORMAT_MESSAGE = 'El DNI tiene 7 u 8 números. Revisá lo que cargaste.';
+
+function deniedWith(message: string): DocumentEntryOutcome {
+  return { status: 'result', result: { status: 'denied', reason: 'UNKNOWN', message } };
+}
+
+// #119: respuesta de POST /access/validate-document. 404 = el DNI no tiene
+// permiso de trabajador en el barrio (no se guardo nada).
+export function resolveDocumentEntry(
+  data: ValidateApiResponse['data'],
+  error: unknown,
+  status: number,
+): DocumentEntryOutcome {
+  if (status === 404) return deniedWith(NOT_A_WORKER_MESSAGE);
+  if (isInvalidLot(error)) return deniedWith(INVALID_LOT_MESSAGE);
+  if (!data) return deniedWith(SERVER_ERROR_MESSAGE);
+  // Sin token: el valor de needs_* no se usa como pase, solo sus lotes.
+  const outcome = toScanResult(data, '');
+  if (outcome.kind !== 'result') return deniedWith(UNKNOWN_RESULT_MESSAGE);
+  const value = outcome.value;
+  if (value.status === 'needs_lot_selection') return { status: 'choose_lot', lots: value.lots };
+  if (value.status === 'needs_enrollment') return deniedWith(UNKNOWN_RESULT_MESSAGE);
+  return { status: 'result', result: value };
 }

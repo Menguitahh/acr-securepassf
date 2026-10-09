@@ -157,3 +157,11 @@ export type DniData = {
 };
 
 export type LotSelection = Extract<ScanResult, { status: 'needs_lot_selection' }>;
+
+// #119: trabajador sin QR. El guardia carga el DNI; con varios lotes en
+// franja el server pide elegir y se reenvia con el lote.
+export type DocumentEntryOutcome =
+  | { status: 'choose_lot'; lots: LotChoice[] }
+  | { status: 'result'; result: Extract<ScanResult, { status: 'allowed' | 'denied' }> };
+
+export type WorkerDocumentEntry = { lots: LotChoice[]; error: string | null };

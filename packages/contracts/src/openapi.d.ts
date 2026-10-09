@@ -404,6 +404,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/access/validate-document": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["validateDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/access/sync": {
         parameters: {
             query?: never;
@@ -847,12 +863,14 @@ export interface components {
         AddWorkerRequest: {
             fullName: string;
             dni: string;
-            email: string;
+            email?: string;
+            phone?: string;
             service: string;
             weekdays: number[];
             dailyFrom: string;
             dailyUntil: string;
             dailyOrderValid?: boolean;
+            contactPresent?: boolean;
         };
         AddWorkerResponse: {
             /** Format: uuid */
@@ -1176,6 +1194,19 @@ export interface components {
             name?: string;
             lots?: components["schemas"]["LotChoice"][];
         };
+        ValidateDocumentRequest: {
+            documentNumber: string;
+            /** Format: uuid */
+            gateId: string;
+            /** @enum {string} */
+            direction: "IN" | "OUT";
+            /** Format: date-time */
+            capturedAt: string;
+            /** Format: uuid */
+            clientEventId: string;
+            /** Format: uuid */
+            lotId?: string;
+        };
         Event: {
             /** Format: uuid */
             clientEventId: string;
@@ -1288,9 +1319,9 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
-            nonEmpty?: boolean;
             scheduleBundled?: boolean;
             dailyOrderValid?: boolean;
+            nonEmpty?: boolean;
         };
         UpdateWorkerResponse: {
             /** Format: uuid */
@@ -2288,6 +2319,30 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ValidateAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ValidateAccessResponse"];
+                };
+            };
+        };
+    };
+    validateDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidateDocumentRequest"];
             };
         };
         responses: {

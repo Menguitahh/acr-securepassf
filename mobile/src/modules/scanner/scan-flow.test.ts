@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { parseToken } from '@/modules/scanner/lib';
 import {
   INVALID_LOT_MESSAGE,
+  NOT_A_WORKER_MESSAGE,
   notEnrolledEvent,
+  resolveDocumentEntry,
   resolveLotChoice,
   resolveScan,
   UNKNOWN_RESULT_MESSAGE,
@@ -392,5 +394,46 @@ describe('resolveLotChoice (WBS-119)', () => {
       expect.objectContaining({ clientEventId: 'cid-scan', capturedAt: scan.capturedAt, lotId: 'lot-2', localDecision: 'ALLOWED' }),
     );
     expect(outcome).toEqual({ status: 'allowed', guestName: null, lotCode: 'L-2' });
+  });
+});
+
+describe('resolveDocumentEntry (#119)', () => {
+  const lots = [
+    { lotId: 'l1', code: 'A-1', service: 'Jardineria' },
+    { lotId: 'l2', code: 'B-2', service: 'Jardineria' },
+  ];
+
+  it('404: el DNI no es de un trabajador del barrio', () => {
+    expect(resolveDocumentEntry(undefined, { status: 404 }, 404)).toEqual({
+      status: 'result',
+      result: { status: 'denied', reason: 'UNKNOWN', message: NOT_A_WORKER_MESSAGE },
+    });
+  });
+
+  it('varios lotes: pide elegir', () => {
+    expect(
+      resolveDocumentEntry({ result: 'NEEDS_LOT_SELECTION', worker: { name: 'Wanda', lots } }, undefined, 200),
+    ).toEqual({ status: 'choose_lot', lots: [{ lotId: 'l1', code: 'A-1' }, { lotId: 'l2', code: 'B-2' }] });
+  });
+
+  it('permitido: muestra nombre y lote', () => {
+    expect(
+      resolveDocumentEntry({ result: 'ALLOWED_WORKER', worker: { name: 'Wanda', lots: [lots[0]!] } }, undefined, 200),
+    ).toEqual({ status: 'result', result: { status: 'allowed', guestName: 'Wanda', lotCode: 'A-1' } });
+  });
+
+  it('fuera de franja: denegado con el motivo', () => {
+    const out = resolveDocumentEntry({ result: 'DENIED', reason: 'OUT_OF_SCHEDULE' }, undefined, 200);
+    expect(out).toMatchObject({ status: 'result', result: { status: 'denied', reason: 'OUT_OF_SCHEDULE' } });
+  });
+
+  it('lote invalido y respuestas raras fallan cerrado', () => {
+    expect(resolveDocumentEntry(undefined, { code: 'INVALID_LOT' }, 400)).toMatchObject({
+      result: { status: 'denied', message: INVALID_LOT_MESSAGE },
+    });
+    expect(resolveDocumentEntry({ result: 'NEEDS_ENROLLMENT', subjectKind: 'WORKER' }, undefined, 200)).toMatchObject(
+      { result: { status: 'denied' } },
+    );
+    expect(resolveDocumentEntry(undefined, undefined, 500)).toMatchObject({ result: { status: 'denied' } });
   });
 });

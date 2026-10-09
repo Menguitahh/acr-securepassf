@@ -19,6 +19,7 @@ function base(overrides: Partial<WorkerFormInput> = {}): WorkerFormInput {
     fullName: 'Juan Perez',
     dni: '30111222',
     email: 'juan@ejemplo.com',
+    phone: '',
     service: 'jardineria',
     weekdays: [1, 2, 3, 4, 5],
     dailyFrom: at(8),
@@ -64,8 +65,16 @@ describe('validateWorkerForm', () => {
     expect(validateWorkerForm(base({ dni: '' }))).toBe('DNI_REQUIRED');
   });
 
-  it('rechaza sin email', () => {
-    expect(validateWorkerForm(base({ email: '' }))).toBe('EMAIL_REQUIRED');
+  it('rechaza sin email ni telefono', () => {
+    expect(validateWorkerForm(base({ email: ' ', phone: '' }))).toBe('CONTACT_REQUIRED');
+  });
+
+  it('acepta solo telefono (#119)', () => {
+    expect(validateWorkerForm(base({ email: '', phone: '261 555-0000' }))).toBeNull();
+  });
+
+  it('rechaza telefono con letras', () => {
+    expect(validateWorkerForm(base({ email: '', phone: 'llamame' }))).toBe('PHONE_INVALID');
   });
 
   it('rechaza email invalido', () => {

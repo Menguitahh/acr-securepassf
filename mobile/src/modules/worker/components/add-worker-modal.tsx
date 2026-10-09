@@ -42,6 +42,7 @@ export function AddWorkerModal({ visible, onClose, lotId, onFeedback }: Props) {
   const [fullName, setFullName] = useState('');
   const [dni, setDni] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [service, setService] = useState('');
   const [weekdays, setWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [from, setFrom] = useState<Date | null>(defaultFrom());
@@ -55,6 +56,7 @@ export function AddWorkerModal({ visible, onClose, lotId, onFeedback }: Props) {
     setFullName('');
     setDni('');
     setEmail('');
+    setPhone('');
     setService('');
     setWeekdays([1, 2, 3, 4, 5]);
     setFrom(defaultFrom());
@@ -73,6 +75,7 @@ export function AddWorkerModal({ visible, onClose, lotId, onFeedback }: Props) {
       fullName,
       dni,
       email,
+      phone,
       service,
       weekdays,
       dailyFrom: from,
@@ -89,7 +92,8 @@ export function AddWorkerModal({ visible, onClose, lotId, onFeedback }: Props) {
       {
         fullName: fullName.trim(),
         dni: dni.trim(),
-        email: email.trim(),
+        ...(email.trim() ? { email: email.trim() } : {}),
+        ...(phone.trim() ? { phone: phone.trim() } : {}),
         service: service.trim(),
         weekdays,
         dailyFrom: toHHmm(from),
@@ -150,8 +154,17 @@ export function AddWorkerModal({ visible, onClose, lotId, onFeedback }: Props) {
               autoComplete="email"
               editable={!isPending}
             />
+            <Input
+              label="Teléfono"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              editable={!isPending}
+            />
             <Text className="text-footnote text-text-muted">
-              El trabajador recibe un correo para activar su cuenta y ver su QR.
+              Cargá email o teléfono. Con email, el trabajador recibe un correo para activar su
+              cuenta y ver su QR. Sin email, entra mostrando su DNI en la garita.
             </Text>
           </View>
 
