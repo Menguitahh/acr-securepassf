@@ -437,3 +437,31 @@ describe('resolveDocumentEntry (#119)', () => {
     expect(resolveDocumentEntry(undefined, undefined, 500)).toMatchObject({ result: { status: 'denied' } });
   });
 });
+
+describe('resolveScan egreso (US-20 / US-37)', () => {
+  it('con red manda direction OUT y no toca el offline', async () => {
+    const postValidate = vi.fn().mockResolvedValue({
+      data: { result: 'ALLOWED', guest: { name: 'Ana' }, lot: { code: 'A-1' } },
+      error: undefined,
+    });
+    const deps = makeDeps({ postValidate });
+
+    const outcome = await resolveScan('SP1.token', 'cid-1', deps, 'OUT');
+
+    expect(postValidate).toHaveBeenCalledWith(expect.objectContaining({ direction: 'OUT' }));
+    expect(outcome).toEqual({ status: 'allowed', guestName: 'Ana', lotCode: 'A-1' });
+    expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();
+  });
+
+  it('sin red encola el egreso y no descuenta cupo', async () => {
+    const deps = makeDeps({ postValidate: vi.fn().mockRejectedValue(new TypeError('red')) });
+
+    const outcome = await resolveScan('garbage', 'cid-2', deps, 'OUT');
+
+    expect(outcome).toMatchObject({ status: 'denied', reason: 'INVALID_SIGNATURE' });
+    expect(deps.enqueueOutboxEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ clientEventId: 'cid-2', direction: 'OUT', localDecision: 'DENIED' }),
+    );
+    expect(deps.recordLocalUse).not.toHaveBeenCalled();
+  });
+});

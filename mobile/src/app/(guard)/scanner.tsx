@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { Button } from '@/common/components/button';
@@ -18,6 +19,8 @@ import { isOpenShift } from '@/modules/shifts/lib';
 
 export default function ScannerScreen() {
   const router = useRouter();
+  // US-20 / US-37: el mismo QR registra ingreso o egreso segun lo elegido.
+  const [direction, setDirection] = useState<'IN' | 'OUT'>('IN');
   const {
     result,
     isPending,
@@ -31,7 +34,7 @@ export default function ScannerScreen() {
     chooseLot,
     cancelLotSelection,
     dismiss,
-  } = useQrScanner();
+  } = useQrScanner(direction);
   const dniEntry = useWorkerDocumentEntry();
   const shift = useCurrentShift();
   useOutboxSync();
@@ -154,11 +157,19 @@ export default function ScannerScreen() {
 
   // El resultado ocupa la pantalla entera (spec 9.3) y se cierra solo en
   // 2.5 s: no lleva toolbar encima.
-  if (result !== null) return <ScanResultScreen result={result} onDismiss={dismiss} />;
+  if (result !== null) return <ScanResultScreen result={result} onDismiss={dismiss} direction={direction} />;
 
   return (
     <View className="flex-1 bg-bg-base">
       {toolbar}
+      <View className="flex-row gap-2 bg-bg-base px-4 pb-2">
+        <View className="flex-1">
+          <Button label="Ingreso" selected={direction === 'IN'} onPress={() => setDirection('IN')} />
+        </View>
+        <View className="flex-1">
+          <Button label="Egreso" selected={direction === 'OUT'} onPress={() => setDirection('OUT')} />
+        </View>
+      </View>
       <View className="flex-1">
         {isPending ? (
           <View className="flex-1 items-center justify-center">

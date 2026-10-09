@@ -11,6 +11,7 @@ import {
   parseToken,
   toScanResult,
   validateOffline,
+  validateOfflineExit,
 } from '@/modules/scanner/lib';
 import type { InvitationPayload, OfflineContext, TokenPayload, WorkerPermission } from '@/modules/scanner/types';
 
@@ -936,5 +937,28 @@ describe('validateOffline - trabajador (WBS-118)', () => {
       workerPermissions: () => [permission()],
     });
     expect(validateOffline(workerToken(), otra)).toMatchObject({ reason: 'INVALID_SIGNATURE' });
+  });
+});
+
+describe('validateOfflineExit (US-20 / US-37)', () => {
+  const secretKey = utils.randomSecretKey();
+  const publicKey = toBase64Url(getPublicKey(secretKey));
+  const context = makeContext({ keys: { a1b2c3d4: publicKey } });
+
+  it('BR-07: sale aunque el pase este vencido, sin cupo, revocado o sin enrolar', () => {
+    const vencido = makeToken(basePayload({ f: NOW - 7200, u: NOW - 3600 }), secretKey);
+    const ctx = makeContext({
+      keys: { a1b2c3d4: publicKey },
+      localUses: () => 5,
+      isEnrolled: () => false,
+      revoked: new Set([basePayload().j]),
+    });
+    expect(validateOfflineExit(vencido, ctx)).toEqual({ status: 'allowed' });
+  });
+
+  it('un QR falso o de otro barrio no sale', () => {
+    expect(validateOfflineExit('garbage', context)).toMatchObject({ status: 'denied', reason: 'INVALID_SIGNATURE' });
+    const otraClave = makeToken(basePayload({ k: 'ffffffff' }), secretKey);
+    expect(validateOfflineExit(otraClave, context)).toMatchObject({ reason: 'INVALID_SIGNATURE' });
   });
 });

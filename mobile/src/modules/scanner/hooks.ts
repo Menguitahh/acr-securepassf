@@ -89,9 +89,9 @@ function recordLocalUse(jti: string, context: OfflineContext): void {
 
 function scanDeps(): ScanFlowDeps {
   return {
-    postValidate: ({ token: t, gateId, clientEventId: cid, capturedAt, lotId }) =>
+    postValidate: ({ token: t, gateId, clientEventId: cid, capturedAt, direction, lotId }) =>
       api.POST('/api/v1/access/validate', {
-        body: { token: t, gateId, direction: 'IN', capturedAt, clientEventId: cid, ...(lotId ? { lotId } : {}) },
+        body: { token: t, gateId, direction, capturedAt, clientEventId: cid, ...(lotId ? { lotId } : {}) },
       }),
     buildOfflineContext,
     recordLocalUse,
@@ -103,11 +103,12 @@ function scanDeps(): ScanFlowDeps {
   };
 }
 
-function validateScannedToken(token: string, clientEventId: string): Promise<ScanResult> {
-  return resolveScan(token, clientEventId, scanDeps());
+function validateScannedToken(token: string, clientEventId: string, direction: 'IN' | 'OUT'): Promise<ScanResult> {
+  return resolveScan(token, clientEventId, scanDeps(), direction);
 }
 
-export function useQrScanner() {
+// direction: lo que eligio el guardia en el scanner (US-20 / US-37).
+export function useQrScanner(direction: 'IN' | 'OUT') {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [enrollment, setEnrollment] = useState<EnrollmentContext | null>(null);
@@ -123,14 +124,16 @@ export function useQrScanner() {
     // desde el primer escaneo: mientras el invitado siga mostrando el pase
     // que acaba de entrar, no se relee (verde y enseguida rojo).
     const now = Date.now();
-    const duplicate = isDuplicateScan(lastScanRef.current, token, now);
-    lastScanRef.current = { token, at: now };
+    // Ingreso y egreso del mismo QR no son duplicados entre si.
+    const key = `${direction}:${token}`;
+    const duplicate = isDuplicateScan(lastScanRef.current, key, now);
+    lastScanRef.current = { token: key, at: now };
     if (duplicate) return;
 
     pendingRef.current = true;
     setIsPending(true);
     try {
-      const outcome = await validateScannedToken(token, Crypto.randomUUID());
+      const outcome = await validateScannedToken(token, Crypto.randomUUID(), direction);
       if (outcome.status === 'needs_enrollment') {
         setEnrollment({
           subject: outcome.subject,
@@ -150,7 +153,7 @@ export function useQrScanner() {
       pendingRef.current = false;
       setIsPending(false);
     }
-  }, []);
+  }, [direction]);
 
   const submitEnrollment = useCallback(
     async (documentNumber: string, lotId: string | null) => {

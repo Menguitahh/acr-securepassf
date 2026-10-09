@@ -156,6 +156,19 @@ export function validateOffline(token: string, ctx: OfflineContext): AccessDecis
   return validateInvitationOffline(parsed.payload, ctx);
 }
 
+// US-20 / US-37: egreso sin red. La salida no se bloquea (BR-07, igual que
+// el server desde securepassb#243): alcanza con un QR autentico del barrio,
+// aunque el pase este vencido o revocado. No consume cupo. El trabajador con
+// el token revocado sigue denegado, como en el server.
+export function validateOfflineExit(token: string, ctx: OfflineContext): AccessDecision {
+  const parsed = parseToken(token);
+  if (!parsed) return denied('INVALID_SIGNATURE');
+  const key = ctx.keys[parsed.payload.k];
+  if (!key || !verifySignature(parsed, key)) return denied('INVALID_SIGNATURE');
+  if (parsed.payload.st === 'W' && ctx.revoked.has(parsed.payload.j)) return denied('REVOKED');
+  return { status: 'allowed' };
+}
+
 function validateInvitationOffline(payload: InvitationPayload, ctx: OfflineContext): AccessDecision {
   if (ctx.now < payload.f) return denied('NOT_YET_VALID');
   if (ctx.now > payload.u) return denied('EXPIRED');

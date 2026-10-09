@@ -1,6 +1,6 @@
 import type { components } from '@securepass/contracts';
 
-import { toScanResult, validateOffline } from '@/modules/scanner/lib';
+import { toScanResult, validateOffline, validateOfflineExit } from '@/modules/scanner/lib';
 import type { LocalDecision } from '@/modules/offline/types';
 import type {
   DocumentEntryOutcome,
@@ -31,7 +31,7 @@ export type OutboxInput = LocalDecision & {
   clientEventId: string;
   token: string;
   gateId: string | null;
-  direction: 'IN';
+  direction: 'IN' | 'OUT';
   companions: number | null;
   capturedAt: string;
   documentNumber: string | null;
@@ -44,6 +44,8 @@ export type ScanFlowDeps = {
     gateId: string;
     clientEventId: string;
     capturedAt: string;
+    // US-20 / US-37: ingreso o egreso.
+    direction: 'IN' | 'OUT';
     // WBS-119: lote elegido para un trabajador con franja en varios lotes.
     lotId?: string;
   }) => Promise<ValidateApiResponse>;
@@ -60,6 +62,7 @@ export async function resolveScan(
   token: string,
   clientEventId: string,
   deps: ScanFlowDeps,
+  direction: 'IN' | 'OUT' = 'IN',
 ): Promise<ScanResult> {
   const capturedAt = new Date().toISOString();
   const { gateId } = deps;
@@ -71,6 +74,7 @@ export async function resolveScan(
         gateId,
         clientEventId,
         capturedAt,
+        direction,
       });
       const outcome = data ? toScanResult(data, token) : ({ kind: 'empty' } as const);
 
@@ -98,6 +102,29 @@ export async function resolveScan(
   }
 
   const context = deps.buildOfflineContext();
+
+  // US-20 / US-37: el egreso sin red solo verifica el QR (BR-07). Nada de
+  // DNI, lote ni cupo: se encola y el server cierra la estadia al sincronizar.
+  if (direction === 'OUT') {
+    const exit = validateOfflineExit(token, context);
+    const exitDenied = exit.status === 'denied' ? exit : null;
+    deps.enqueueOutboxEvent({
+      clientEventId,
+      token,
+      gateId: deps.hasValidGate(gateId) ? gateId : null,
+      direction: 'OUT',
+      companions: null,
+      capturedAt,
+      ...(exitDenied
+        ? { localDecision: 'DENIED', localDenialReason: exitDenied.reason }
+        : { localDecision: 'ALLOWED' }),
+      documentNumber: null,
+      lotId: null,
+    });
+    deps.refreshPendingCount();
+    return exitDenied ?? { status: 'allowed', guestName: null, lotCode: null };
+  }
+
   const decision = validateOffline(token, context);
 
   if (decision.status === 'needs_enrollment') {
@@ -214,6 +241,7 @@ export async function resolveLotChoice(
         gateId,
         clientEventId: newClientEventId,
         capturedAt: new Date().toISOString(),
+        direction: 'IN',
         lotId: lot.lotId,
       });
       if (isInvalidLot(error)) return { status: 'denied', reason: 'UNKNOWN', message: INVALID_LOT_MESSAGE };

@@ -9,9 +9,12 @@ const AUTO_DISMISS_MS = 2500;
 type ScanResultScreenProps = {
   result: ScanResult;
   onDismiss: () => void;
+  // US-20 / US-37: el titulo dice que se registro la salida.
+  direction?: 'IN' | 'OUT';
 };
 
-export function ScanResultScreen({ result, onDismiss }: ScanResultScreenProps) {
+export function ScanResultScreen({ result, onDismiss, direction = 'IN' }: ScanResultScreenProps) {
+  const exit = direction === 'OUT';
   // Spec 9.3: Success en permitido, Error en denegado.
   const feedback =
     result.status === 'allowed'
@@ -41,12 +44,17 @@ export function ScanResultScreen({ result, onDismiss }: ScanResultScreenProps) {
       className={`flex-1 items-center justify-center gap-3 p-8 ${background}`}
     >
       <Text className="text-center text-[32px] font-semibold leading-tight text-bg-base">
-        {result.status === 'allowed'
+        {result.status === 'allowed' && exit
+          ? 'Egreso registrado'
+          : result.status === 'allowed'
           ? (result.guestName ?? 'Ingreso autorizado')
           : result.status === 'needs_enrollment'
             ? 'Falta enrolar DNI'
             : 'Acceso denegado'}
       </Text>
+      {result.status === 'allowed' && exit && result.guestName ? (
+        <Text className="text-xl text-bg-base">{result.guestName}</Text>
+      ) : null}
       {result.status === 'allowed' && result.lotCode ? (
         <Text className="text-xl text-bg-base">{result.lotCode}</Text>
       ) : null}
