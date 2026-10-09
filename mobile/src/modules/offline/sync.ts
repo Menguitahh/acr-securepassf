@@ -6,8 +6,10 @@ import type { components } from '@securepass/contracts';
 import { api, authRequest } from '@/common/api/client';
 import { SYNC_BATCH_SIZE } from '@/modules/offline/data';
 import { forgetEnrollment } from '@/modules/offline/enrollments-cache';
+import { forgetWorkerEnrollment } from '@/modules/offline/worker-cache';
 import {
   backoffDelayFor,
+  extractEnrollmentSubject,
   hasValidGate,
   runSyncCycle,
   toSyncEvent,
@@ -44,8 +46,11 @@ export function retryDelayMs(): number {
 //   quedo mentiroso (permitio el ingreso subsiguiente sin volver a pedir
 //   DNI). Se limpia para que el proximo scan del mismo QR vuelva a pedir
 //   DNI y el guardia pueda corregir.
+// - REJECTED + INVALID_LOCAL_DECISION: el evento salio mal armado de este
+//   cliente (decision o motivo invalidos). Reintentarlo da lo mismo: se
+//   loguea con su clientEventId para rastrear el bug y sale de la cola.
 // - Sin id no se puede accionar: se retry para no descartar por accidente.
-function classifyResults(
+export function classifyResults(
   batch: OutboxEvent[],
   results: components['schemas']['EventResult'][],
 ): SendOutcome {
@@ -59,12 +64,15 @@ function classifyResults(
     const event = eventsById.get(id);
     if (!event) continue;
 
+    if (result.result === 'REJECTED' && result.rejection === 'INVALID_LOCAL_DECISION') {
+      console.error(`[outbox] evento ${id} rechazado por INVALID_LOCAL_DECISION: bug del cliente, se descarta`);
+    }
     if (result.result === 'DENIED' && result.reason === 'DOCUMENT_MISMATCH' && event.documentNumber !== null) {
-      // Enrolamiento offline rechazado por DNI que no coincide. Extraer
-      // invitationId del token para saber que fila borrar en cache. Es
-      // seguro: parseToken es puro, tolera tokens invalidos con null.
-      const invitationId = extractInvitationId(event.token);
-      if (invitationId) forgetEnrollment(invitationId);
+      // Enrolamiento offline rechazado por DNI que no coincide. El token
+      // dice que fila borrar: la invitacion o el trabajador.
+      const subject = extractEnrollmentSubject(event.token);
+      if (subject?.kind === 'worker') forgetWorkerEnrollment(subject.userId);
+      else if (subject) forgetEnrollment(subject.invitationId);
     }
     remove.push(id);
   }
@@ -78,29 +86,6 @@ function classifyResults(
   }
 
   return { remove, retry };
-}
-
-// Import lazy para no crear un ciclo lib.ts <-> scanner/lib.ts. En la
-// mayoria de los casos el server confirma sin MISMATCH, esta funcion no
-// se ejecuta.
-function extractInvitationId(token: string): string | null {
-  // ponytail: parse mınimo del payload SP1.<base64url>.<sig>. Alcanza
-  // con leer la propiedad `i` del payload JSON. Si el parse falla, null
-  // y no borramos nada — el sync no debe romper por un token corrupto.
-  try {
-    const body = token.startsWith('SP1.') ? token.slice(4) : token;
-    const [payloadPart] = body.split('.');
-    if (!payloadPart) return null;
-    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-    const bin = atob(padded);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    const json = JSON.parse(new TextDecoder().decode(bytes));
-    return typeof json?.i === 'string' ? json.i : null;
-  } catch {
-    return null;
-  }
 }
 
 export async function syncOutbox(): Promise<'empty' | 'synced' | 'error'> {

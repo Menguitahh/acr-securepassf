@@ -8,6 +8,7 @@ import { Card } from '@/common/components/card';
 import { ErrorState } from '@/common/components/error-state';
 import { ScreenHeader } from '@/common/components/screen-header';
 import { Spinner } from '@/common/components/spinner';
+import { residentLots } from '@/modules/auth/lib';
 import { useSessionStore } from '@/modules/auth/session-store';
 import { useFamilyMembers, useUpdateFamilyMember } from '@/modules/family/hooks';
 import { useMinors, useDeleteMinor } from '@/modules/family/minors-hooks';
@@ -37,7 +38,7 @@ export default function FamilyMembersScreen() {
   const updateMember = useUpdateFamilyMember(lotId);
   const deleteMinor = useDeleteMinor(lotId);
 
-  const lot = (user?.lots ?? []).find((item) => item.id === lotId);
+  const lot = (user ? residentLots(user) : []).find((item) => item.id === lotId);
   const isOwner = lot?.isOwner === true;
 
   const [feedback, setFeedback] = useState<Feedback>(null);

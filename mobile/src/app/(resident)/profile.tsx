@@ -5,7 +5,7 @@ import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { LogoutButton } from '@/common/components/logout-button';
 import { ScreenHeader } from '@/common/components/screen-header';
 import { ROLE_LABELS } from '@/modules/auth/data';
-import { initials } from '@/modules/auth/lib';
+import { initials, residentLots } from '@/modules/auth/lib';
 import { useSessionStore } from '@/modules/auth/session-store';
 
 export default function ProfileScreen() {
@@ -14,6 +14,7 @@ export default function ProfileScreen() {
 
   if (!user) return null;
 
+  const lots = residentLots(user);
   const rolesLabel = user.roles.map((role) => ROLE_LABELS[role] ?? role).join(', ');
 
   return (
@@ -42,10 +43,10 @@ export default function ProfileScreen() {
           <Text className="text-footnote font-medium uppercase tracking-[1px] text-text-muted">
             Lotes
           </Text>
-          {user.lots.length === 0 ? (
+          {lots.length === 0 ? (
             <Text className="text-body leading-[22px] text-text-muted">Sin lote asignado.</Text>
           ) : (
-            user.lots.map((lot) => (
+            lots.map((lot) => (
               <Pressable
                 key={lot.id ?? lot.code}
                 accessibilityRole="button"

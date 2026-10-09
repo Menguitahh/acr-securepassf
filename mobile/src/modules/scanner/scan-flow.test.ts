@@ -1,6 +1,8 @@
+import { getPublicKey, sign, utils } from '@noble/ed25519';
 import { describe, expect, it, vi } from 'vitest';
 
-import { resolveScan, UNKNOWN_RESULT_MESSAGE } from '@/modules/scanner/scan-flow';
+import { parseToken } from '@/modules/scanner/lib';
+import { notEnrolledEvent, resolveScan, UNKNOWN_RESULT_MESSAGE } from '@/modules/scanner/scan-flow';
 import type { ScanFlowDeps } from '@/modules/scanner/scan-flow';
 
 function makeDeps(overrides: Partial<ScanFlowDeps> = {}): ScanFlowDeps {
@@ -42,11 +44,31 @@ describe('resolveScan', () => {
 
     expect(outcome).toEqual({
       status: 'needs_enrollment',
-      invitationId: 'inv-123',
+      subject: { kind: 'guest', invitationId: 'inv-123' },
       token: 'SP1.token',
       lotCode: 'A-14',
       guestName: null,
+      offlineScan: null,
     });
+    expect(deps.buildOfflineContext).not.toHaveBeenCalled();
+    expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();
+  });
+
+  it('server responde NEEDS_LOT_SELECTION (securepassb#218): denied UNKNOWN, sin offline ni outbox', async () => {
+    const deps = makeDeps({
+      postValidate: vi.fn().mockResolvedValue({
+        data: {
+          result: 'NEEDS_LOT_SELECTION',
+          subjectKind: 'WORKER',
+          worker: { userId: 'user-w', lots: [{ lotId: 'lot-1', code: 'L-1' }, { lotId: 'lot-2', code: 'L-2' }] },
+        },
+        error: undefined,
+      }),
+    });
+
+    const outcome = await resolveScan('SP1.token', 'cid-1', deps);
+
+    expect(outcome).toEqual({ status: 'denied', reason: 'UNKNOWN', message: UNKNOWN_RESULT_MESSAGE });
     expect(deps.buildOfflineContext).not.toHaveBeenCalled();
     expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();
   });
@@ -98,6 +120,8 @@ describe('resolveScan', () => {
         localUses: () => 0,
         isEnrolled: () => true,
         neighborhoodTimezone: null,
+        workerPermissions: () => [],
+        isWorkerEnrolled: () => true,
       }),
     });
 
@@ -141,5 +165,139 @@ describe('resolveScan', () => {
 
     expect(outcome).toMatchObject({ status: 'denied', reason: 'UNKNOWN' });
     expect(deps.buildOfflineContext).not.toHaveBeenCalled();
+  });
+});
+
+describe('resolveScan - trabajador sin red (WBS-118)', () => {
+  const secretKey = utils.randomSecretKey();
+  const b64 = (bytes: Uint8Array) =>
+    btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const payload = new TextEncoder().encode(
+    JSON.stringify({ v: 1, k: 'kid1', j: 'jti-w', n: 'barrio', st: 'W', s: 'user-w' }),
+  );
+  const token = `SP1.${b64(payload)}.${b64(sign(payload, secretKey))}`;
+  // Martes 10:00 en Mendoza.
+  const now = Math.floor(new Date('2026-03-03T13:00:00Z').getTime() / 1000);
+  const permission = (lotCode: string) => ({
+    jti: 'jti-w',
+    lotCode,
+    weekdays: [2],
+    dailyFrom: '08:00',
+    dailyUntil: '12:00',
+    timezone: 'America/Argentina/Mendoza',
+  });
+
+  it('en franja: encola ALLOWED, no consume cupo y muestra los lotes en franja', async () => {
+    const deps = makeDeps({
+      postValidate: vi.fn().mockRejectedValue(new Error('network down')),
+      parseToken,
+      buildOfflineContext: vi.fn().mockReturnValue({
+        now,
+        keys: { kid1: b64(getPublicKey(secretKey)) },
+        revoked: new Set<string>(),
+        localUses: () => 0,
+        isEnrolled: () => false,
+        neighborhoodTimezone: null,
+        workerPermissions: () => [permission('M4-L12'), permission('M9-L01')],
+        isWorkerEnrolled: () => true,
+      }),
+    });
+
+    const outcome = await resolveScan(token, 'cid-w', deps);
+
+    expect(outcome).toEqual({ status: 'allowed', guestName: null, lotCode: 'M4-L12, M9-L01' });
+    expect(deps.recordLocalUse).not.toHaveBeenCalled();
+    expect(deps.enqueueOutboxEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ clientEventId: 'cid-w', token, localDecision: 'ALLOWED' }),
+    );
+  });
+
+  it('no enrolado: pide DNI del trabajador y no encola nada', async () => {
+    const deps = makeDeps({
+      postValidate: vi.fn().mockRejectedValue(new Error('network down')),
+      buildOfflineContext: vi.fn().mockReturnValue({
+        now,
+        keys: { kid1: b64(getPublicKey(secretKey)) },
+        revoked: new Set<string>(),
+        localUses: () => 0,
+        isEnrolled: () => true,
+        neighborhoodTimezone: null,
+        workerPermissions: () => [permission('M4-L12')],
+        isWorkerEnrolled: () => false,
+      }),
+    });
+
+    const outcome = await resolveScan(token, 'cid-w', deps);
+
+    expect(outcome).toEqual({
+      status: 'needs_enrollment',
+      subject: { kind: 'worker', userId: 'user-w' },
+      token,
+      lotCode: null,
+      guestName: null,
+      offlineScan: { clientEventId: 'cid-w', capturedAt: expect.any(String) },
+    });
+    expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();
+  });
+
+  it('fuera de franja: encola DENIED con el motivo local', async () => {
+    const deps = makeDeps({
+      postValidate: vi.fn().mockRejectedValue(new Error('network down')),
+      buildOfflineContext: vi.fn().mockReturnValue({
+        now,
+        keys: { kid1: b64(getPublicKey(secretKey)) },
+        revoked: new Set<string>(),
+        localUses: () => 0,
+        isEnrolled: () => true,
+        neighborhoodTimezone: null,
+        workerPermissions: () => [{ ...permission('M4-L12'), weekdays: [5] }],
+        isWorkerEnrolled: () => true,
+      }),
+    });
+
+    await resolveScan(token, 'cid-w', deps);
+
+    expect(deps.enqueueOutboxEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientEventId: 'cid-w',
+        localDecision: 'DENIED',
+        localDenialReason: 'OUT_OF_SCHEDULE',
+      }),
+    );
+  });
+});
+
+describe('resolveScan - motivo local en el outbox', () => {
+  it('sin red y token invalido: encola DENIED con INVALID_SIGNATURE', async () => {
+    const deps = makeDeps({
+      postValidate: vi.fn().mockRejectedValue(new Error('network down')),
+    });
+
+    await resolveScan('no-es-un-token', 'cid-x', deps);
+
+    expect(deps.enqueueOutboxEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientEventId: 'cid-x',
+        localDecision: 'DENIED',
+        localDenialReason: 'INVALID_SIGNATURE',
+      }),
+    );
+  });
+});
+
+describe('notEnrolledEvent', () => {
+  it('arma el DENIED NOT_ENROLLED con el id y la hora del escaneo original', () => {
+    const scan = { clientEventId: 'cid-scan', capturedAt: '2026-10-01T12:00:00.000Z' };
+    expect(notEnrolledEvent('SP1.token', scan, 'gate-1')).toEqual({
+      clientEventId: 'cid-scan',
+      token: 'SP1.token',
+      gateId: 'gate-1',
+      direction: 'IN',
+      companions: null,
+      capturedAt: '2026-10-01T12:00:00.000Z',
+      localDecision: 'DENIED',
+      localDenialReason: 'NOT_ENROLLED',
+      documentNumber: null,
+    });
   });
 });

@@ -6,6 +6,7 @@ import { Spinner } from '@/common/components/spinner';
 import { useExtendInvitation, useRequestExit } from '@/modules/invitation/hooks';
 import { exitAlreadyRequested, pendingResidentStays } from '@/modules/resident-stays/lib';
 import { useOpenStays } from '@/modules/stays/hooks';
+import { formatEnteredAt as formatTime } from '@/modules/stays/lib';
 import type { Stay } from '@/modules/stays/types';
 
 // Card en la home del residente que aparece solo cuando hay estadias
@@ -36,6 +37,14 @@ function PendingStayRow({ stay }: { stay: Stay }) {
   const onExtend = () => {
     if (!invitationId) return;
     extend.mutate(invitationId, {
+      // Misma palabra que el boton: "Extender" -> "Pase extendido".
+      onSuccess: (data) =>
+        Alert.alert(
+          'Pase extendido',
+          data.validUntil
+            ? `${stay.subjectName ?? 'La visita'} puede quedarse hasta las ${formatTime(data.validUntil)}`
+            : `${stay.subjectName ?? 'La visita'} puede quedarse mas tiempo.`,
+        ),
       onError: (err) =>
         Alert.alert(
           'No se pudo extender',

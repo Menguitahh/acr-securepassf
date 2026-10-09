@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   backoffDelayFor,
   classifyOrphanOutboxRows,
+  extractEnrollmentSubject,
   hasValidGate,
-  isOutboxEvent,
+  parseOutboxEvent,
+  parseWeekdays,
   runSyncCycle,
   toSyncEvent,
+  toWorkerCacheSnapshot,
   type OutboxOrphanRow,
   type SyncCycleDeps,
 } from '@/modules/offline/lib';
@@ -152,47 +155,72 @@ describe('runSyncCycle - cola con red simulada', () => {
   });
 });
 
-describe('isOutboxEvent', () => {
+describe('parseOutboxEvent', () => {
   it('acepta un evento valido', () => {
-    expect(isOutboxEvent(event('e1'))).toBe(true);
+    expect(parseOutboxEvent(event('e1'))).not.toBeNull();
   });
 
   it('rechaza formas invalidas', () => {
-    expect(isOutboxEvent(null)).toBe(false);
-    expect(isOutboxEvent({ ...event('e1'), direction: 'SIDEWAYS' })).toBe(false);
-    expect(isOutboxEvent({ ...event('e1'), localDecision: 'MAYBE' })).toBe(false);
-    expect(isOutboxEvent({ clientEventId: 'e1' })).toBe(false);
+    expect(parseOutboxEvent(null)).toBeNull();
+    expect(parseOutboxEvent({ ...event('e1'), direction: 'SIDEWAYS' })).toBeNull();
+    expect(parseOutboxEvent({ ...event('e1'), localDecision: 'MAYBE' })).toBeNull();
+    expect(parseOutboxEvent({ clientEventId: 'e1' })).toBeNull();
   });
 
   it('acepta gateId=null (evento encolado antes de que el device tenga garita configurada)', () => {
-    expect(isOutboxEvent({ ...event('e1'), gateId: null })).toBe(true);
+    expect(parseOutboxEvent({ ...event('e1'), gateId: null })).not.toBeNull();
   });
 
   it('rechaza gateId="" (misconfig: EXPO_PUBLIC_GATE_ID vacio produciria perdida silenciosa)', () => {
-    expect(isOutboxEvent({ ...event('e1'), gateId: '' })).toBe(false);
+    expect(parseOutboxEvent({ ...event('e1'), gateId: '' })).toBeNull();
   });
 
   it('acepta documentNumber string en un evento de enrolamiento offline (#27)', () => {
-    expect(isOutboxEvent({ ...event('e1'), documentNumber: '30123456' })).toBe(true);
+    expect(parseOutboxEvent({ ...event('e1'), documentNumber: '30123456' })).not.toBeNull();
   });
 
   it('acepta documentNumber=null (evento de acceso normal, sin enrolamiento)', () => {
-    expect(isOutboxEvent({ ...event('e1'), documentNumber: null })).toBe(true);
+    expect(parseOutboxEvent({ ...event('e1'), documentNumber: null })).not.toBeNull();
   });
 
   it('rechaza documentNumber="" (misconfig o payload corrupto)', () => {
-    expect(isOutboxEvent({ ...event('e1'), documentNumber: '' })).toBe(false);
+    expect(parseOutboxEvent({ ...event('e1'), documentNumber: '' })).toBeNull();
   });
 
   it('rechaza documentNumber ausente (payload viejo sin migrar)', () => {
     const { documentNumber: _drop, ...withoutDoc } = event('e1');
     void _drop;
-    expect(isOutboxEvent(withoutDoc)).toBe(false);
+    expect(parseOutboxEvent(withoutDoc)).toBeNull();
+  });
+  it('conserva el motivo de un DENIED', () => {
+    const denied = { ...event('e1'), localDecision: 'DENIED', localDenialReason: 'REVOKED' };
+    expect(parseOutboxEvent(denied)).toMatchObject({
+      localDecision: 'DENIED',
+      localDenialReason: 'REVOKED',
+    });
+  });
+
+  it('fila DENIED vieja sin motivo: sale como UNKNOWN, no se descarta', () => {
+    expect(parseOutboxEvent({ ...event('e1'), localDecision: 'DENIED' })).toMatchObject({
+      clientEventId: 'e1',
+      localDecision: 'DENIED',
+      localDenialReason: 'UNKNOWN',
+    });
+  });
+
+  it('DENIED con un motivo que el contrato no conoce: UNKNOWN', () => {
+    const odd = { ...event('e1'), localDecision: 'DENIED', localDenialReason: 'toString' };
+    expect(parseOutboxEvent(odd)).toMatchObject({ localDenialReason: 'UNKNOWN' });
+  });
+
+  it('ALLOWED nunca lleva motivo, aunque la fila traiga uno', () => {
+    const stray = { ...event('e1'), localDenialReason: 'REVOKED' };
+    expect(parseOutboxEvent(stray)).not.toHaveProperty('localDenialReason');
   });
 });
 
 describe('hasValidGate', () => {
-  // Predicado unico usado en isOutboxEvent, peek filter (sync.ts) y
+  // Predicado unico usado en parseOutboxEvent, peek filter (sync.ts) y
   // toSyncEvent. Antes cada uno usaba una expresion distinta y la
   // desincronizacion dejaba pasar gateId="" a un mapping que lo tiraba,
   // con runSyncCycle borrando el clientEventId igual. Este test blinda
@@ -291,7 +319,7 @@ describe('runSyncCycle - regresion #27 enrolamiento offline viaja con DNI', () =
     // Si en algun momento toSyncEvent deja de incluir documentNumber (bug
     // o refactor), este test rompe. Ver comentario en toSyncEvent.
     const enrollmentEvent: OutboxEvent = { ...event('e-enroll'), documentNumber: '30123456' };
-    const sentToServer: Array<{ clientEventId: string; documentNumber?: string }> = [];
+    const sentToServer: { clientEventId: string; documentNumber?: string }[] = [];
     const deps: SyncCycleDeps = {
       peek: (limit) => [enrollmentEvent].slice(0, limit),
       send: async (events) => {
@@ -324,6 +352,19 @@ describe('toSyncEvent', () => {
       localDecision: 'ALLOWED',
       companions: 2,
     });
+  });
+
+  it('DENIED viaja con su motivo local', () => {
+    const mapped = toSyncEvent({
+      ...event('e1'),
+      localDecision: 'DENIED',
+      localDenialReason: 'NOT_ENROLLED',
+    });
+    expect(mapped).toMatchObject({ localDecision: 'DENIED', localDenialReason: 'NOT_ENROLLED' });
+  });
+
+  it('ALLOWED no manda localDenialReason', () => {
+    expect(toSyncEvent(event('e1'))).not.toHaveProperty('localDenialReason');
   });
 
   it('omite companions cuando es null', () => {
@@ -446,5 +487,82 @@ describe('classifyOrphanOutboxRows (#83)', () => {
       removeEmpty: [],
       removeStale: [],
     });
+  });
+});
+
+describe('toWorkerCacheSnapshot', () => {
+  const row = {
+    userId: 'u1',
+    jti: 'j1',
+    lotId: 'l1',
+    lotCode: 'M4-L12',
+    weekdays: [1, 2],
+    dailyFrom: '08:00',
+    dailyUntil: '12:00',
+    timezone: 'America/Argentina/Mendoza',
+  };
+
+  it('mapea las filas completas y los enrolados', () => {
+    expect(toWorkerCacheSnapshot({ permissions: [row], enrolledUserIds: ['u1'] })).toEqual({
+      permissions: [row],
+      enrolledUserIds: ['u1'],
+    });
+  });
+
+  it('listas vacias son un padron vacio, no una respuesta rota', () => {
+    expect(toWorkerCacheSnapshot({ permissions: [], enrolledUserIds: [] })).toEqual({
+      permissions: [],
+      enrolledUserIds: [],
+    });
+  });
+
+  it('sin alguna de las dos listas la respuesta esta rota: null', () => {
+    expect(toWorkerCacheSnapshot({ permissions: [row] })).toBeNull();
+    expect(toWorkerCacheSnapshot({ enrolledUserIds: ['u1'] })).toBeNull();
+    expect(toWorkerCacheSnapshot({})).toBeNull();
+  });
+
+  it('descarta filas sin identidad o sin franja; sin tz queda null', () => {
+    const { userId: _u, ...sinUsuario } = row;
+    const { timezone: _t, ...sinTz } = row;
+    const snapshot = toWorkerCacheSnapshot({
+      permissions: [sinUsuario, { ...row, weekdays: [] }, { ...row, dailyFrom: '' }, sinTz],
+      enrolledUserIds: ['u1', ''],
+    });
+    expect(snapshot).toEqual({ permissions: [{ ...row, timezone: null }], enrolledUserIds: ['u1'] });
+  });
+});
+
+describe('parseWeekdays', () => {
+  it('lee la lista guardada y devuelve [] ante cualquier otra cosa', () => {
+    expect(parseWeekdays('[1,3,5]')).toEqual([1, 3, 5]);
+    expect(parseWeekdays('[1,"x",2.5,7]')).toEqual([1, 7]);
+    expect(parseWeekdays('{"a":1}')).toEqual([]);
+    expect(parseWeekdays('no es json')).toEqual([]);
+  });
+});
+
+describe('extractEnrollmentSubject', () => {
+  const token = (payload: object) =>
+    `SP1.${btoa(JSON.stringify(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}.firma`;
+
+  it('el token del trabajador identifica al usuario', () => {
+    expect(extractEnrollmentSubject(token({ st: 'W', s: 'u1' }))).toEqual({ kind: 'worker', userId: 'u1' });
+  });
+
+  it('el token de invitacion identifica la invitacion', () => {
+    expect(extractEnrollmentSubject(token({ i: 'inv-1', l: 'l1' }))).toEqual({
+      kind: 'guest',
+      invitationId: 'inv-1',
+    });
+  });
+
+  it('un W sin usuario no cae a la rama de invitacion aunque traiga i', () => {
+    expect(extractEnrollmentSubject(token({ st: 'W', i: 'inv-1' }))).toBeNull();
+  });
+
+  it('token corrupto devuelve null', () => {
+    expect(extractEnrollmentSubject('SP1.!!!.x')).toBeNull();
+    expect(extractEnrollmentSubject('')).toBeNull();
   });
 });

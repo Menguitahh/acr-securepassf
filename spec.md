@@ -463,7 +463,9 @@ CREATE TABLE access_logs (
                     CHECK (denial_reason IN (
                         'INVALID_SIGNATURE','NOT_YET_VALID','EXPIRED',
                         'ALREADY_USED','REVOKED','OUT_OF_SCHEDULE',
-                        'LOT_SUSPENDED','REPLAY','UNKNOWN')),
+                        'LOT_SUSPENDED','REPLAY','DOCUMENT_MISMATCH','UNKNOWN')),
+                    -- DOCUMENT_MISMATCH (V4): el DNI cargado al enrolar no es el de la
+                    -- invitacion o del trabajador detras del QR ("le prestaron el QR")
 
     subject_name    VARCHAR(140),
     subject_document VARCHAR(20),
@@ -812,6 +814,16 @@ POST /api/v1/access/sync
       "companions": 0,
       "capturedAt": "2026-08-20T18:42:11Z",
       "localDecision": "ALLOWED"
+    },
+    {
+      "clientEventId": "uuid",
+      "token": "SP1...",
+      "gateId": "uuid",
+      "direction": "IN",
+      "companions": 0,
+      "capturedAt": "2026-08-20T18:50:03Z",
+      "localDecision": "DENIED",
+      "localDenialReason": "OUT_OF_SCHEDULE"
     }
   ]
 }
@@ -828,7 +840,7 @@ POST /api/v1/access/sync
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
 | POST | `/access/validate` | GUARD | Validación online |
-| POST | `/access/sync` | GUARD | Batch offline, idempotente por `clientEventId` |
+| POST | `/access/sync` | GUARD | Batch offline, idempotente por `clientEventId`. `lotId` opcional por evento, con las mismas reglas que validate y la franja evaluada en el `capturedAt` del evento (#217). Un evento con `lotId` inválido sale `REJECTED` con `rejection: INVALID_LOT`: no se guarda como acceso, deja un WARN con `clientEventId` y guardia, y el resto del batch sigue. `REJECTED` (evento mal formado) no es `DENIED` (decisión de acceso); los dos son terminales. `localDecision` (`ALLOWED` \| `DENIED`) es obligatorio; `localDenialReason` (mismo vocabulario que `reason`) es obligatorio si es `DENIED` y no va si es `ALLOWED`. Si no se cumple (valor desconocido, falta o sobra el motivo), ese evento sale `REJECTED` con `rejection: INVALID_LOCAL_DECISION`, deja un WARN y el resto del batch sigue, igual que `INVALID_LOT`. `WORKER_NOT_SYNCED` y `NEIGHBORHOOD_TZ_MISSING` solo los produce la garita offline (el dispositivo no tenía los datos) y se guardan tal cual: son la señal de una garita desincronizada. Si el guardia cancela el paso del DNI, la garita manda `DENIED` `NOT_ENROLLED` sin `documentNumber`. Un `DENIED` local se guarda con ese motivo sin re-evaluar (§8.4). Un `ALLOWED` local de alguien sin enrolamiento en el barrio sale `DENIED` `NOT_ENROLLED`, auditado y sin consumir el pase. |
 | POST | `/access/manual` | GUARD | Ingreso sin QR (proveedor, visita imprevista) |
 | GET | `/access/keys` | GUARD | Claves públicas Ed25519 activas del barrio |
 | GET | `/access-logs?from=&to=&lotId=&result=&page=` | ADMIN, RESIDENT (solo su lote) | Bitácora |
@@ -853,6 +865,7 @@ POST /api/v1/access/sync
 | POST | `/admin/lots/{id}/members` | Vincular usuario a lote |
 | GET/POST/PATCH | `/admin/users` | Altas de guardias y residentes |
 | GET | `/admin/reports/access-logs.csv` | Export |
+| GET | `/admin/reports/access-logs.xlsx` | Export para leer e imprimir en Excel (securepassb#195). Mismos parámetros, rango máximo, límite de concurrencia y auditoría que el CSV. 422 con `rule: export-rows` si el filtro supera el límite de filas del XLSX |
 
 ### 7.6 Códigos de error
 
@@ -896,7 +909,26 @@ CREATE TABLE signing_keys_cache (
 
 CREATE TABLE revoked_cache (
   jti         TEXT PRIMARY KEY,
-  synced_at   TEXT NOT NULL
+  synced_at   TEXT NOT NULL,
+  revoked_at  TEXT            -- revokedAt del server; MAX(revoked_at) es el cursor de since
+);
+
+-- WBS-118: padron de trabajadores de GET /access/permissions/sync.
+-- Se reemplaza completo en cada sync exitoso (se pide sin `since`).
+CREATE TABLE worker_permissions_cache (
+  user_id      TEXT NOT NULL,
+  jti          TEXT NOT NULL,
+  lot_id       TEXT NOT NULL,
+  lot_code     TEXT NOT NULL,
+  weekdays     TEXT NOT NULL,        -- JSON, ISO 1..7
+  daily_from   TEXT NOT NULL,
+  daily_until  TEXT NOT NULL,
+  timezone     TEXT,                 -- tz de la fila: franja y zona viajan juntas
+  PRIMARY KEY (user_id, lot_id)
+);
+
+CREATE TABLE worker_enrollments_cache (
+  user_id TEXT PRIMARY KEY
 );
 ```
 
@@ -940,6 +972,15 @@ permitido (un desconocido adentro) es mayor que el de un falso denegado
 (un registro manual en garita). `UNKNOWN` se agrega a los motivos
 producibles offline.
 
+**Rama del trabajador (WBS-118).** Un token `st: 'W'` no trae ventana,
+lote ni cupo. Después de firma y revocación, todo sale de
+`worker_permissions_cache`: sin filas para `s` con el mismo `jti` →
+`WORKER_NOT_SYNCED` (cache viejo o token rotado, fail-closed); fila sin
+tz → `NEIGHBORHOOD_TZ_MISSING`; ningún lote en franja con la tz de cada
+fila → `OUT_OF_SCHEDULE`; sin enrolar → pide DNI como al invitado; si no,
+permitido con los lotes en franja, que se muestran como información
+(el guardia no elige hasta que el backend acepte `lotId`, WBS-119).
+
 ### 8.3 Limitaciones aceptadas del modo offline
 
 Se documentan porque son decisiones, no bugs:
@@ -950,6 +991,8 @@ Se documentan porque son decisiones, no bugs:
 
 ### 8.4 Política de sincronización
 
+- **El sync nunca sube un `DENIED` local a `ALLOWED`.** El rechazo de la garita es un hecho físico: el server lo guarda con el `localDenialReason` del evento, sin re-evaluar, sin consumir el pase, sin abrir estadía y sin enrolar. Puede bajar un `ALLOWED` local a `DENIED` (auditado: `REPLAY`, `REVOKED`, `NOT_ENROLLED`, etc.), aunque la persona haya entrado, para que el admin lo vea. Nunca al revés: re-evaluar un rechazo con el permiso del momento del sync inventa ingresos.
+- El sync chequea enrolamiento igual que online. La cache local da por enrolado un DNI que el dispositivo no pudo verificar; si el enroll falla en el server (`DOCUMENT_MISMATCH`), los ingresos siguientes sin DNI salen `NOT_ENROLLED`.
 - Reintento con backoff exponencial: 5 s → 15 s → 60 s → 5 min, tope 5 min.
 - Batch de máximo 50 eventos por request.
 - La cola nunca se descarta automáticamente. Si supera 500 eventos, se muestra alerta persistente en la app del guardia.
@@ -1243,7 +1286,7 @@ Formato: `US-<n>` → issue. Prioridad: **P0** bloqueante del MVP, **P1** necesa
 | US-29 | Como admin quiero ver afluencia por franja horaria. | P1 | Buckets de hora; rango configurable; separación peatonal/vehicular queda para v2 (sin patente no se distingue de forma fiable). |
 | US-30 | Como admin quiero ver los accesos denegados y su motivo. | P1 | Agrupados por `denial_reason`; drill-down al log individual. |
 | US-31 | Como admin quiero alertas de permanencia excedida. | P1 | BR-08; listado con lote, invitado y horas transcurridas. |
-| US-32 | Como admin quiero exportar la bitácora. | P1 | CSV con rango de fechas; la exportación queda registrada en auditoría. |
+| US-32 | Como admin quiero exportar la bitácora. | P1 | CSV con rango de fechas; la exportación queda registrada en auditoría. Excel (XLSX) para lectura con el mismo rango (securepassb#195). |
 | US-33 | Como admin quiero ver la bitácora de turnos de guardias. | P2 | Turno, guardia, garita, cantidad de accesos, nota de entrega. |
 
 ---

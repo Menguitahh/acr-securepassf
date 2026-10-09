@@ -5,12 +5,13 @@ import { EmptyState } from '@/common/components/empty-state';
 import { ErrorState } from '@/common/components/error-state';
 import { Spinner } from '@/common/components/spinner';
 import { useCloseStay, useOpenStays, useSyncStayWarnings } from '@/modules/stays/hooks';
-import { formatEnteredAt, isNearExpiry, sortByEnteredAtDesc } from '@/modules/stays/lib';
+import { formatEnteredAt, formatRemaining, isNearExpiry, sortByEnteredAtDesc } from '@/modules/stays/lib';
 import { isLocallyWarned } from '@/modules/stays/notifications';
+import { warningStates } from '@/modules/stays/warnings-store';
 import type { Stay } from '@/modules/stays/types';
 
 export function StaysView() {
-  const { data, isLoading, isError, error, refetch } = useOpenStays();
+  const { data, dataUpdatedAt, isLoading, isError, error, refetch } = useOpenStays();
   const close = useCloseStay();
   useSyncStayWarnings(data);
 
@@ -71,6 +72,10 @@ export function StaysView() {
   }
 
   const sorted = sortByEnteredAtDesc(data);
+  // "Ahora" es el ultimo refetch (cada 60 s): un aviso que vencio en el
+  // medio se resalta en el siguiente, sin reloj impuro en el render.
+  const local = warningStates();
+  const now = dataUpdatedAt;
 
   return (
     <FlatList
@@ -78,7 +83,7 @@ export function StaysView() {
       keyExtractor={(item) => item.id ?? ''}
       contentContainerClassName="gap-3 px-6 pb-6"
       renderItem={({ item }) => {
-        const locallyWarned = item.id ? isLocallyWarned(item.id) : false;
+        const locallyWarned = isLocallyWarned(item, local, now);
         const near = locallyWarned || isNearExpiry(item);
         return (
           <Pressable
@@ -105,9 +110,7 @@ export function StaysView() {
                 <Text
                   className={`text-footnote font-semibold ${near ? 'text-warn' : 'text-text-muted'}`}
                 >
-                  {item.minutesRemaining <= 0
-                    ? 'Vencido'
-                    : `${item.minutesRemaining} min`}
+                  {formatRemaining(item.minutesRemaining)}
                 </Text>
               ) : null}
             </View>

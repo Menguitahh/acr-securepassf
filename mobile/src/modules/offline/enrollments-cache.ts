@@ -1,5 +1,7 @@
 import { getDb } from '@/common/db/database';
 import { enqueueOutboxEvent } from '@/modules/offline/outbox';
+import { recordWorkerEnrollment } from '@/modules/offline/worker-cache';
+import type { EnrollmentSubject } from '@/modules/scanner/types';
 
 // Cache local de invitaciones ya enroladas (US-36). Una fila por invitacion:
 // la primera vez que el guardia captura el DNI, el backend responde y el
@@ -34,6 +36,13 @@ export function forgetEnrollment(invitationId: string): void {
   db.runSync('DELETE FROM enrollments_cache WHERE invitation_id = ?', [invitationId]);
 }
 
+// El invitado se marca por invitacion y el trabajador por usuario
+// (WBS-118): cada uno tiene su cache.
+export function recordSubjectEnrollment(subject: EnrollmentSubject, document: string): void {
+  if (subject.kind === 'worker') recordWorkerEnrollment(subject.userId);
+  else recordEnrollment(subject.invitationId, document);
+}
+
 // Enrolamiento offline (#27): el server no pudo confirmar en el momento
 // del scan, se persiste local Y se encola para sync. Combinar las dos
 // mitades en un solo helper evita el ordering error de olvidarse una:
@@ -46,13 +55,13 @@ export function forgetEnrollment(invitationId: string): void {
 // documentNumber) los combina en un Event con el campo poblado.
 export function enqueueOfflineEnrollment(input: {
   clientEventId: string;
-  invitationId: string;
+  subject: EnrollmentSubject;
   token: string;
   gateId: string | null;
   documentNumber: string;
   capturedAt: string;
 }): void {
-  recordEnrollment(input.invitationId, input.documentNumber);
+  recordSubjectEnrollment(input.subject, input.documentNumber);
   enqueueOutboxEvent({
     clientEventId: input.clientEventId,
     token: input.token,

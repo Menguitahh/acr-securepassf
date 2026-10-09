@@ -21,6 +21,8 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # #151: gh workflow run del CI sobre el PR del bot.
+  actions: write
 
 concurrency:
   group: expo-doctor-cron
@@ -48,11 +50,17 @@ jobs:
         working-directory: mobile
         run: npx expo install --fix
 
+      - name: detectar drift
+        id: drift
+        working-directory: mobile
+        run: git diff --quiet || echo "found=true" >> "$GITHUB_OUTPUT"
+
       - name: expo-doctor (verifica que el fix haya alcanzado)
         working-directory: mobile
         run: npx expo-doctor
 
       - name: create or update PR si hay diff
+        id: cpr
         uses: peter-evans/create-pull-request@v7
         with:
           base: develop
@@ -80,3 +88,24 @@ jobs:
             - [ ] Confirmar que el CI de este PR pasa (incluye expo-doctor).
 
             Refs #59
+
+      # #151: el PR lo crea GITHUB_TOKEN y GitHub no dispara pull_request por
+      # eventos de ese token, asi que frontend-ci no corria nunca sobre el PR
+      # del bot. workflow_dispatch es la excepcion que ese token si puede
+      # disparar; el run queda sobre el head de la rama y aparece en los
+      # checks del PR. Corre cada dia con drift, aunque el PR ya existiera:
+      # un rerun sobre el mismo head no molesta y cubre el caso "sin cambios".
+      - name: correr frontend-ci sobre el PR del bot
+        if: steps.drift.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run frontend-ci.yml --repo "$GITHUB_REPOSITORY" --ref chore/expo-doctor-drift-auto
+
+      # #151: abrir el PR no arregla develop. Mientras no se mergee, develop
+      # falla en expo-doctor; el cron termina en rojo para que el dashboard de
+      # Actions lo muestre en vez de verse verde.
+      - name: drift pendiente en develop
+        if: steps.drift.outputs.found == 'true'
+        run: |
+          echo "::error::develop tiene drift de Expo SDK 57; mergear ${{ steps.cpr.outputs.pull-request-url }}"
+          exit 1

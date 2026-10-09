@@ -9,11 +9,13 @@ import type {
   AccessDecision,
   DenialReason,
   DniData,
+  InvitationPayload,
   OfflineContext,
   OfflineDenialReason,
   ParsedToken,
   ScanResult,
   TokenPayload,
+  WorkerPayload,
 } from '@/modules/scanner/types';
 
 // @noble/ed25519 v3 no incluye implementacion de hash: se configura una vez.
@@ -34,12 +36,30 @@ function decodeBase64Url(value: string): Uint8Array | null {
   }
 }
 
+const INVITATION_FIELDS = ['l', 'i', 't', 'f', 'u', 'm'] as const;
+
 function isTokenPayload(value: unknown): value is TokenPayload {
   if (typeof value !== 'object' || value === null) return false;
   if (!('v' in value) || typeof value.v !== 'number') return false;
   if (!('k' in value) || typeof value.k !== 'string') return false;
   if (!('j' in value) || typeof value.j !== 'string') return false;
   if (!('n' in value) || typeof value.n !== 'string') return false;
+  if (value.v !== 1) return false;
+  // subType (WBS-116): ausente es invitacion, 'W' es trabajador. Cualquier
+  // otro valor es un formato que esta version no sabe validar.
+  if ('st' in value) return isWorkerPayload(value);
+  return isInvitationPayload(value);
+}
+
+// Mismas invariantes que QrTokenPayload del backend: el trabajador lleva
+// sub y ninguno de los campos de invitacion.
+function isWorkerPayload(value: object): value is WorkerPayload {
+  if (!('st' in value) || value.st !== 'W') return false;
+  if (!('s' in value) || typeof value.s !== 'string') return false;
+  return INVITATION_FIELDS.every((field) => !(field in value));
+}
+
+function isInvitationPayload(value: object): value is InvitationPayload {
   if (!('l' in value) || typeof value.l !== 'string') return false;
   if (!('i' in value) || typeof value.i !== 'string') return false;
   if (!('t' in value) || (value.t !== 'S' && value.t !== 'E' && value.t !== 'R')) {
@@ -48,7 +68,6 @@ function isTokenPayload(value: unknown): value is TokenPayload {
   if (!('f' in value) || typeof value.f !== 'number') return false;
   if (!('u' in value) || typeof value.u !== 'number') return false;
   if (!('m' in value) || typeof value.m !== 'number') return false;
-  if (value.v !== 1) return false;
   // Forma del payload para RECURRING (spec 5.1): sin franja valida no se
   // puede evaluar OFFLINE_OUT_OF_SCHEDULE, el token se rechaza como invalido.
   if (value.t === 'R') {
@@ -107,7 +126,7 @@ function verifySignature(parsed: ParsedToken, publicKeyBase64Url: string): boole
 // Exportado para tests: el guard defiende ante llamadores que bypasseen
 // parseToken (payload construido a mano) o ante un futuro subtype que
 // haga la franja opcional. Fail-closed: si falta cualquier pieza, false.
-export function isWithinRecurringSchedule(payload: TokenPayload, ctx: OfflineContext): boolean {
+export function isWithinRecurringSchedule(payload: InvitationPayload, ctx: OfflineContext): boolean {
   if (!payload.w || payload.w.length === 0) return false;
   if (!payload.df || !payload.du) return false;
   if (!ctx.neighborhoodTimezone) return false;
@@ -131,35 +150,40 @@ export function validateOffline(token: string, ctx: OfflineContext): AccessDecis
   if (!verifySignature(parsed, key)) return denied('INVALID_SIGNATURE');
 
   if (ctx.revoked.has(parsed.payload.j)) return denied('REVOKED');
-  if (ctx.now < parsed.payload.f) return denied('NOT_YET_VALID');
-  if (ctx.now > parsed.payload.u) return denied('EXPIRED');
-  if (parsed.payload.t === 'R') {
+  if (parsed.payload.st === 'W') return validateWorkerOffline(parsed.payload, ctx);
+  return validateInvitationOffline(parsed.payload, ctx);
+}
+
+function validateInvitationOffline(payload: InvitationPayload, ctx: OfflineContext): AccessDecision {
+  if (ctx.now < payload.f) return denied('NOT_YET_VALID');
+  if (ctx.now > payload.u) return denied('EXPIRED');
+  if (payload.t === 'R') {
     // Sin tz del barrio configurada no se puede evaluar la franja. No es
     // que la ventana no case: no la podemos calcular. Motivo dedicado
     // para que el mensaje al guardia sea especifico (no un UNKNOWN generico).
     if (!ctx.neighborhoodTimezone) return denied('NEIGHBORHOOD_TZ_MISSING');
-    if (!isWithinRecurringSchedule(parsed.payload, ctx)) return denied('OUT_OF_SCHEDULE');
+    if (!isWithinRecurringSchedule(payload, ctx)) return denied('OUT_OF_SCHEDULE');
   }
-  if (ctx.localUses(parsed.payload.j) >= parsed.payload.m) {
+  if (ctx.localUses(payload.j) >= payload.m) {
     return denied('ALREADY_USED');
   }
   // Sin enrolamiento previo el guardia debe capturar el DNI antes de
   // permitir el ingreso: US-36. Es un guard clause posterior al resto
   // porque si el pase esta vencido/revocado/sin cupo no vale la pena
   // enrolar a nadie.
-  if (!ctx.isEnrolled(parsed.payload.i)) {
-    return { status: 'needs_enrollment', invitationId: parsed.payload.i };
+  if (!ctx.isEnrolled(payload.i)) {
+    return { status: 'needs_enrollment', subject: { kind: 'guest', invitationId: payload.i } };
   }
 
   // Allowed explicito: espeja las condiciones de los guards. Si una
   // condicion nueva se agrega al token y se olvida el guard, no entra aca.
-  const noRevocado = !ctx.revoked.has(parsed.payload.j);
-  const dentroDeVentana = ctx.now >= parsed.payload.f && ctx.now <= parsed.payload.u;
+  const noRevocado = !ctx.revoked.has(payload.j);
+  const dentroDeVentana = ctx.now >= payload.f && ctx.now <= payload.u;
   const enFranja =
-    parsed.payload.t !== 'R' ||
-    (!!ctx.neighborhoodTimezone && isWithinRecurringSchedule(parsed.payload, ctx));
-  const cupoDisponible = ctx.localUses(parsed.payload.j) < parsed.payload.m;
-  const enrolado = ctx.isEnrolled(parsed.payload.i);
+    payload.t !== 'R' ||
+    (!!ctx.neighborhoodTimezone && isWithinRecurringSchedule(payload, ctx));
+  const cupoDisponible = ctx.localUses(payload.j) < payload.m;
+  const enrolado = ctx.isEnrolled(payload.i);
   if (noRevocado && dentroDeVentana && enFranja && cupoDisponible && enrolado) {
     return { status: 'allowed' };
   }
@@ -167,6 +191,32 @@ export function validateOffline(token: string, ctx: OfflineContext): AccessDecis
   // Fail-closed: el default es denegar. El costo de un falso permitido es
   // un desconocido adentro; el de un falso denegado, un registro manual.
   return denied('UNKNOWN');
+}
+
+// Rama del trabajador (WBS-118). El token no trae ventana ni lote: todo
+// sale del cache de permisos. Firma y revocacion ya se chequearon.
+function validateWorkerOffline(payload: WorkerPayload, ctx: OfflineContext): AccessDecision {
+  // Solo cuentan los permisos emitidos con este jti. Otro jti es un cache
+  // viejo o un token rotado: desde el dispositivo no se distinguen, y en
+  // los dos casos lo seguro es no dejar pasar.
+  const permissions = ctx.workerPermissions(payload.s).filter((p) => p.jti === payload.j);
+  if (!permissions.length) return denied('WORKER_NOT_SYNCED');
+
+  const inWindow: string[] = [];
+  for (const p of permissions) {
+    // Sin la tz de la fila la franja no se puede calcular (misma razon que
+    // en la rama de invitacion): motivo dedicado, no OUT_OF_SCHEDULE.
+    if (!p.timezone) return denied('NEIGHBORHOOD_TZ_MISSING');
+    const window = { weekdays: p.weekdays, dailyFrom: p.dailyFrom, dailyUntil: p.dailyUntil };
+    if (scheduleContains(window, ctx.now, p.timezone)) inWindow.push(p.lotCode);
+  }
+  if (!inWindow.length) return denied('OUT_OF_SCHEDULE');
+
+  // Igual que el invitado: sin DNI verificado no entra (WBS-122).
+  if (!ctx.isWorkerEnrolled(payload.s)) {
+    return { status: 'needs_enrollment', subject: { kind: 'worker', userId: payload.s } };
+  }
+  return { status: 'allowed_worker', lotCodes: inWindow };
 }
 
 const DENIAL_REASONS: DenialReason[] = [
@@ -240,10 +290,11 @@ export function toScanResult(
       kind: 'result',
       value: {
         status: 'needs_enrollment',
-        invitationId: response.invitationId,
+        subject: { kind: 'guest', invitationId: response.invitationId },
         token,
         lotCode: response.lot?.code ?? null,
         guestName: response.guest?.name ?? null,
+        offlineScan: null,
       },
     };
   }
