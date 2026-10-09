@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { components } from '@securepass/contracts';
 
-import { api, authRequest } from '@/common/api/client';
+import { api } from '@/common/api/client';
 import { isProblemDetail } from '@/common/api/problem';
 
 /**
@@ -25,11 +25,9 @@ export function useMinors(lotId: string | undefined) {
     queryKey: ['family-minors', lotId],
     enabled: lotId !== undefined,
     queryFn: async () => {
-      const { data, error } = await authRequest(() =>
-        api.GET('/api/v1/family/lots/{lotId}/minors', {
-          params: { path: { lotId: lotId ?? '' } },
-        }),
-      );
+      const { data, error } = await api.GET('/api/v1/family/lots/{lotId}/minors', {
+        params: { path: { lotId: lotId ?? '' } },
+      });
       if (error || !data) {
         throw new Error('No se pudo cargar el padrón de menores.');
       }
@@ -42,12 +40,10 @@ export function useRegisterMinor(lotId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: components['schemas']['RegisterMinorRequest']) => {
-      const { data, error } = await authRequest(() =>
-        api.POST('/api/v1/family/lots/{lotId}/minors', {
-          params: { path: { lotId } },
-          body: input,
-        }),
-      );
+      const { data, error } = await api.POST('/api/v1/family/lots/{lotId}/minors', {
+        params: { path: { lotId } },
+        body: input,
+      });
       if (error || !data) {
         throw new Error(
           serverDetail(error, 'No se pudo registrar el menor. Revisá los datos e intentá de nuevo.'),
@@ -65,11 +61,9 @@ export function useDeleteMinor(lotId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (minorId: string) => {
-      const { error } = await authRequest(() =>
-        api.DELETE('/api/v1/family/lots/{lotId}/minors/{minorId}', {
-          params: { path: { lotId, minorId } },
-        }),
-      );
+      const { error } = await api.DELETE('/api/v1/family/lots/{lotId}/minors/{minorId}', {
+        params: { path: { lotId, minorId } },
+      });
       if (error) {
         throw new Error(serverDetail(error, 'No se pudo dar de baja al menor.'));
       }
@@ -87,12 +81,10 @@ export function useGraduateMinor(lotId: string) {
       minorId: string;
       body: components['schemas']['GraduateMinorRequest'];
     }) => {
-      const { data, error } = await authRequest(() =>
-        api.POST('/api/v1/family/lots/{lotId}/minors/{minorId}/graduate', {
-          params: { path: { lotId, minorId: input.minorId } },
-          body: input.body,
-        }),
-      );
+      const { data, error } = await api.POST('/api/v1/family/lots/{lotId}/minors/{minorId}/graduate', {
+        params: { path: { lotId, minorId: input.minorId } },
+        body: input.body,
+      });
       if (error || !data) {
         throw new Error(
           serverDetail(error, 'No se pudo graduar al menor. Revisá los datos e intentá de nuevo.'),

@@ -1,4 +1,4 @@
-import { api, authRequest } from '@/common/api/client';
+import { api } from '@/common/api/client';
 import { getDb } from '@/common/db/database';
 
 // Sincroniza las claves publicas y los jti revocados que la validacion
@@ -10,7 +10,7 @@ export async function syncAccessCache(): Promise<void> {
   const now = new Date().toISOString();
 
   try {
-    const { data, error } = await authRequest(() => api.GET('/api/v1/access/keys'));
+    const { data, error } = await api.GET('/api/v1/access/keys');
     const keys =
       !error && data
         ? data.flatMap(({ kid, publicKey }) => (kid && publicKey ? [{ kid, publicKey }] : []))
@@ -52,9 +52,7 @@ export async function syncAccessCache(): Promise<void> {
     // del empate no se alcanza; sumar paginado por jti en el server si pasa.
     for (;;) {
       const since = new Date(Math.max(cursor - 1, 0)).toISOString();
-      const { data, error } = await authRequest(() =>
-        api.GET('/api/v1/access/revoked', { params: { query: { since } } }),
-      );
+      const { data, error } = await api.GET('/api/v1/access/revoked', { params: { query: { since } } });
       if (error || !data) return;
       let added = 0;
       db.withTransactionSync(() => {

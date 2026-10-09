@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { components } from '@securepass/contracts';
 
-import { api, authRequest } from '@/common/api/client';
+import { api } from '@/common/api/client';
 import { isProblemDetail } from '@/common/api/problem';
 
 // El server manda problem+json con `detail` legible ("el usuario ya es
@@ -18,11 +18,9 @@ export function useFamilyMembers(lotId: string | undefined) {
     queryKey: ['family', lotId],
     enabled: lotId !== undefined,
     queryFn: async () => {
-      const { data, error } = await authRequest(() =>
-        api.GET('/api/v1/family/lots/{lotId}/members', {
-          params: { path: { lotId: lotId ?? '' } },
-        }),
-      );
+      const { data, error } = await api.GET('/api/v1/family/lots/{lotId}/members', {
+        params: { path: { lotId: lotId ?? '' } },
+      });
       if (error || !data) {
         throw new Error('No se pudo cargar la unidad familiar.');
       }
@@ -42,12 +40,10 @@ export function useAddFamilyMember(lotId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: components['schemas']['AddFamilyMemberRequest']) => {
-      const { data, error } = await authRequest(() =>
-        api.POST('/api/v1/family/lots/{lotId}/members', {
-          params: { path: { lotId } },
-          body: input,
-        }),
-      );
+      const { data, error } = await api.POST('/api/v1/family/lots/{lotId}/members', {
+        params: { path: { lotId } },
+        body: input,
+      });
       if (error || !data) {
         throw new Error(
           serverDetail(error, 'No se pudo agregar el miembro. Revisá los datos e intentá de nuevo.'),
@@ -68,12 +64,10 @@ export function useUpdateFamilyMember(lotId: string) {
       userId: string;
       patch: components['schemas']['UpdateFamilyMemberRequest'];
     }) => {
-      const { data, error } = await authRequest(() =>
-        api.PATCH('/api/v1/family/lots/{lotId}/members/{userId}', {
-          params: { path: { lotId, userId: input.userId } },
-          body: input.patch,
-        }),
-      );
+      const { data, error } = await api.PATCH('/api/v1/family/lots/{lotId}/members/{userId}', {
+        params: { path: { lotId, userId: input.userId } },
+        body: input.patch,
+      });
       if (error || !data) {
         throw new Error(serverDetail(error, 'No se pudo actualizar el miembro. Intentá de nuevo.'));
       }

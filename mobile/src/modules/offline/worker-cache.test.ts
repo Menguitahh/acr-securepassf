@@ -36,7 +36,6 @@ const response = vi.hoisted(() => ({
 
 vi.mock('@/common/db/database', () => ({ getDb: () => db }));
 vi.mock('@/common/api/client', () => ({
-  authRequest: (request: () => Promise<unknown>) => request(),
   api: { GET: () => response.current() },
 }));
 

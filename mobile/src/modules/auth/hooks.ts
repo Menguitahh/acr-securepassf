@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 
-import { api, authRequest } from '@/common/api/client';
+import { api } from '@/common/api/client';
 import { isProblemDetail } from '@/common/api/problem';
 import { wipeLocalDatabase } from '@/common/db/database';
 import { hasRole, toSessionUser } from '@/modules/auth/lib';
@@ -131,11 +131,9 @@ export function useLogout(): () => Promise<LogoutOutcome> {
     const tokens = await loadTokens();
     if (tokens) {
       try {
-        await authRequest(() =>
-          api.POST('/api/v1/auth/logout', {
-            body: { refreshToken: tokens.refreshToken },
-          }),
-        );
+        await api.POST('/api/v1/auth/logout', {
+          body: { refreshToken: tokens.refreshToken },
+        });
       } catch {
         // El logout local avanza aunque el server no responda.
       }

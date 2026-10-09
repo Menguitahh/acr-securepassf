@@ -1,7 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import { useCallback, useRef, useState } from 'react';
 
-import { api, authRequest } from '@/common/api/client';
+import { api } from '@/common/api/client';
 import { getDb } from '@/common/db/database';
 import { useSessionStore } from '@/modules/auth/session-store';
 import {
@@ -77,11 +77,9 @@ function recordLocalUse(jti: string, context: OfflineContext): void {
 function validateScannedToken(token: string, clientEventId: string): Promise<ScanResult> {
   return resolveScan(token, clientEventId, {
     postValidate: ({ token: t, gateId, clientEventId: cid, capturedAt }) =>
-      authRequest(() =>
-        api.POST('/api/v1/access/validate', {
-          body: { token: t, gateId, direction: 'IN', capturedAt, clientEventId: cid },
-        }),
-      ),
+      api.POST('/api/v1/access/validate', {
+        body: { token: t, gateId, direction: 'IN', capturedAt, clientEventId: cid },
+      }),
     buildOfflineContext,
     recordLocalUse,
     enqueueOutboxEvent,
@@ -144,17 +142,15 @@ export function useQrScanner() {
       setIsEnrolling(true);
       setEnrollmentError(null);
       try {
-        const { data, error } = await authRequest(() =>
-          api.POST('/api/v1/access/enroll', {
-            body: {
-              token: enrollment.token,
-              documentNumber,
-              gateId,
-              clientEventId: Crypto.randomUUID(),
-              capturedAt: new Date().toISOString(),
-            },
-          }),
-        );
+        const { data, error } = await api.POST('/api/v1/access/enroll', {
+          body: {
+            token: enrollment.token,
+            documentNumber,
+            gateId,
+            clientEventId: Crypto.randomUUID(),
+            capturedAt: new Date().toISOString(),
+          },
+        });
         if (error || !data) {
           setEnrollmentError(
             'No se pudo enrolar. Revisá la conexion e intentá de nuevo, o registrá el ingreso manualmente.',
