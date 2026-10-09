@@ -1,19 +1,43 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import Storage from 'expo-sqlite/kv-store';
 
 import { api } from '@/common/api/client';
 import { GATE_ID } from '@/modules/scanner/data';
-import { parseCurrentShift } from '@/modules/shifts/lib';
+import { useSessionStore } from '@/modules/auth/session-store';
+import { parseCurrentShift, parseStoredShift } from '@/modules/shifts/lib';
 import type { Shift } from '@/modules/shifts/types';
 
 const SHIFTS_KEY = ['shifts', 'current'] as const;
+
+// #204: el ultimo turno que confirmo el server, por guardia. Sin red al
+// arrancar, el scanner sigue con este en vez de quedar trabado.
+function storageKey(): string | null {
+  const userId = useSessionStore.getState().user?.id;
+  return userId ? `shifts.current.${userId}` : null;
+}
+
+function rememberShift(shift: Shift | null): void {
+  const key = storageKey();
+  if (key) Storage.setItemSync(key, JSON.stringify(shift));
+}
+
+function lastKnownShift(): Shift | null | undefined {
+  const key = storageKey();
+  return key ? parseStoredShift(Storage.getItemSync(key)) : undefined;
+}
 
 export function useCurrentShift() {
   return useQuery({
     queryKey: SHIFTS_KEY,
     queryFn: async (): Promise<Shift | null> => {
       const { data, error, response } = await api.GET('/api/v1/shifts/current');
-      return parseCurrentShift(response.status, data, error);
+      const shift = parseCurrentShift(response.status, data, error);
+      rememberShift(shift);
+      return shift;
     },
+    initialData: lastKnownShift,
+    // El guardado es viejo: se pide al server igual al montar.
+    initialDataUpdatedAt: 0,
     networkMode: 'offlineFirst',
   });
 }
@@ -33,6 +57,7 @@ export function useOpenShift() {
       return data;
     },
     onSuccess: (shift) => {
+      rememberShift(shift);
       queryClient.setQueryData(SHIFTS_KEY, shift);
     },
   });
@@ -49,6 +74,7 @@ export function useCloseShift() {
       return data;
     },
     onSuccess: () => {
+      rememberShift(null);
       queryClient.setQueryData(SHIFTS_KEY, null);
     },
   });

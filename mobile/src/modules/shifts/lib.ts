@@ -18,6 +18,36 @@ export function parseCurrentShift(
   return data;
 }
 
+const SHIFT_FIELDS = [
+  'id',
+  'neighborhoodId',
+  'gateId',
+  'guardId',
+  'startedAt',
+  'endedAt',
+  'handoverNotes',
+] as const;
+
+// #204: ultimo turno conocido, guardado para arrancar sin red. null = el
+// server dijo que no habia turno; undefined = nada guardado o ilegible.
+export function parseStoredShift(raw: string | null): Shift | null | undefined {
+  if (raw === null) return undefined;
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+  if (value === null) return null;
+  if (typeof value !== 'object') return undefined;
+  const shift: Shift = {};
+  for (const key of SHIFT_FIELDS) {
+    const field: unknown = Reflect.get(value, key);
+    if (typeof field === 'string') shift[key] = field;
+  }
+  return typeof shift.id === 'string' ? shift : undefined;
+}
+
 export function elapsedMinutes(startedAtIso: string | undefined, now: number): number | null {
   if (!startedAtIso) return null;
   const started = Date.parse(startedAtIso);

@@ -51,6 +51,27 @@ export default function ScannerScreen() {
     </GuardToolbar>
   );
 
+  // #204: sin red y sin turno guardado no se sabe si hay turno. Es un
+  // error, no "sin turno": se reintenta.
+  if (shift.isError && shift.data === undefined) {
+    return (
+      <View className="flex-1 bg-bg-base">
+        <GuardToolbar>
+          <LogoutButton />
+        </GuardToolbar>
+        <View className="flex-1 items-center justify-center gap-4 px-6">
+          <Text className="text-center text-2xl font-semibold text-text-primary">
+            No se pudo confirmar el turno
+          </Text>
+          <Text className="text-center text-body text-text-muted">
+            Revisá la conexión y reintentá.
+          </Text>
+          <Button label="Reintentar" variant="primary" onPress={() => void shift.refetch()} />
+        </View>
+      </View>
+    );
+  }
+
   // Sin turno abierto, escanear deja el ingreso sin shift_id: se pierde
   // la trazabilidad de quien estaba en garita. Se bloquea todo el flujo
   // (camara + enrolamiento) hasta que abra un turno.
