@@ -285,7 +285,30 @@ export function toWorkerCacheSnapshot(
       },
     ];
   });
-  return { permissions, enrolledUserIds: data.enrolledUserIds.filter((id) => id.length > 0) };
+  return {
+    permissions,
+    enrolledUserIds: data.enrolledUserIds.filter((id) => id.length > 0),
+    enrolledInvitationIds: Array.isArray(data.enrolledInvitationIds)
+      ? data.enrolledInvitationIds.filter((id) => id.length > 0)
+      : null,
+  };
+}
+
+// #179: el cache de invitados enrolados queda igual a lo que confirma el
+// server, mas los enrolamientos hechos sin red que siguen en el outbox (el
+// server todavia no los conoce). Lo demas se borra: una fila que el server
+// nunca confirmo dejaba pasar sin red sin volver a pedir el DNI.
+export function reconcileGuestEnrollments(
+  server: readonly string[],
+  pending: readonly string[],
+  local: readonly string[],
+): { add: string[]; remove: string[] } {
+  const keep = new Set([...server, ...pending]);
+  const localSet = new Set(local);
+  return {
+    add: server.filter((id) => !localSet.has(id)),
+    remove: local.filter((id) => !keep.has(id)),
+  };
 }
 
 // weekdays viaja a SQLite como JSON. Algo que no sea una lista de enteros

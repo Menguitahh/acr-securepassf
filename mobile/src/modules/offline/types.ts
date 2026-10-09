@@ -46,4 +46,7 @@ export type WorkerPermissionRow = {
 export type WorkerCacheSnapshot = {
   permissions: WorkerPermissionRow[];
   enrolledUserIds: string[];
+  // #179: invitaciones enroladas segun el server. Null si el server no manda
+  // la lista (version vieja): el cache de invitados queda como esta.
+  enrolledInvitationIds: string[] | null;
 };

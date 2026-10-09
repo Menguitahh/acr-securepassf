@@ -1,6 +1,7 @@
 import { api } from '@/common/api/client';
 import { getDb } from '@/common/db/database';
-import { parseWeekdays, toWorkerCacheSnapshot } from '@/modules/offline/lib';
+import { extractEnrollmentSubject, parseWeekdays, reconcileGuestEnrollments, toWorkerCacheSnapshot } from '@/modules/offline/lib';
+import { peekPendingEvents } from '@/modules/offline/outbox';
 import type { WorkerPermission } from '@/modules/scanner/types';
 
 // Padron de trabajadores para validar sin red (WBS-118, D-13). Cada sync
@@ -37,6 +38,26 @@ export async function syncWorkerCache(): Promise<void> {
       }
       for (const userId of snapshot.enrolledUserIds) {
         db.runSync('INSERT OR IGNORE INTO worker_enrollments_cache (user_id) VALUES (?)', [userId]);
+      }
+      if (snapshot.enrolledInvitationIds) {
+        const pending = peekPendingEvents(Number.MAX_SAFE_INTEGER).flatMap((event) => {
+          if (event.documentNumber === null) return [];
+          const subject = extractEnrollmentSubject(event.token);
+          return subject?.kind === 'guest' ? [subject.invitationId] : [];
+        });
+        const local = db
+          .getAllSync<{ invitation_id: string }>('SELECT invitation_id FROM enrollments_cache')
+          .map((row) => row.invitation_id);
+        const { add, remove } = reconcileGuestEnrollments(snapshot.enrolledInvitationIds, pending, local);
+        const now = new Date().toISOString();
+        for (const id of remove) db.runSync('DELETE FROM enrollments_cache WHERE invitation_id = ?', [id]);
+        // El server no manda el DNI y nadie lo lee: la fila marca el enrolamiento.
+        for (const id of add) {
+          db.runSync(
+            "INSERT OR IGNORE INTO enrollments_cache (invitation_id, document, enrolled_at) VALUES (?, '', ?)",
+            [id, now],
+          );
+        }
       }
     });
   } catch {

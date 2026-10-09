@@ -1288,9 +1288,9 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
+            nonEmpty?: boolean;
             scheduleBundled?: boolean;
             dailyOrderValid?: boolean;
-            nonEmpty?: boolean;
         };
         UpdateWorkerResponse: {
             /** Format: uuid */
@@ -1495,6 +1495,7 @@ export interface components {
         PermissionsSyncResponse: {
             permissions?: components["schemas"]["WorkerPermissionSyncResponse"][];
             enrolledUserIds?: string[];
+            enrolledInvitationIds?: string[];
         };
         WorkerPermissionSyncResponse: {
             /** Format: uuid */

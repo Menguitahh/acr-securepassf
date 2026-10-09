@@ -8,6 +8,7 @@ import {
   parseOutboxEvent,
   parseWeekdays,
   runSyncCycle,
+  reconcileGuestEnrollments,
   toSyncEvent,
   toWorkerCacheSnapshot,
   type OutboxOrphanRow,
@@ -522,13 +523,21 @@ describe('toWorkerCacheSnapshot', () => {
     expect(toWorkerCacheSnapshot({ permissions: [row], enrolledUserIds: ['u1'] })).toEqual({
       permissions: [row],
       enrolledUserIds: ['u1'],
+      enrolledInvitationIds: null,
     });
+  });
+
+  it('con enrolledInvitationIds (#179) los pasa sin vacios', () => {
+    expect(
+      toWorkerCacheSnapshot({ permissions: [], enrolledUserIds: [], enrolledInvitationIds: ['inv-1', ''] }),
+    ).toMatchObject({ enrolledInvitationIds: ['inv-1'] });
   });
 
   it('listas vacias son un padron vacio, no una respuesta rota', () => {
     expect(toWorkerCacheSnapshot({ permissions: [], enrolledUserIds: [] })).toEqual({
       permissions: [],
       enrolledUserIds: [],
+      enrolledInvitationIds: null,
     });
   });
 
@@ -545,7 +554,11 @@ describe('toWorkerCacheSnapshot', () => {
       permissions: [sinUsuario, { ...row, weekdays: [] }, { ...row, dailyFrom: '' }, sinTz],
       enrolledUserIds: ['u1', ''],
     });
-    expect(snapshot).toEqual({ permissions: [{ ...row, timezone: null }], enrolledUserIds: ['u1'] });
+    expect(snapshot).toEqual({
+      permissions: [{ ...row, timezone: null }],
+      enrolledUserIds: ['u1'],
+      enrolledInvitationIds: null,
+    });
   });
 });
 
@@ -580,5 +593,18 @@ describe('extractEnrollmentSubject', () => {
   it('token corrupto devuelve null', () => {
     expect(extractEnrollmentSubject('SP1.!!!.x')).toBeNull();
     expect(extractEnrollmentSubject('')).toBeNull();
+  });
+});
+
+describe('reconcileGuestEnrollments (#179)', () => {
+  it('deja lo que confirma el server y lo pendiente del outbox, borra el resto', () => {
+    expect(reconcileGuestEnrollments(['a', 'b'], ['p'], ['a', 'p', 'viejo'])).toEqual({
+      add: ['b'],
+      remove: ['viejo'],
+    });
+  });
+
+  it('lista del server vacia borra todo menos lo pendiente', () => {
+    expect(reconcileGuestEnrollments([], ['p'], ['x', 'p'])).toEqual({ add: [], remove: ['x'] });
   });
 });
