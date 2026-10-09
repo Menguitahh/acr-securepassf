@@ -99,6 +99,10 @@ export type AccessDecision =
 
 export type OfflineScan = { clientEventId: string; capturedAt: string };
 
+// Lote en franja del trabajador (worker.lots del server). Con mas de uno, el
+// guardia elige y el enroll lleva ese lotId (securepassb#223).
+export type LotChoice = { lotId: string; code: string };
+
 export type ScanResult =
   | {
       status: 'allowed';
@@ -127,6 +131,9 @@ export type ScanResult =
       // guardia cancela el DNI, el rechazo NOT_ENROLLED viaja con ellos.
       // Null si lo decidio el server: ese escaneo ya quedo registrado alla.
       offlineScan: OfflineScan | null;
+      // Trabajador con red: lotes en franja para elegir en el enroll. Vacio
+      // para invitados (el lote sale de la invitacion) y sin red.
+      lots: LotChoice[];
     }
   | { status: 'denied'; reason: DenialReason; message: string };
 

@@ -49,6 +49,7 @@ describe('resolveScan', () => {
       lotCode: 'A-14',
       guestName: null,
       offlineScan: null,
+      lots: [],
     });
     expect(deps.buildOfflineContext).not.toHaveBeenCalled();
     expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();
@@ -236,6 +237,7 @@ describe('resolveScan - trabajador sin red (WBS-118)', () => {
       lotCode: null,
       guestName: null,
       offlineScan: { clientEventId: 'cid-w', capturedAt: expect.any(String) },
+      lots: [],
     });
     expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();
   });

@@ -5,8 +5,9 @@ import { Button } from '@/common/components/button';
 import { Input } from '@/common/components/input';
 import { Spinner } from '@/common/components/spinner';
 import { DniCamera } from '@/modules/scanner/components/dni-camera';
+import { LotPicker } from '@/modules/scanner/components/lot-picker';
 import { formatDni, parseArgentineDni } from '@/modules/scanner/lib';
-import type { DniData, EnrollmentSubject } from '@/modules/scanner/types';
+import type { DniData, EnrollmentSubject, LotChoice } from '@/modules/scanner/types';
 
 type EnrollmentScreenProps = {
   // Nombre desde la invitacion (server, #111). Null si el server no lo
@@ -14,9 +15,11 @@ type EnrollmentScreenProps = {
   // input del DNI) — cruce visual imposible sin el nombre esperado.
   invitationName: string | null;
   subjectKind: EnrollmentSubject['kind'];
+  // Lotes en franja del trabajador (con red). Con mas de uno se elige.
+  lots: LotChoice[];
   isSubmitting: boolean;
   error: string | null;
-  onSubmit: (documentNumber: string) => void;
+  onSubmit: (documentNumber: string, lotId: string | null) => void;
   onCancel: () => void;
 };
 
@@ -38,12 +41,20 @@ type Mode =
 export function EnrollmentScreen({
   invitationName,
   subjectKind,
+  lots,
   isSubmitting,
   error,
   onSubmit,
   onCancel,
 }: EnrollmentScreenProps) {
   const [mode, setMode] = useState<Mode>({ kind: 'scanning' });
+  const needsLot = lots.length > 1;
+  const [lotId, setLotId] = useState<string | null>(null);
+  const label = subjectKind === 'worker' ? 'Trabajador' : 'Invitación';
+  const picker = needsLot ? (
+    <LotPicker lots={lots} selected={lotId} disabled={isSubmitting} onSelect={setLotId} />
+  ) : null;
+  const lotReady = !needsLot || lotId !== null;
   const [document, setDocument] = useState('');
   const [scanError, setScanError] = useState<string | null>(null);
 
@@ -68,7 +79,7 @@ export function EnrollmentScreen({
         <View className="absolute inset-x-0 top-20 items-center gap-2 px-6">
           {invitationName ? (
             <Text className="rounded-md bg-bg-elevated/90 px-4 py-2 text-body text-text-primary">
-              Invitación: {invitationName}
+              {label}: {invitationName}
             </Text>
           ) : null}
           <Text className="rounded-md bg-bg-elevated/90 px-4 py-2 text-body text-text-primary">
@@ -100,7 +111,7 @@ export function EnrollmentScreen({
           <View className="gap-2">
             <View className="flex-row gap-2">
               <Text className="min-w-[104px] text-body text-text-muted">
-                Invitación:
+                {label}:
               </Text>
               <Text className="flex-1 text-body text-text-primary">
                 {invitationName ?? '—'}
@@ -116,6 +127,7 @@ export function EnrollmentScreen({
               </Text>
             </View>
           </View>
+          {picker}
           {error ? (
             <Text className="text-body text-deny">{error}</Text>
           ) : null}
@@ -125,8 +137,8 @@ export function EnrollmentScreen({
           <Button
             label="Registrar ingreso"
             variant="primary"
-            disabled={isSubmitting}
-            onPress={() => onSubmit(mode.dni.document)}
+            disabled={isSubmitting || !lotReady}
+            onPress={() => onSubmit(mode.dni.document, lotId)}
           />
           <Button
             label="Editar DNI"
@@ -150,7 +162,7 @@ export function EnrollmentScreen({
   }
 
   const trimmed = document.trim();
-  const canSubmit = trimmed.length > 0 && !isSubmitting;
+  const canSubmit = trimmed.length > 0 && !isSubmitting && lotReady;
 
   return (
     <View className="flex-1 justify-between gap-6 bg-bg-base p-6">
@@ -160,7 +172,7 @@ export function EnrollmentScreen({
         </Text>
         {invitationName ? (
           <Text className="text-body text-text-muted">
-            Invitación: <Text className="text-text-primary">{invitationName}</Text>
+            {label}: <Text className="text-text-primary">{invitationName}</Text>
           </Text>
         ) : (
           <Text className="text-body text-text-muted">
@@ -177,6 +189,7 @@ export function EnrollmentScreen({
           autoFocus
           editable={!isSubmitting}
         />
+        {picker}
         {scanError ? (
           <Text className="text-body text-warn">{scanError}</Text>
         ) : null}
@@ -194,7 +207,7 @@ export function EnrollmentScreen({
           label="Registrar ingreso"
           variant="primary"
           disabled={!canSubmit}
-          onPress={() => onSubmit(trimmed)}
+          onPress={() => onSubmit(trimmed, lotId)}
         />
         <Button
           label="Reintentar cámara"

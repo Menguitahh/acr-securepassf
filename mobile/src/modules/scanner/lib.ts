@@ -276,15 +276,45 @@ export function toScanResult(
       },
     };
   }
+  if (response.result === 'ALLOWED_WORKER') {
+    const codes = (response.worker?.lots ?? []).flatMap((lot) => (lot.code ? [lot.code] : []));
+    return {
+      kind: 'result',
+      value: {
+        status: 'allowed',
+        guestName: response.worker?.name ?? null,
+        lotCode: codes.length ? codes.join(', ') : null,
+      },
+    };
+  }
   if (response.result === 'DENIED') {
     const reason = isDenialReason(response.reason) ? response.reason : 'UNKNOWN';
     return { kind: 'result', value: { status: 'denied', reason, message: DENIAL_MESSAGES[reason] } };
   }
   if (response.result === 'NEEDS_ENROLLMENT') {
+    // E (#115): trabajador con red. Trae userId, nombre y los lotes en franja
+    // para elegir en el enroll. Sin userId la respuesta esta rota: fail-closed.
+    if (response.subjectKind === 'WORKER') {
+      const userId = response.worker?.userId;
+      if (!userId) return { kind: 'unknown', result: 'NEEDS_ENROLLMENT' };
+      return {
+        kind: 'result',
+        value: {
+          status: 'needs_enrollment',
+          subject: { kind: 'worker', userId },
+          token,
+          lotCode: null,
+          guestName: response.worker?.name ?? null,
+          offlineScan: null,
+          lots: (response.worker?.lots ?? []).flatMap((lot) =>
+            lot.lotId && lot.code ? [{ lotId: lot.lotId, code: lot.code }] : [],
+          ),
+        },
+      };
+    }
     // Sin invitationId, la respuesta esta rota estructuralmente: el
     // enrolamiento no se puede encarar. Tratar como desconocida en vez
-    // de asumir un invitationId vacio. La rama WORKER (securepassb#175)
-    // cae aca hasta que definamos el flujo — es fail-closed intencional.
+    // de asumir un invitationId vacio.
     if (!response.invitationId) return { kind: 'unknown', result: 'NEEDS_ENROLLMENT' };
     return {
       kind: 'result',
@@ -295,6 +325,7 @@ export function toScanResult(
         lotCode: response.lot?.code ?? null,
         guestName: response.guest?.name ?? null,
         offlineScan: null,
+        lots: [],
       },
     };
   }

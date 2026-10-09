@@ -514,6 +514,7 @@ describe('toScanResult', () => {
         lotCode: 'A-14',
         guestName: 'Maria Lopez',
         offlineScan: null,
+        lots: [],
       },
     });
   });
@@ -532,8 +533,62 @@ describe('toScanResult', () => {
         lotCode: null,
         guestName: null,
         offlineScan: null,
+        lots: [],
       },
     });
+  });
+
+  // E (#115): trabajador con red.
+  it('ALLOWED_WORKER mapea a allowed con nombre y lote del trabajador', () => {
+    const outcome = toScanResult(
+      {
+        result: 'ALLOWED_WORKER',
+        worker: { userId: 'w-1', name: 'Wanda', lots: [{ lotId: 'l-1', code: 'A-001', service: 'Jardineria' }] },
+      },
+      TOKEN,
+    );
+    expect(outcome).toEqual({
+      kind: 'result',
+      value: { status: 'allowed', guestName: 'Wanda', lotCode: 'A-001' },
+    });
+  });
+
+  it('NEEDS_ENROLLMENT de trabajador lleva userId, nombre y los lotes en franja', () => {
+    const outcome = toScanResult(
+      {
+        result: 'NEEDS_ENROLLMENT',
+        subjectKind: 'WORKER',
+        worker: {
+          userId: 'w-1',
+          name: 'Wanda',
+          lots: [
+            { lotId: 'l-1', code: 'A-001', service: 'Jardineria' },
+            { lotId: 'l-2', code: 'B-7', service: 'Limpieza' },
+          ],
+        },
+      },
+      TOKEN,
+    );
+    expect(outcome).toEqual({
+      kind: 'result',
+      value: {
+        status: 'needs_enrollment',
+        subject: { kind: 'worker', userId: 'w-1' },
+        token: TOKEN,
+        lotCode: null,
+        guestName: 'Wanda',
+        offlineScan: null,
+        lots: [
+          { lotId: 'l-1', code: 'A-001' },
+          { lotId: 'l-2', code: 'B-7' },
+        ],
+      },
+    });
+  });
+
+  it('NEEDS_ENROLLMENT de trabajador sin userId cae a unknown (fail-closed)', () => {
+    const outcome = toScanResult({ result: 'NEEDS_ENROLLMENT', subjectKind: 'WORKER', worker: {} }, TOKEN);
+    expect(outcome).toEqual({ kind: 'unknown', result: 'NEEDS_ENROLLMENT' });
   });
 
   it('NEEDS_ENROLLMENT sin invitationId cae a unknown (fail-closed, no offline)', () => {

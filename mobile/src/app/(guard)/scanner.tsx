@@ -79,6 +79,7 @@ export default function ScannerScreen() {
         <EnrollmentScreen
           invitationName={enrollment.invitationName}
           subjectKind={enrollment.subject.kind}
+          lots={enrollment.lots}
           isSubmitting={isEnrolling}
           error={enrollmentError}
           onSubmit={submitEnrollment}

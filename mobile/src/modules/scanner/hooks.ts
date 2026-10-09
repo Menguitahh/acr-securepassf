@@ -18,6 +18,7 @@ import { isDuplicateScan, parseToken } from '@/modules/scanner/lib';
 import { notEnrolledEvent, resolveScan } from '@/modules/scanner/scan-flow';
 import type {
   EnrollmentSubject,
+  LotChoice,
   OfflineContext,
   OfflineScan,
   ScanResult,
@@ -34,6 +35,8 @@ type EnrollmentContext = {
   // arrastra desde aca para mostrarlo en el resultado. Null offline.
   lotCode: string | null;
   offlineScan: OfflineScan | null;
+  // Trabajador con red: lotes en franja. Con mas de uno, el guardia elige.
+  lots: LotChoice[];
 };
 
 function buildOfflineContext(): OfflineContext {
@@ -119,6 +122,7 @@ export function useQrScanner() {
           token: outcome.token,
           invitationName: outcome.guestName,
           lotCode: outcome.lotCode,
+          lots: outcome.lots,
           offlineScan: outcome.offlineScan,
         });
         setEnrollmentError(null);
@@ -132,7 +136,7 @@ export function useQrScanner() {
   }, []);
 
   const submitEnrollment = useCallback(
-    async (documentNumber: string) => {
+    async (documentNumber: string, lotId: string | null) => {
       if (!enrollment) return;
       const gateId = GATE_ID;
       if (!gateId) {
@@ -149,6 +153,8 @@ export function useQrScanner() {
             gateId,
             clientEventId: Crypto.randomUUID(),
             capturedAt: new Date().toISOString(),
+            // securepassb#223: obligatorio con mas de un lote en franja.
+            ...(lotId ? { lotId } : {}),
           },
         });
         if (error || !data) {
@@ -163,7 +169,10 @@ export function useQrScanner() {
           setResult({
             status: 'allowed',
             guestName: data.guest?.name ?? data.worker?.name ?? null,
-            lotCode: enrollment.lotCode,
+            lotCode:
+              enrollment.lotCode ??
+              enrollment.lots.find((lot) => lot.lotId === lotId)?.code ??
+              (enrollment.lots.length === 1 ? (enrollment.lots[0]?.code ?? null) : null),
           });
           return;
         }

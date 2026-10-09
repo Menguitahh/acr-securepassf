@@ -105,6 +105,8 @@ export async function resolveScan(
       // Si el guardia cancela el DNI, el rechazo se encola con los datos
       // de este escaneo (NOT_ENROLLED).
       offlineScan: { clientEventId, capturedAt },
+      // Sin red no hay lotes para elegir (H: el lote se informa, no se elige).
+      lots: [],
     };
   }
 
