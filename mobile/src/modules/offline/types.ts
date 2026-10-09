@@ -22,6 +22,9 @@ export type OutboxEvent = LocalDecision & {
   // a la vez el enrolamiento diferido Y el ingreso registrado — un solo
   // evento, un solo clientEventId. Null en eventos de acceso normales.
   documentNumber: string | null;
+  // Lote que eligio el guardia para un trabajador con franja en mas de un
+  // lote (WBS-119). Null en el resto. Eventos viejos del outbox no lo traen.
+  lotId?: string | null;
 };
 
 // Fila de worker_permissions_cache, ya validada desde /access/permissions/sync.

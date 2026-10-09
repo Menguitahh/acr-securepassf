@@ -2,7 +2,7 @@ import type { components } from '@securepass/contracts';
 
 import { toScanResult, validateOffline } from '@/modules/scanner/lib';
 import type { LocalDecision } from '@/modules/offline/types';
-import type { OfflineContext, OfflineScan, ParsedToken, ScanResult } from '@/modules/scanner/types';
+import type { LotChoice, OfflineContext, OfflineScan, ParsedToken, ScanResult } from '@/modules/scanner/types';
 
 // Mensaje del fail-closed cuando el server responde con un `result` que
 // esta version no conoce. Le dice al guardia que hacer ahora (registro
@@ -28,6 +28,7 @@ export type OutboxInput = LocalDecision & {
   companions: number | null;
   capturedAt: string;
   documentNumber: string | null;
+  lotId: string | null;
 };
 
 export type ScanFlowDeps = {
@@ -36,6 +37,8 @@ export type ScanFlowDeps = {
     gateId: string;
     clientEventId: string;
     capturedAt: string;
+    // WBS-119: lote elegido para un trabajador con franja en varios lotes.
+    lotId?: string;
   }) => Promise<ValidateApiResponse>;
   buildOfflineContext: () => OfflineContext;
   recordLocalUse: (jti: string, context: OfflineContext) => void;
@@ -110,6 +113,17 @@ export async function resolveScan(
     };
   }
 
+  // WBS-119: varios lotes en franja -> el guardia elige antes de encolar.
+  if (decision.status === 'allowed_worker' && decision.lots.length > 1) {
+    return {
+      status: 'needs_lot_selection',
+      token,
+      workerName: null,
+      lots: decision.lots,
+      offlineScan: { clientEventId, capturedAt },
+    };
+  }
+
   // El cupo es de la invitacion: el token del trabajador no lleva `m`.
   if (decision.status === 'allowed') {
     const parsed = deps.parseToken(token);
@@ -129,6 +143,8 @@ export async function resolveScan(
     capturedAt,
     ...local,
     documentNumber: null,
+    // Un solo lote en franja: se manda ese.
+    lotId: decision.status === 'allowed_worker' ? (decision.lots[0]?.lotId ?? null) : null,
   });
   deps.refreshPendingCount();
 
@@ -137,9 +153,7 @@ export async function resolveScan(
     return { status: 'allowed', guestName: null, lotCode: null };
   }
   if (decision.status === 'allowed_worker') {
-    // Los lotes en franja, como informacion. El guardia no elige: la
-    // eleccion no llegaria al backend (WBS-119 espera lotId).
-    return { status: 'allowed', guestName: null, lotCode: decision.lotCodes.join(', ') };
+    return { status: 'allowed', guestName: null, lotCode: decision.lots[0]?.code ?? null };
   }
   return decision;
 }
@@ -161,5 +175,63 @@ export function notEnrolledEvent(
     localDecision: 'DENIED',
     localDenialReason: 'NOT_ENROLLED',
     documentNumber: null,
+    lotId: null,
   };
+}
+
+// Mensaje del 400 INVALID_LOT: el lote elegido ya no esta en la franja (o
+// el permiso cambio entre el escaneo y la eleccion).
+export const INVALID_LOT_MESSAGE =
+  'Ese lote ya no esta en la franja del trabajador. Volvé a escanear el QR o registrá el ingreso manualmente.';
+
+function isInvalidLot(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'INVALID_LOT';
+}
+
+// WBS-119: el guardia eligio el lote. Con red (lo pidio el server) se
+// reenvia validate con ese lotId y un clientEventId nuevo: el pedido
+// anterior no guardo nada. Sin red (o si se cae ahora) el ingreso va al
+// outbox con el lotId; el sync evalua la franja en capturedAt.
+export async function resolveLotChoice(
+  token: string,
+  lot: LotChoice,
+  offlineScan: OfflineScan | null,
+  newClientEventId: string,
+  deps: ScanFlowDeps,
+): Promise<ScanResult> {
+  const { gateId } = deps;
+  if (offlineScan === null && gateId) {
+    try {
+      const { data, error } = await deps.postValidate({
+        token,
+        gateId,
+        clientEventId: newClientEventId,
+        capturedAt: new Date().toISOString(),
+        lotId: lot.lotId,
+      });
+      if (isInvalidLot(error)) return { status: 'denied', reason: 'UNKNOWN', message: INVALID_LOT_MESSAGE };
+      const outcome = data ? toScanResult(data, token) : ({ kind: 'empty' } as const);
+      if (outcome.kind === 'result') return outcome.value;
+      if (outcome.kind === 'unknown') {
+        return { status: 'denied', reason: 'UNKNOWN', message: UNKNOWN_RESULT_MESSAGE };
+      }
+      if (error) return { status: 'denied', reason: 'UNKNOWN', message: SERVER_ERROR_MESSAGE };
+    } catch {
+      // Se cayo la red entre el escaneo y la eleccion: va al outbox.
+    }
+  }
+  const scan = offlineScan ?? { clientEventId: newClientEventId, capturedAt: new Date().toISOString() };
+  deps.enqueueOutboxEvent({
+    clientEventId: scan.clientEventId,
+    token,
+    gateId: deps.hasValidGate(gateId) ? gateId : null,
+    direction: 'IN',
+    companions: null,
+    capturedAt: scan.capturedAt,
+    localDecision: 'ALLOWED',
+    documentNumber: null,
+    lotId: lot.lotId,
+  });
+  deps.refreshPendingCount();
+  return { status: 'allowed', guestName: null, lotCode: lot.code };
 }

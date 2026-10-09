@@ -15,10 +15,12 @@ import { enqueueOutboxEvent } from '@/modules/offline/outbox';
 import { isWorkerEnrolled, workerPermissionsFor } from '@/modules/offline/worker-cache';
 import { GATE_ID } from '@/modules/scanner/data';
 import { isDuplicateScan, parseToken } from '@/modules/scanner/lib';
-import { notEnrolledEvent, resolveScan } from '@/modules/scanner/scan-flow';
+import { notEnrolledEvent, resolveLotChoice, resolveScan } from '@/modules/scanner/scan-flow';
+import type { ScanFlowDeps } from '@/modules/scanner/scan-flow';
 import type {
   EnrollmentSubject,
   LotChoice,
+  LotSelection,
   OfflineContext,
   OfflineScan,
   ScanResult,
@@ -77,11 +79,11 @@ function recordLocalUse(jti: string, context: OfflineContext): void {
   );
 }
 
-function validateScannedToken(token: string, clientEventId: string): Promise<ScanResult> {
-  return resolveScan(token, clientEventId, {
-    postValidate: ({ token: t, gateId, clientEventId: cid, capturedAt }) =>
+function scanDeps(): ScanFlowDeps {
+  return {
+    postValidate: ({ token: t, gateId, clientEventId: cid, capturedAt, lotId }) =>
       api.POST('/api/v1/access/validate', {
-        body: { token: t, gateId, direction: 'IN', capturedAt, clientEventId: cid },
+        body: { token: t, gateId, direction: 'IN', capturedAt, clientEventId: cid, ...(lotId ? { lotId } : {}) },
       }),
     buildOfflineContext,
     recordLocalUse,
@@ -90,7 +92,11 @@ function validateScannedToken(token: string, clientEventId: string): Promise<Sca
     gateId: GATE_ID,
     hasValidGate,
     parseToken,
-  });
+  };
+}
+
+function validateScannedToken(token: string, clientEventId: string): Promise<ScanResult> {
+  return resolveScan(token, clientEventId, scanDeps());
 }
 
 export function useQrScanner() {
@@ -99,6 +105,7 @@ export function useQrScanner() {
   const [enrollment, setEnrollment] = useState<EnrollmentContext | null>(null);
   const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
   const [isEnrolling, setIsEnrolling] = useState(false);
+  const [lotSelection, setLotSelection] = useState<LotSelection | null>(null);
   const pendingRef = useRef(false);
   const lastScanRef = useRef<{ token: string; at: number } | null>(null);
 
@@ -126,6 +133,8 @@ export function useQrScanner() {
           offlineScan: outcome.offlineScan,
         });
         setEnrollmentError(null);
+      } else if (outcome.status === 'needs_lot_selection') {
+        setLotSelection(outcome);
       } else {
         setResult(outcome);
       }
@@ -242,6 +251,34 @@ export function useQrScanner() {
     setEnrollmentError(null);
   }, [enrollment]);
 
+  // WBS-119: un toque en el lote registra el ingreso.
+  const chooseLot = useCallback(
+    async (lot: LotChoice) => {
+      if (!lotSelection || pendingRef.current) return;
+      pendingRef.current = true;
+      setIsPending(true);
+      try {
+        const outcome = await resolveLotChoice(
+          lotSelection.token,
+          lot,
+          lotSelection.offlineScan,
+          Crypto.randomUUID(),
+          scanDeps(),
+        );
+        setLotSelection(null);
+        setResult(outcome);
+      } finally {
+        pendingRef.current = false;
+        setIsPending(false);
+      }
+    },
+    [lotSelection],
+  );
+
+  // Sin lote no entra. Nada que registrar: con red el server no guardo el
+  // pedido, y sin red el evento todavia no se encolo.
+  const cancelLotSelection = useCallback(() => setLotSelection(null), []);
+
   const dismiss = useCallback(() => {
     // Con el resultado en pantalla la camara no mira: la ventana arranca de
     // nuevo al volver, si no el resultado se come 2.5 s de los 3.
@@ -259,6 +296,9 @@ export function useQrScanner() {
     onScan,
     submitEnrollment,
     cancelEnrollment,
+    lotSelection,
+    chooseLot,
+    cancelLotSelection,
     dismiss,
   };
 }

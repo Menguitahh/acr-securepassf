@@ -8,6 +8,7 @@ import { QueueStatus } from '@/modules/offline/components/queue-status';
 import { useAccessCacheSync, useOutboxSync } from '@/modules/offline/hooks';
 import { EnrollmentScreen } from '@/modules/scanner/components/enrollment-screen';
 import { GuardToolbar } from '@/modules/scanner/components/guard-toolbar';
+import { LotSelectionScreen } from '@/modules/scanner/components/lot-selection-screen';
 import { QrCamera } from '@/modules/scanner/components/qr-camera';
 import { ScanResultScreen } from '@/modules/scanner/components/scan-result-screen';
 import { useQrScanner } from '@/modules/scanner/hooks';
@@ -26,6 +27,9 @@ export default function ScannerScreen() {
     onScan,
     submitEnrollment,
     cancelEnrollment,
+    lotSelection,
+    chooseLot,
+    cancelLotSelection,
     dismiss,
   } = useQrScanner();
   const shift = useCurrentShift();
@@ -84,6 +88,20 @@ export default function ScannerScreen() {
           error={enrollmentError}
           onSubmit={submitEnrollment}
           onCancel={cancelEnrollment}
+        />
+      </View>
+    );
+  }
+
+  if (lotSelection !== null) {
+    return (
+      <View className="flex-1 bg-bg-base">
+        {toolbar}
+        <LotSelectionScreen
+          selection={lotSelection}
+          isSubmitting={isPending}
+          onChoose={(lot) => void chooseLot(lot)}
+          onCancel={cancelLotSelection}
         />
       </View>
     );

@@ -47,18 +47,20 @@ export async function syncWorkerCache(): Promise<void> {
 export function workerPermissionsFor(userId: string): WorkerPermission[] {
   const rows = getDb().getAllSync<{
     jti: string;
+    lot_id: string;
     lot_code: string;
     weekdays: string;
     daily_from: string;
     daily_until: string;
     timezone: string | null;
   }>(
-    `SELECT jti, lot_code, weekdays, daily_from, daily_until, timezone
+    `SELECT jti, lot_id, lot_code, weekdays, daily_from, daily_until, timezone
        FROM worker_permissions_cache WHERE user_id = ? ORDER BY lot_code`,
     [userId],
   );
   return rows.map((row) => ({
     jti: row.jti,
+    lotId: row.lot_id,
     lotCode: row.lot_code,
     weekdays: parseWeekdays(row.weekdays),
     dailyFrom: row.daily_from,

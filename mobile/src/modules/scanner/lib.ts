@@ -10,6 +10,7 @@ import type {
   DenialReason,
   DniData,
   InvitationPayload,
+  LotChoice,
   OfflineContext,
   OfflineDenialReason,
   ParsedToken,
@@ -202,13 +203,13 @@ function validateWorkerOffline(payload: WorkerPayload, ctx: OfflineContext): Acc
   const permissions = ctx.workerPermissions(payload.s).filter((p) => p.jti === payload.j);
   if (!permissions.length) return denied('WORKER_NOT_SYNCED');
 
-  const inWindow: string[] = [];
+  const inWindow: LotChoice[] = [];
   for (const p of permissions) {
     // Sin la tz de la fila la franja no se puede calcular (misma razon que
     // en la rama de invitacion): motivo dedicado, no OUT_OF_SCHEDULE.
     if (!p.timezone) return denied('NEIGHBORHOOD_TZ_MISSING');
     const window = { weekdays: p.weekdays, dailyFrom: p.dailyFrom, dailyUntil: p.dailyUntil };
-    if (scheduleContains(window, ctx.now, p.timezone)) inWindow.push(p.lotCode);
+    if (scheduleContains(window, ctx.now, p.timezone)) inWindow.push({ lotId: p.lotId, code: p.lotCode });
   }
   if (!inWindow.length) return denied('OUT_OF_SCHEDULE');
 
@@ -216,7 +217,7 @@ function validateWorkerOffline(payload: WorkerPayload, ctx: OfflineContext): Acc
   if (!ctx.isWorkerEnrolled(payload.s)) {
     return { status: 'needs_enrollment', subject: { kind: 'worker', userId: payload.s } };
   }
-  return { status: 'allowed_worker', lotCodes: inWindow };
+  return { status: 'allowed_worker', lots: inWindow };
 }
 
 const DENIAL_REASONS: DenialReason[] = [
@@ -262,6 +263,12 @@ export type ToScanResultOutcome =
 // ALLOWED | DENIED | NEEDS_ENROLLMENT, este switch se vuelve exhaustivo
 // por tipos y la rama `unknown` (junto con este comentario) se borra:
 // el compilador va a forzar manejar cualquier valor nuevo del server.
+function toLotChoices(
+  lots: components['schemas']['LotChoice'][] | undefined,
+): LotChoice[] {
+  return (lots ?? []).flatMap((lot) => (lot.lotId && lot.code ? [{ lotId: lot.lotId, code: lot.code }] : []));
+}
+
 export function toScanResult(
   response: components['schemas']['ValidateAccessResponse'],
   token: string,
@@ -287,6 +294,21 @@ export function toScanResult(
       },
     };
   }
+  if (response.result === 'NEEDS_LOT_SELECTION') {
+    // WBS-119: el server no guardo nada; la garita reenvia con el lote elegido.
+    const lots = toLotChoices(response.worker?.lots);
+    if (lots.length < 2) return { kind: 'unknown', result: 'NEEDS_LOT_SELECTION' };
+    return {
+      kind: 'result',
+      value: {
+        status: 'needs_lot_selection',
+        token,
+        workerName: response.worker?.name ?? null,
+        lots,
+        offlineScan: null,
+      },
+    };
+  }
   if (response.result === 'DENIED') {
     const reason = isDenialReason(response.reason) ? response.reason : 'UNKNOWN';
     return { kind: 'result', value: { status: 'denied', reason, message: DENIAL_MESSAGES[reason] } };
@@ -306,9 +328,7 @@ export function toScanResult(
           lotCode: null,
           guestName: response.worker?.name ?? null,
           offlineScan: null,
-          lots: (response.worker?.lots ?? []).flatMap((lot) =>
-            lot.lotId && lot.code ? [{ lotId: lot.lotId, code: lot.code }] : [],
-          ),
+          lots: toLotChoices(response.worker?.lots),
         },
       };
     }

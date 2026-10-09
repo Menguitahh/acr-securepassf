@@ -2,7 +2,13 @@ import { getPublicKey, sign, utils } from '@noble/ed25519';
 import { describe, expect, it, vi } from 'vitest';
 
 import { parseToken } from '@/modules/scanner/lib';
-import { notEnrolledEvent, resolveScan, UNKNOWN_RESULT_MESSAGE } from '@/modules/scanner/scan-flow';
+import {
+  INVALID_LOT_MESSAGE,
+  notEnrolledEvent,
+  resolveLotChoice,
+  resolveScan,
+  UNKNOWN_RESULT_MESSAGE,
+} from '@/modules/scanner/scan-flow';
 import type { ScanFlowDeps } from '@/modules/scanner/scan-flow';
 
 function makeDeps(overrides: Partial<ScanFlowDeps> = {}): ScanFlowDeps {
@@ -55,7 +61,7 @@ describe('resolveScan', () => {
     expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();
   });
 
-  it('server responde NEEDS_LOT_SELECTION (securepassb#218): denied UNKNOWN, sin offline ni outbox', async () => {
+  it('server responde NEEDS_LOT_SELECTION (WBS-119): pide elegir el lote, sin offline ni outbox', async () => {
     const deps = makeDeps({
       postValidate: vi.fn().mockResolvedValue({
         data: {
@@ -69,7 +75,16 @@ describe('resolveScan', () => {
 
     const outcome = await resolveScan('SP1.token', 'cid-1', deps);
 
-    expect(outcome).toEqual({ status: 'denied', reason: 'UNKNOWN', message: UNKNOWN_RESULT_MESSAGE });
+    expect(outcome).toEqual({
+      status: 'needs_lot_selection',
+      token: 'SP1.token',
+      workerName: null,
+      lots: [
+        { lotId: 'lot-1', code: 'L-1' },
+        { lotId: 'lot-2', code: 'L-2' },
+      ],
+      offlineScan: null,
+    });
     expect(deps.buildOfflineContext).not.toHaveBeenCalled();
     expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();
   });
@@ -181,6 +196,7 @@ describe('resolveScan - trabajador sin red (WBS-118)', () => {
   const now = Math.floor(new Date('2026-03-03T13:00:00Z').getTime() / 1000);
   const permission = (lotCode: string) => ({
     jti: 'jti-w',
+    lotId: `id-${lotCode}`,
     lotCode,
     weekdays: [2],
     dailyFrom: '08:00',
@@ -188,7 +204,7 @@ describe('resolveScan - trabajador sin red (WBS-118)', () => {
     timezone: 'America/Argentina/Mendoza',
   });
 
-  it('en franja: encola ALLOWED, no consume cupo y muestra los lotes en franja', async () => {
+  it('varios lotes en franja: pide elegir sin encolar todavia', async () => {
     const deps = makeDeps({
       postValidate: vi.fn().mockRejectedValue(new Error('network down')),
       parseToken,
@@ -206,10 +222,42 @@ describe('resolveScan - trabajador sin red (WBS-118)', () => {
 
     const outcome = await resolveScan(token, 'cid-w', deps);
 
-    expect(outcome).toEqual({ status: 'allowed', guestName: null, lotCode: 'M4-L12, M9-L01' });
+    expect(outcome).toEqual({
+      status: 'needs_lot_selection',
+      token,
+      workerName: null,
+      lots: [
+        { lotId: 'id-M4-L12', code: 'M4-L12' },
+        { lotId: 'id-M9-L01', code: 'M9-L01' },
+      ],
+      offlineScan: { clientEventId: 'cid-w', capturedAt: expect.any(String) },
+    });
+    expect(deps.recordLocalUse).not.toHaveBeenCalled();
+    expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();
+  });
+
+  it('un lote en franja: encola ALLOWED con ese lotId y no consume cupo', async () => {
+    const deps = makeDeps({
+      postValidate: vi.fn().mockRejectedValue(new Error('network down')),
+      parseToken,
+      buildOfflineContext: vi.fn().mockReturnValue({
+        now,
+        keys: { kid1: b64(getPublicKey(secretKey)) },
+        revoked: new Set<string>(),
+        localUses: () => 0,
+        isEnrolled: () => false,
+        neighborhoodTimezone: null,
+        workerPermissions: () => [permission('M4-L12')],
+        isWorkerEnrolled: () => true,
+      }),
+    });
+
+    const outcome = await resolveScan(token, 'cid-w', deps);
+
+    expect(outcome).toEqual({ status: 'allowed', guestName: null, lotCode: 'M4-L12' });
     expect(deps.recordLocalUse).not.toHaveBeenCalled();
     expect(deps.enqueueOutboxEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ clientEventId: 'cid-w', token, localDecision: 'ALLOWED' }),
+      expect.objectContaining({ clientEventId: 'cid-w', token, localDecision: 'ALLOWED', lotId: 'id-M4-L12' }),
     );
   });
 
@@ -300,6 +348,49 @@ describe('notEnrolledEvent', () => {
       localDecision: 'DENIED',
       localDenialReason: 'NOT_ENROLLED',
       documentNumber: null,
+      lotId: null,
     });
+  });
+});
+
+describe('resolveLotChoice (WBS-119)', () => {
+  const lot = { lotId: 'lot-2', code: 'L-2' };
+
+  it('con red reenvia validate con el lotId y un clientEventId nuevo', async () => {
+    const postValidate = vi.fn().mockResolvedValue({
+      data: { result: 'ALLOWED_WORKER', worker: { name: 'Carlos', lots: [{ lotId: 'lot-2', code: 'L-2' }] } },
+      error: undefined,
+    });
+    const deps = makeDeps({ postValidate });
+
+    const outcome = await resolveLotChoice('SP1.token', lot, null, 'cid-nuevo', deps);
+
+    expect(postValidate).toHaveBeenCalledWith(expect.objectContaining({ lotId: 'lot-2', clientEventId: 'cid-nuevo' }));
+    expect(outcome).toEqual({ status: 'allowed', guestName: 'Carlos', lotCode: 'L-2' });
+    expect(deps.enqueueOutboxEvent).not.toHaveBeenCalled();
+  });
+
+  it('INVALID_LOT dice que paso y que hacer', async () => {
+    const deps = makeDeps({
+      postValidate: vi.fn().mockResolvedValue({ data: undefined, error: { status: 400, code: 'INVALID_LOT' } }),
+    });
+    expect(await resolveLotChoice('SP1.token', lot, null, 'cid', deps)).toEqual({
+      status: 'denied',
+      reason: 'UNKNOWN',
+      message: INVALID_LOT_MESSAGE,
+    });
+  });
+
+  it('sin red encola ALLOWED con el lotId y los datos del escaneo original', async () => {
+    const deps = makeDeps();
+    const scan = { clientEventId: 'cid-scan', capturedAt: '2026-10-01T12:00:00.000Z' };
+
+    const outcome = await resolveLotChoice('SP1.token', lot, scan, 'cid-nuevo', deps);
+
+    expect(deps.postValidate).not.toHaveBeenCalled();
+    expect(deps.enqueueOutboxEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ clientEventId: 'cid-scan', capturedAt: scan.capturedAt, lotId: 'lot-2', localDecision: 'ALLOWED' }),
+    );
+    expect(outcome).toEqual({ status: 'allowed', guestName: null, lotCode: 'L-2' });
   });
 });
