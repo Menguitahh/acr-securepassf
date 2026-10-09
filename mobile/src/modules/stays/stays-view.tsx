@@ -4,7 +4,7 @@ import { Button } from '@/common/components/button';
 import { EmptyState } from '@/common/components/empty-state';
 import { ErrorState } from '@/common/components/error-state';
 import { Spinner } from '@/common/components/spinner';
-import { useCloseStay, useOpenStays, useSyncStayWarnings } from '@/modules/stays/hooks';
+import { useCloseStay, useNotifyResident, useOpenStays, useSyncStayWarnings } from '@/modules/stays/hooks';
 import { formatEnteredAt, formatRemaining, isNearExpiry, sortByEnteredAtDesc } from '@/modules/stays/lib';
 import { isLocallyWarned } from '@/modules/stays/notifications';
 import { warningStates } from '@/modules/stays/warnings-store';
@@ -13,6 +13,17 @@ import type { Stay } from '@/modules/stays/types';
 export function StaysView() {
   const { data, dataUpdatedAt, isLoading, isError, error, refetch } = useOpenStays();
   const close = useCloseStay();
+  const notify = useNotifyResident();
+
+  const notifyResident = (stay: Stay) => {
+    if (!stay.id) return;
+    const name = stay.subjectName ?? 'la visita';
+    notify.mutate(stay.id, {
+      onSuccess: () => Alert.alert('Residente avisado', `Le avisamos que ${name} está por vencer.`),
+      onError: (err) =>
+        Alert.alert('No se pudo avisar', err instanceof Error ? err.message : 'Reintentá en unos segundos.'),
+    });
+  };
   useSyncStayWarnings(data);
 
   const askClose = (stay: Stay) => {
@@ -114,6 +125,15 @@ export function StaysView() {
                 </Text>
               ) : null}
             </View>
+            {near && item.invitationId ? (
+              <View className="mt-3">
+                <Button
+                  label="Avisar al residente"
+                  disabled={notify.isPending}
+                  onPress={() => notifyResident(item)}
+                />
+              </View>
+            ) : null}
           </Pressable>
         );
       }}
