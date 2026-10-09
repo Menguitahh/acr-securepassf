@@ -54,6 +54,32 @@ export function useCloseStay() {
   });
 }
 
+// WBS-70 / US-41: el guardia avisa al residente que invito que la visita
+// esta por vencer. El server manda el push con nombre, hora de ingreso y
+// minutos restantes, y registra resident_notified_at. Un aviso cada 10 min
+// por estadia (429 con Retry-After).
+export function useNotifyResident() {
+  return useMutation({
+    mutationFn: async (stayId: string): Promise<string> => {
+      const { error, response } = await api.POST('/api/v1/stays/{id}/notify-resident', {
+        params: { path: { id: stayId } },
+      });
+      if (response.status === 429) {
+        const seconds = Number(response.headers.get('Retry-After'));
+        const minutes = Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds / 60) : 10;
+        throw new Error(`Ya avisaste hace poco. Podés volver a avisar en ${minutes} min.`);
+      }
+      if (response.status === 409) {
+        throw new Error('La visita ya salió o no tiene un residente a quien avisar.');
+      }
+      if (error || !response.ok) {
+        throw new Error('No se pudo avisar al residente. Revisá la conexión y reintentá.');
+      }
+      return stayId;
+    },
+  });
+}
+
 // Cada vez que cambia la lista de stays abiertos, se reconcilian las
 // notificaciones locales: se programan las que faltan y se cancelan
 // las de stays que ya no estan abiertos. No depende de red: el trigger
