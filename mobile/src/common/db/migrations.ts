@@ -67,4 +67,11 @@ export const MIGRATIONS: string[] = [
     user_id TEXT PRIMARY KEY
   );
   `,
+  // #31: el aviso se marca warned en el server recien cuando vence
+  // (fire_at <= ahora), no al programarlo. mark_warned_synced = este
+  // dispositivo ya hizo el POST mark-warned. Filas viejas: fire_at null.
+  `
+  ALTER TABLE stay_warnings ADD COLUMN fire_at TEXT;
+  ALTER TABLE stay_warnings ADD COLUMN mark_warned_synced INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
