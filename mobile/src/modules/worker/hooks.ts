@@ -50,3 +50,26 @@ export function useAddWorker(lotId: string) {
     },
   });
 }
+
+export function useUpdateWorker(lotId: string, userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: components['schemas']['UpdateWorkerRequest']) => {
+      const { data, error } = await authRequest(() =>
+        api.PATCH('/api/v1/lots/{lotId}/workers/{userId}', {
+          params: { path: { lotId, userId } },
+          body: input,
+        }),
+      );
+      if (error || !data) {
+        throw new Error(
+          serverDetail(error, 'No se pudieron guardar los cambios. Intentá de nuevo.'),
+        );
+      }
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['workers', lotId] });
+    },
+  });
+}

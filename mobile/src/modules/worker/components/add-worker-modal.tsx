@@ -16,8 +16,7 @@ import {
   messageForConflictCode,
   toneForOutcome,
 } from '@/modules/worker/messages';
-import { WeekdayPicker } from '@/modules/worker/components/weekday-picker';
-import { TimeRangeField } from '@/modules/worker/components/time-range-field';
+import { WorkerScheduleFields } from '@/modules/worker/components/worker-schedule-fields';
 
 type Props = {
   visible: boolean;
@@ -162,37 +161,17 @@ export function AddWorkerModal({ visible, onClose, lotId, onFeedback }: Props) {
             </Text>
           </View>
 
-          <View className="gap-3">
-            <Text className="text-footnote font-medium uppercase tracking-[1px] text-text-muted">
-              Servicio
-            </Text>
-            <Input
-              label="Servicio (ej. jardineria, plomeria)"
-              value={service}
-              onChangeText={setService}
-              editable={!isPending}
-            />
-          </View>
-
-          <View className="gap-3">
-            <Text className="text-footnote font-medium uppercase tracking-[1px] text-text-muted">
-              Días de la semana
-            </Text>
-            <WeekdayPicker value={weekdays} onChange={setWeekdays} disabled={isPending} />
-          </View>
-
-          <View className="gap-3">
-            <Text className="text-footnote font-medium uppercase tracking-[1px] text-text-muted">
-              Horario
-            </Text>
-            <TimeRangeField
-              from={from}
-              until={until}
-              onChangeFrom={setFrom}
-              onChangeUntil={setUntil}
-              disabled={isPending}
-            />
-          </View>
+          <WorkerScheduleFields
+            service={service}
+            onChangeService={setService}
+            weekdays={weekdays}
+            onChangeWeekdays={setWeekdays}
+            from={from}
+            until={until}
+            onChangeFrom={setFrom}
+            onChangeUntil={setUntil}
+            disabled={isPending}
+          />
 
           {formError ? (
             <Text className="text-body leading-[22px] text-text-primary">{formError}</Text>
