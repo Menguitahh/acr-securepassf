@@ -1,10 +1,11 @@
 import * as Haptics from 'expo-haptics';
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Modal, ScrollView, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/common/components/button';
 import { DateField } from '@/common/components/date-field';
 import { Input } from '@/common/components/input';
+import { ModalHeader } from '@/common/components/modal-header';
 import { isProblemDetail, problemCode } from '@/common/api/problem';
 import { useAddFamilyMember } from '@/modules/family/hooks';
 import { useRegisterMinor } from '@/modules/family/minors-hooks';
@@ -182,14 +183,7 @@ export function AddPersonModal({ visible, onClose, lotId, onFeedback }: Props) {
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={close}>
       <View className="flex-1 bg-bg-base">
-        <View className="flex-row items-center justify-between border-b border-border px-6 py-4">
-          <Text className="text-title font-semibold text-text-primary">
-            Agregar {isMinor ? 'menor' : 'familiar'}
-          </Text>
-          <Pressable onPress={close} hitSlop={8}>
-            <Text className="text-body text-text-muted">Cerrar</Text>
-          </Pressable>
-        </View>
+        <ModalHeader title={<>Agregar {isMinor ? 'menor' : 'familiar'}</>} onClose={close} />
 
         <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 py-4">
           <View className="gap-3">
