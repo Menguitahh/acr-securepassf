@@ -17,6 +17,7 @@ import type {
   ScanResult,
   TokenPayload,
   WorkerPayload,
+  ValidateWireResponse,
 } from '@/modules/scanner/types';
 
 // @noble/ed25519 v3 no incluye implementacion de hash: se configura una vez.
@@ -270,7 +271,7 @@ function toLotChoices(
 }
 
 export function toScanResult(
-  response: components['schemas']['ValidateAccessResponse'],
+  response: ValidateWireResponse,
   token: string,
 ): ToScanResultOutcome {
   if (response.result === 'ALLOWED') {

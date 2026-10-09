@@ -1,3 +1,5 @@
+import type { components } from '@securepass/contracts';
+
 export type DenialReason =
   | 'INVALID_SIGNATURE'
   | 'NOT_YET_VALID'
@@ -165,3 +167,10 @@ export type DocumentEntryOutcome =
   | { status: 'result'; result: Extract<ScanResult, { status: 'allowed' | 'denied' }> };
 
 export type WorkerDocumentEntry = { lots: LotChoice[]; error: string | null };
+
+// securepassb#170: el contrato declara result como enum, pero un server mas
+// nuevo puede mandar uno que esta version no conoce. Lo que llega por la red
+// es string: toScanResult falla cerrado ante lo desconocido (#98).
+export type ValidateWireResponse = Omit<components['schemas']['ValidateAccessResponse'], 'result'> & {
+  result?: string;
+};

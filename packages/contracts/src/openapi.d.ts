@@ -1176,11 +1176,13 @@ export interface components {
             code?: string;
         };
         ValidateAccessResponse: {
-            result?: string;
+            /** @enum {string} */
+            result?: "ALLOWED" | "ALLOWED_WORKER" | "DENIED" | "NEEDS_ENROLLMENT" | "NEEDS_LOT_SELECTION";
             /** Format: uuid */
             logId?: string;
             reason?: string;
-            subjectKind?: string;
+            /** @enum {string} */
+            subjectKind?: "GUEST" | "WORKER";
             /** Format: uuid */
             invitationId?: string;
             guest?: components["schemas"]["GuestDetail"];
@@ -1319,9 +1321,9 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
+            nonEmpty?: boolean;
             scheduleBundled?: boolean;
             dailyOrderValid?: boolean;
-            nonEmpty?: boolean;
         };
         UpdateWorkerResponse: {
             /** Format: uuid */
