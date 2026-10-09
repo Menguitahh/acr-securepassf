@@ -104,7 +104,9 @@ export function StaysView() {
       }
       renderItem={({ item }) => {
         const locallyWarned = isLocallyWarned(item, local, now);
-        const near = locallyWarned || isNearExpiry(item);
+        // US-42 (#33): el residente pidio que la visita se retire.
+        const exitRequested = typeof item.exitRequestedAt === 'string' && item.exitRequestedAt.length > 0;
+        const near = locallyWarned || isNearExpiry(item) || exitRequested;
         return (
           <Pressable
             accessibilityRole="button"
@@ -125,6 +127,11 @@ export function StaysView() {
                   {item.lotCode ? `Lote ${item.lotCode}` : 'Sin lote'}
                   {item.enteredAt ? ` · Ingreso ${formatEnteredAt(item.enteredAt)}` : ''}
                 </Text>
+                {exitRequested && item.exitRequestedAt ? (
+                  <Text className="text-footnote font-semibold text-warn">
+                    El residente pidió que se retire ({formatEnteredAt(item.exitRequestedAt)})
+                  </Text>
+                ) : null}
               </View>
               {typeof item.minutesRemaining === 'number' ? (
                 <Text

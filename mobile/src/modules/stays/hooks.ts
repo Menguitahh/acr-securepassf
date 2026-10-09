@@ -6,7 +6,7 @@ import { readLastKnown, rememberLastKnown } from '@/common/query/last-known';
 import { getNotifications } from '@/common/notifications/safe';
 import { GATE_ID } from '@/modules/scanner/data';
 import { STAYS_REFRESH_MS } from '@/modules/stays/data';
-import { parseStoredStays } from '@/modules/stays/lib';
+import { isResidentDecisionPush, parseStoredStays } from '@/modules/stays/lib';
 import { syncStayWarnings } from '@/modules/stays/notifications';
 import type { Stay } from '@/modules/stays/types';
 import { forgetWarning } from '@/modules/stays/warnings-store';
@@ -101,4 +101,30 @@ export function useSyncStayWarnings(stays: readonly Stay[] | undefined): void {
     if (!stays) return;
     void syncStayWarnings(stays, Date.now());
   }, [stays]);
+}
+
+// #33: la decision del residente tiene que verse en la garita en menos de
+// 5 s (US-42). El push de securepassb#168 llega al guardia en turno; con la
+// app abierta se refresca Presentes en el momento, sin esperar el polling
+// de 60 s. Solo development build (getNotifications null en Expo Go).
+export function useRefreshOnResidentDecision(enabled: boolean) {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    let subscription: { remove: () => void } | null = null;
+    void (async () => {
+      const N = await getNotifications();
+      if (!N || cancelled) return;
+      subscription = N.addNotificationReceivedListener((notification) => {
+        if (isResidentDecisionPush(notification.request.content.data)) {
+          void queryClient.invalidateQueries({ queryKey: ['stays', 'open'] });
+        }
+      });
+    })();
+    return () => {
+      cancelled = true;
+      subscription?.remove();
+    };
+  }, [enabled, queryClient]);
 }

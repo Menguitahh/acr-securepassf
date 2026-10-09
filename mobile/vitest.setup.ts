@@ -57,3 +57,15 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
     removeItem: async () => {},
   },
 }));
+
+// #33: el layout raiz monta StayWarningActions y ResidentDecisionRefresh,
+// que traen common/query/last-known (#204, #208).
+vi.mock('expo-sqlite/kv-store', () => ({
+  default: { getItemSync: () => null, setItemSync: () => {} },
+}));
+
+// stays/hooks -> warnings-store -> common/db/database. Al importar no se
+// abre la base (getDb es lazy): alcanza con que el modulo exista.
+vi.mock('expo-sqlite', () => ({
+  openDatabaseSync: () => ({}),
+}));

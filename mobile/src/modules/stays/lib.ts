@@ -135,3 +135,9 @@ export function formatEnteredAt(iso: string | undefined): string {
   if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 }
+
+// #33 / securepassb#168: push a la garita cuando el residente extiende el
+// pase o pide que la visita se retire. Presentes se refresca al recibirlo.
+export function isResidentDecisionPush(data: unknown): boolean {
+  return typeof data === 'object' && data !== null && 'type' in data && data.type === 'resident-decision';
+}

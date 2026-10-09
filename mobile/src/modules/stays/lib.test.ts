@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { NEAR_EXPIRY_MINUTES, WARNING_LEAD_MINUTES } from '@/modules/stays/data';
 import {
+  isResidentDecisionPush,
   parseStoredStays,
   computeWarningSchedule,
   formatRemaining,
@@ -178,5 +179,13 @@ describe('parseStoredStays (#208)', () => {
 
   it('sin expectedUntil no inventa minutos', () => {
     expect(parseStoredStays([{ id: 's2', warned: true, minutesRemaining: 5 }], now)).toEqual([{ id: 's2', warned: true }]);
+  });
+});
+
+describe('isResidentDecisionPush (#33)', () => {
+  it('solo el push de decision del residente', () => {
+    expect(isResidentDecisionPush({ type: 'resident-decision', kind: 'EXTENDED' })).toBe(true);
+    expect(isResidentDecisionPush({ type: 'stay-warning' })).toBe(false);
+    expect(isResidentDecisionPush(null)).toBe(false);
   });
 });
