@@ -239,7 +239,7 @@ export default function FamilyMembersScreen() {
         // relation correcto sin necesidad de un useEffect (que la lint
         // rule prohibe por cascading renders).
         <GraduateMinorModal
-          key={graduateTarget?.id ?? 'none'}
+          key={`graduate-${graduateTarget?.id ?? 'none'}`}
           visible={graduateTarget !== null}
           onClose={() => setGraduateTarget(null)}
           lotId={lotId}
@@ -260,7 +260,7 @@ export default function FamilyMembersScreen() {
         // para que el prefill del useState arranque con datos frescos, sin
         // useEffect de sync.
         <EditWorkerModal
-          key={editWorkerTarget?.userId ?? 'none'}
+          key={`edit-worker-${editWorkerTarget?.userId ?? 'none'}`}
           visible={editWorkerTarget !== null}
           onClose={() => setEditWorkerTarget(null)}
           lotId={lotId}
