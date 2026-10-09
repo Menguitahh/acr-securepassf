@@ -162,6 +162,13 @@ describe('parseOutboxEvent', () => {
 
   // WBS-119: el lote elegido sin red tiene que sobrevivir la lectura del
   // outbox y viajar en el sync.
+  it('conserva el guardId del que encolo y lo manda en el sync (#120)', () => {
+    const parsed = parseOutboxEvent({ ...event('e1'), guardId: 'guard-a' });
+    expect(parsed && toSyncEvent(parsed)).toMatchObject({ guardId: 'guard-a' });
+    const viejo = parseOutboxEvent(event('e2'));
+    expect(viejo && toSyncEvent(viejo)).not.toHaveProperty('guardId');
+  });
+
   it('conserva el lotId elegido y lo manda en el sync', () => {
     const parsed = parseOutboxEvent({ ...event('e1'), lotId: 'lot-14' });
     expect(parsed?.lotId).toBe('lot-14');

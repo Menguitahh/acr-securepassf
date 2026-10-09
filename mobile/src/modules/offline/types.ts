@@ -25,6 +25,10 @@ export type OutboxEvent = LocalDecision & {
   // Lote que eligio el guardia para un trabajador con franja en mas de un
   // lote (WBS-119). Null en el resto. Eventos viejos del outbox no lo traen.
   lotId?: string | null;
+  // #120: guardia en sesion cuando se encolo. El sync lo manda para que la
+  // bitacora quede a su nombre aunque sincronice otro despues del cambio de
+  // turno. Eventos viejos del outbox no lo traen.
+  guardId?: string | null;
 };
 
 // Fila de worker_permissions_cache, ya validada desde /access/permissions/sync.
