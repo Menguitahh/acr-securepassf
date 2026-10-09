@@ -79,3 +79,24 @@ export function messageForConflictCode(code: string): string {
   }
   return 'No se pudo completar el alta. Revisá los datos e intentá de nuevo.';
 }
+
+// securepassb#181: el PUT del email falla con un code de 409 (o ninguno).
+export class WorkerEmailError extends Error {
+  readonly code: string | null;
+
+  constructor(code: string | null) {
+    super(messageForEmailChange(code));
+    this.code = code;
+  }
+}
+
+export function messageForEmailChange(code: string | null): string {
+  if (code === 'USER_ALREADY_ACTIVE') {
+    return 'El trabajador ya activó su cuenta: su email ya no se corrige desde acá.';
+  }
+  if (code === 'EMAIL_NOT_EDITABLE') {
+    return 'El trabajador también está en un lote de otro titular. Pedile a la administración que corrija el email.';
+  }
+  if (code === 'EMAIL_TAKEN') return 'Ese email ya está registrado. Revisá que esté bien escrito.';
+  return 'No se pudo cambiar el email. Revisá la conexión e intentá de nuevo.';
+}

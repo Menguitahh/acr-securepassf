@@ -7,7 +7,8 @@ import type { components } from '@securepass/contracts';
 import { Button } from '@/common/components/button';
 import { Input } from '@/common/components/input';
 import { ModalHeader } from '@/common/components/modal-header';
-import { useUpdateWorker } from '@/modules/worker/hooks';
+import { isValidEmail } from '@/modules/family/email';
+import { useChangeWorkerEmail, useUpdateWorker } from '@/modules/worker/hooks';
 import {
   FORM_ERROR_MESSAGES,
   fromHHmm,
@@ -62,6 +63,27 @@ function EditWorkerModalInner({
   const [formError, setFormError] = useState<string | null>(null);
 
   const updateWorker = useUpdateWorker(lotId, userId);
+  const changeEmail = useChangeWorkerEmail(lotId, userId);
+  const [email, setEmail] = useState(worker.email ?? '');
+  const [emailMessage, setEmailMessage] = useState<string | null>(null);
+  const emailChanged = email.trim().toLowerCase() !== (worker.email ?? '').toLowerCase();
+
+  const submitEmail = () => {
+    const trimmed = email.trim();
+    if (!isValidEmail(trimmed)) {
+      setEmailMessage(FORM_ERROR_MESSAGES.EMAIL_INVALID);
+      return;
+    }
+    setEmailMessage(null);
+    changeEmail.mutate(trimmed, {
+      onSuccess: () => {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onFeedback('Email corregido. Le reenviamos el correo para activar la cuenta.', 'success');
+        onClose();
+      },
+      onError: (err) => setEmailMessage(err.message),
+    });
+  };
   const isPending = updateWorker.isPending;
   const disabled = inactive || isPending;
 
@@ -159,10 +181,29 @@ function EditWorkerModalInner({
             </Text>
             <Input label="Nombre completo" value={worker.fullName ?? ''} editable={false} />
             <Input label="DNI" value={worker.documentNumber ?? ''} editable={false} />
-            <Input label="Email" value={worker.email ?? ''} editable={false} />
+            <Input
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              editable={!inactive && !changeEmail.isPending}
+            />
             <Text className="text-footnote text-text-muted">
-              Nombre, DNI y email no se editan desde acá.
+              Nombre y DNI no se editan. Si todavía no activó su cuenta, corregí el email y le
+              reenviamos el correo de activación.
             </Text>
+            {emailMessage ? (
+              <Text className="text-body leading-[22px] text-text-primary">{emailMessage}</Text>
+            ) : null}
+            {emailChanged && !inactive ? (
+              <Button
+                label={changeEmail.isPending ? 'Guardando' : 'Corregir email'}
+                onPress={submitEmail}
+                disabled={changeEmail.isPending}
+              />
+            ) : null}
           </View>
 
           <WorkerScheduleFields

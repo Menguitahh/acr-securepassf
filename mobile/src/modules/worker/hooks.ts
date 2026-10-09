@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { components } from '@securepass/contracts';
 
 import { api } from '@/common/api/client';
-import { isProblemDetail } from '@/common/api/problem';
+import { isProblemDetail, problemCode } from '@/common/api/problem';
+import { WorkerEmailError } from '@/modules/worker/messages';
 
 function serverDetail(error: unknown, fallback: string): string {
   if (isProblemDetail(error)) return error.detail ?? fallback;
@@ -60,6 +61,26 @@ export function useUpdateWorker(lotId: string, userId: string) {
           serverDetail(error, 'No se pudieron guardar los cambios. Intentá de nuevo.'),
         );
       }
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['workers', lotId] });
+    },
+  });
+}
+
+// securepassb#181: corrige (o agrega) el email de un trabajador que todavia
+// no activo su cuenta y reenvia la activacion. El error lleva el code del
+// 409 para que la vista elija el mensaje.
+export function useChangeWorkerEmail(lotId: string, userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const { data, error } = await api.PUT('/api/v1/lots/{lotId}/workers/{userId}/email', {
+        params: { path: { lotId, userId } },
+        body: { email },
+      });
+      if (error || !data) throw new WorkerEmailError(problemCode(error) ?? null);
       return data;
     },
     onSuccess: () => {

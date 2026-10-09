@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/api/v1/lots/{lotId}/workers/{userId}/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["changeEmail"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stays/{id}/notify-resident": {
         parameters: {
             query?: never;
@@ -808,6 +824,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ChangeWorkerEmailRequest: {
+            email: string;
+        };
+        ChangeWorkerEmailResponse: {
+            /** Format: uuid */
+            userId?: string;
+            email?: string;
+        };
         NotifyResidentResponse: {
             /** Format: uuid */
             stayId?: string;
@@ -869,8 +893,8 @@ export interface components {
             weekdays: number[];
             dailyFrom: string;
             dailyUntil: string;
-            dailyOrderValid?: boolean;
             contactPresent?: boolean;
+            dailyOrderValid?: boolean;
         };
         AddWorkerResponse: {
             /** Format: uuid */
@@ -1321,9 +1345,9 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
-            nonEmpty?: boolean;
-            scheduleBundled?: boolean;
             dailyOrderValid?: boolean;
+            scheduleBundled?: boolean;
+            nonEmpty?: boolean;
         };
         UpdateWorkerResponse: {
             /** Format: uuid */
@@ -1586,6 +1610,33 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    changeEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: string;
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeWorkerEmailRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ChangeWorkerEmailResponse"];
+                };
+            };
+        };
+    };
     notify: {
         parameters: {
             query?: never;
