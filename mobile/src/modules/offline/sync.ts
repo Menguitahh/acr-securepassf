@@ -67,9 +67,11 @@ export function classifyResults(
     if (result.result === 'REJECTED' && result.rejection === 'INVALID_LOCAL_DECISION') {
       console.error(`[outbox] evento ${id} rechazado por INVALID_LOCAL_DECISION: bug del cliente, se descarta`);
     }
-    if (result.result === 'DENIED' && result.reason === 'DOCUMENT_MISMATCH' && event.documentNumber !== null) {
-      // Enrolamiento offline rechazado por DNI que no coincide. El token
-      // dice que fila borrar: la invitacion o el trabajador.
+    if (event.documentNumber !== null && result.result !== 'ENROLLED' && result.result !== 'ALLOWED') {
+      // Enrolamiento offline que el server no confirmo (DNI que no coincide,
+      // pase vencido o revocado, evento rechazado): la fila local se va, si
+      // no ese telefono deja pasar sin red sin volver a pedir el DNI (#179).
+      // El token dice que fila borrar: la invitacion o el trabajador.
       const subject = extractEnrollmentSubject(event.token);
       if (subject?.kind === 'worker') forgetWorkerEnrollment(subject.userId);
       else if (subject) forgetEnrollment(subject.invitationId);
