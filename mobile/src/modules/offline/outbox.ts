@@ -1,12 +1,18 @@
 import { getDb } from '@/common/db/database';
+import { useSessionStore } from '@/modules/auth/session-store';
 import { classifyOrphanOutboxRows, parseOutboxEvent } from '@/modules/offline/lib';
 import type { OutboxEvent } from '@/modules/offline/types';
 
+// Unico camino al outbox: el evento queda a nombre del guardia en sesion
+// (#120). Sin guardia no se encola: un evento sin dueno se le atribuiria
+// a quien sincronice. El scanner no se abre sin sesion.
 export function enqueueOutboxEvent(event: OutboxEvent): void {
+  const guardId = useSessionStore.getState().user?.id;
+  if (!guardId) throw new Error('No hay guardia en sesion: el ingreso no se puede registrar sin red.');
   const db = getDb();
   db.runSync(
     'INSERT INTO outbox (client_event_id, payload, created_at) VALUES (?, ?, ?)',
-    [event.clientEventId, JSON.stringify(event), new Date().toISOString()],
+    [event.clientEventId, JSON.stringify({ ...event, guardId }), new Date().toISOString()],
   );
 }
 

@@ -1198,6 +1198,11 @@ export interface components {
             documentNumber?: string;
             /** Format: uuid */
             lotId?: string;
+            /**
+             * Format: uuid
+             * @description Guardia que capturo el evento (#182). Si es GUARD de este barrio, el log queda a su nombre; si no, al de la sesion que sincroniza.
+             */
+            guardId?: string;
         };
         SyncAccessRequest: {
             /** Format: uuid */
@@ -1283,9 +1288,9 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
-            nonEmpty?: boolean;
-            dailyOrderValid?: boolean;
             scheduleBundled?: boolean;
+            dailyOrderValid?: boolean;
+            nonEmpty?: boolean;
         };
         UpdateWorkerResponse: {
             /** Format: uuid */

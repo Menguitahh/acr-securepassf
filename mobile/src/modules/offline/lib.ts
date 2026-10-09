@@ -154,6 +154,7 @@ export function parseOutboxEvent(value: unknown): OutboxEvent | null {
     documentNumber: value.documentNumber,
     // WBS-119: sin esto el lote elegido sin red no llegaba al sync.
     lotId: 'lotId' in value && hasNonEmptyString(value.lotId) ? value.lotId : null,
+    guardId: 'guardId' in value && hasNonEmptyString(value.guardId) ? value.guardId : null,
   };
 }
 
@@ -253,6 +254,8 @@ export function toSyncEvent(
     ...(event.documentNumber !== null ? { documentNumber: event.documentNumber } : {}),
     // WBS-119: el sync evalua la franja de ese lote en capturedAt.
     ...(event.lotId ? { lotId: event.lotId } : {}),
+    // #120: el server lo usa si es guardia del barrio; si no, el de la sesion.
+    ...(event.guardId ? { guardId: event.guardId } : {}),
   };
 }
 
