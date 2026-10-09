@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 
 import type { components } from '@securepass/contracts';
 
-import { api, authRequest } from '@/common/api/client';
+import { api } from '@/common/api/client';
 import { getNotifications } from '@/common/notifications/safe';
 import { useSessionStore } from '@/modules/auth/session-store';
 
@@ -57,9 +57,7 @@ export function useRegisterDeviceOnSignIn(): void {
       try {
         const expoPushToken = await fetchExpoPushToken();
         if (!expoPushToken) return;
-        await authRequest(() =>
-          api.POST('/api/v1/devices', { body: { expoPushToken, platform } }),
-        );
+        await api.POST('/api/v1/devices', { body: { expoPushToken, platform } });
       } catch {
         // Sin dev build / sin permiso / red caida: no interrumpe la sesion.
         // El proximo signIn vuelve a intentar (ref se resetea con userId nuevo).

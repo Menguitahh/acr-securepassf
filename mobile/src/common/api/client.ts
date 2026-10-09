@@ -111,9 +111,3 @@ async function authFetch(request: Request): Promise<Response> {
 // Toda llamada pasa por authFetch: no hay forma de olvidarse del refresh.
 export const api = createClient<paths>({ baseUrl: API_BASE_URL, fetch: authFetch });
 
-// Pass-through temporal: el refresh lo hace authFetch. Se saca en #140,
-// cuando mergeen los PRs abiertos que lo importan (#123, #124, #90). NO
-// volver a reintentar aca: cada request reintentaria dos veces.
-export async function authRequest<T>(request: () => Promise<T>): Promise<T> {
-  return request();
-}

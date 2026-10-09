@@ -1,6 +1,6 @@
 import type * as Notifications from 'expo-notifications';
 
-import { api, authRequest } from '@/common/api/client';
+import { api } from '@/common/api/client';
 import { getNotifications } from '@/common/notifications/safe';
 import { computeWarningSchedule, isWarningDue } from '@/modules/stays/lib';
 import type { LocalWarning, Stay } from '@/modules/stays/types';
@@ -76,9 +76,7 @@ async function scheduleForStay(stay: Stay, fireAt: number | null): Promise<void>
 // (first-writer-wins). Si falla, el proximo ciclo lo reintenta (markWarned).
 async function postMarkWarned(stayId: string): Promise<void> {
   try {
-    const { error } = await authRequest(() =>
-      api.POST('/api/v1/stays/{id}/mark-warned', { params: { path: { id: stayId } } }),
-    );
+    const { error } = await api.POST('/api/v1/stays/{id}/mark-warned', { params: { path: { id: stayId } } });
     if (!error) markSyncedToServer(stayId);
   } catch {
     // Sin red: queda pendiente para el proximo ciclo.

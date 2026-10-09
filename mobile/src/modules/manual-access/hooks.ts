@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 
 import type { components } from '@securepass/contracts';
 
-import { api, authRequest } from '@/common/api/client';
+import { api } from '@/common/api/client';
 import type { LotSuggestion } from '@/modules/manual-access/types';
 
 const AUTOCOMPLETE_DEBOUNCE_MS = 250;
@@ -20,9 +20,7 @@ export function useLotSearch(query: string) {
     queryKey: ['lots', 'search', debounced],
     enabled: debounced.trim().length >= MIN_QUERY_LENGTH,
     queryFn: async (): Promise<LotSuggestion[]> => {
-      const { data, error } = await authRequest(() =>
-        api.GET('/api/v1/lots', { params: { query: { q: debounced.trim() } } }),
-      );
+      const { data, error } = await api.GET('/api/v1/lots', { params: { query: { q: debounced.trim() } } });
       if (error || !data) throw new Error('No se pudo buscar lotes.');
       return data;
     },
@@ -34,9 +32,7 @@ export function useManualAccess() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: components['schemas']['ManualAccessRequest']) => {
-      const { data, error } = await authRequest(() =>
-        api.POST('/api/v1/access/manual', { body: payload }),
-      );
+      const { data, error } = await api.POST('/api/v1/access/manual', { body: payload });
       if (error || !data) throw new Error('El server rechazo el ingreso manual. Revisá los datos o reintentá.');
       return data;
     },

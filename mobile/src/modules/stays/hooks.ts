@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
-import { api, authRequest } from '@/common/api/client';
+import { api } from '@/common/api/client';
 import { getNotifications } from '@/common/notifications/safe';
 import { GATE_ID } from '@/modules/scanner/data';
 import { STAYS_REFRESH_MS } from '@/modules/stays/data';
@@ -13,7 +13,7 @@ export function useOpenStays() {
   return useQuery({
     queryKey: ['stays', 'open'],
     queryFn: async () => {
-      const { data, error } = await authRequest(() => api.GET('/api/v1/stays/open'));
+      const { data, error } = await api.GET('/api/v1/stays/open');
       if (error || !data) throw new Error('No se pudo cargar la lista de presentes.');
       return data.stays ?? [];
     },
@@ -32,12 +32,10 @@ export function useCloseStay() {
     mutationFn: async (stayId: string) => {
       const gateId = GATE_ID;
       if (!gateId) throw new Error('Falta la garita configurada en este dispositivo.');
-      const { data, error } = await authRequest(() =>
-        api.POST('/api/v1/stays/{id}/close', {
-          params: { path: { id: stayId } },
-          body: { gateId },
-        }),
-      );
+      const { data, error } = await api.POST('/api/v1/stays/{id}/close', {
+        params: { path: { id: stayId } },
+        body: { gateId },
+      });
       if (error || !data) throw new Error('No se pudo cerrar la estadia. Reintentá cuando vuelva la red.');
       return { stayId, data };
     },

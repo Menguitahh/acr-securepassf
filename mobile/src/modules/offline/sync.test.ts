@@ -5,7 +5,7 @@ import type { OutboxEvent } from '@/modules/offline/types';
 
 vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
 vi.mock('expo-crypto', () => ({ randomUUID: () => 'uuid' }));
-vi.mock('@/common/api/client', () => ({ api: {}, authRequest: vi.fn() }));
+vi.mock('@/common/api/client', () => ({ api: {} }));
 vi.mock('@/modules/offline/outbox', () => ({}));
 vi.mock('@/modules/offline/enrollments-cache', () => ({ forgetEnrollment: vi.fn() }));
 vi.mock('@/modules/offline/worker-cache', () => ({ forgetWorkerEnrollment: vi.fn() }));

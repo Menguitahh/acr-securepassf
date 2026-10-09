@@ -3,7 +3,7 @@ import * as Crypto from 'expo-crypto';
 
 import type { components } from '@securepass/contracts';
 
-import { api, authRequest } from '@/common/api/client';
+import { api } from '@/common/api/client';
 import { SYNC_BATCH_SIZE } from '@/modules/offline/data';
 import { forgetEnrollment } from '@/modules/offline/enrollments-cache';
 import { forgetWorkerEnrollment } from '@/modules/offline/worker-cache';
@@ -99,11 +99,9 @@ export async function syncOutbox(): Promise<'empty' | 'synced' | 'error'> {
           const mapped = toSyncEvent(event);
           if (mapped) syncEvents.push(mapped);
         }
-        const { data, error } = await authRequest(() =>
-          api.POST('/api/v1/access/sync', {
-            body: { deviceId, events: syncEvents },
-          }),
-        );
+        const { data, error } = await api.POST('/api/v1/access/sync', {
+          body: { deviceId, events: syncEvents },
+        });
         if (error) throw new Error('el server rechazo el sync');
         return classifyResults(events, data?.results ?? []);
       },

@@ -1,4 +1,4 @@
-import { api, authRequest } from '@/common/api/client';
+import { api } from '@/common/api/client';
 import { getDb } from '@/common/db/database';
 import { parseWeekdays, toWorkerCacheSnapshot } from '@/modules/offline/lib';
 import type { WorkerPermission } from '@/modules/scanner/types';
@@ -10,9 +10,7 @@ import type { WorkerPermission } from '@/modules/scanner/types';
 // no cambiaron. Sin red o con respuesta rota, el cache anterior queda.
 export async function syncWorkerCache(): Promise<void> {
   try {
-    const { data, error } = await authRequest(() =>
-      api.GET('/api/v1/access/permissions/sync'),
-    );
+    const { data, error } = await api.GET('/api/v1/access/permissions/sync');
     const snapshot = !error && data ? toWorkerCacheSnapshot(data) : null;
     if (!snapshot) return;
 

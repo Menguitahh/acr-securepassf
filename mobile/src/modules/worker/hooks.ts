@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { components } from '@securepass/contracts';
 
-import { api, authRequest } from '@/common/api/client';
+import { api } from '@/common/api/client';
 import { isProblemDetail } from '@/common/api/problem';
 
 function serverDetail(error: unknown, fallback: string): string {
@@ -15,11 +15,9 @@ export function useWorkers(lotId: string | undefined) {
     queryKey: ['workers', lotId],
     enabled: lotId !== undefined,
     queryFn: async () => {
-      const { data, error } = await authRequest(() =>
-        api.GET('/api/v1/lots/{lotId}/workers', {
-          params: { path: { lotId: lotId ?? '' } },
-        }),
-      );
+      const { data, error } = await api.GET('/api/v1/lots/{lotId}/workers', {
+        params: { path: { lotId: lotId ?? '' } },
+      });
       if (error || !data) {
         throw new Error('No se pudo cargar la lista de trabajadores.');
       }
@@ -32,12 +30,10 @@ export function useAddWorker(lotId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: components['schemas']['AddWorkerRequest']) => {
-      const { data, error } = await authRequest(() =>
-        api.POST('/api/v1/lots/{lotId}/workers', {
-          params: { path: { lotId } },
-          body: input,
-        }),
-      );
+      const { data, error } = await api.POST('/api/v1/lots/{lotId}/workers', {
+        params: { path: { lotId } },
+        body: input,
+      });
       if (error || !data) {
         throw new Error(
           serverDetail(error, 'No se pudo habilitar el trabajador. Revisá los datos e intentá de nuevo.'),
@@ -55,12 +51,10 @@ export function useUpdateWorker(lotId: string, userId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: components['schemas']['UpdateWorkerRequest']) => {
-      const { data, error } = await authRequest(() =>
-        api.PATCH('/api/v1/lots/{lotId}/workers/{userId}', {
-          params: { path: { lotId, userId } },
-          body: input,
-        }),
-      );
+      const { data, error } = await api.PATCH('/api/v1/lots/{lotId}/workers/{userId}', {
+        params: { path: { lotId, userId } },
+        body: input,
+      });
       if (error || !data) {
         throw new Error(
           serverDetail(error, 'No se pudieron guardar los cambios. Intentá de nuevo.'),
