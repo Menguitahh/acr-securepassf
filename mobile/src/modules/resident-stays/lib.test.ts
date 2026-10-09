@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { exitAlreadyRequested, pendingResidentStays } from '@/modules/resident-stays/lib';
+import { exitAlreadyRequested, parseStayWarningAction, pendingResidentStays } from '@/modules/resident-stays/lib';
 import type { Stay } from '@/modules/stays/types';
 
 function stay(overrides: Stay = {}): Stay {
@@ -54,5 +54,21 @@ describe('pendingResidentStays tras extender', () => {
   it('saca la estadia extendida mas alla del umbral y deja la que sigue por vencer', () => {
     const list: Stay[] = [stay({ id: 'extendida', minutesRemaining: 130 }), stay({ id: 'por-vencer', minutesRemaining: 10 })];
     expect(pendingResidentStays(list).map((s) => s.id)).toEqual(['por-vencer']);
+  });
+});
+
+describe('parseStayWarningAction (#33)', () => {
+  const data = { type: 'stay-warning', stayId: 's1', invitationId: 'inv-1', minutesRemaining: 10 };
+
+  it('los dos botones del aviso devuelven la accion con la invitacion', () => {
+    expect(parseStayWarningAction('extend', data)).toEqual({ kind: 'extend', invitationId: 'inv-1' });
+    expect(parseStayWarningAction('request-exit', data)).toEqual({ kind: 'request_exit', invitationId: 'inv-1' });
+  });
+
+  it('tocar la notificacion, otro push o data rota no hacen nada', () => {
+    expect(parseStayWarningAction('expo.modules.notifications.actions.DEFAULT', data)).toBeNull();
+    expect(parseStayWarningAction('extend', { ...data, type: 'guest-arrival' })).toBeNull();
+    expect(parseStayWarningAction('extend', { type: 'stay-warning' })).toBeNull();
+    expect(parseStayWarningAction('extend', null)).toBeNull();
   });
 });

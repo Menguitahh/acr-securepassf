@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { components } from '@securepass/contracts';
 
 import { api } from '@/common/api/client';
+import { isProblemDetail } from '@/common/api/problem';
 import { createInvitationErrorMessage } from '@/modules/invitation/lib';
 
 export function useActiveInvitations() {
@@ -67,15 +68,17 @@ export function useExtendInvitation() {
         params: { path: { id: invitationId } },
       });
       if (error || !data) {
-        // El server aplica el tope de extensiones (BR): cuando se
-        // supera, la respuesta es un problem detail. Se leen los campos
-        // del detalle para que el residente vea el motivo real.
-        const problem = error as { detail?: string; title?: string } | null;
-        const message =
-          problem?.detail ??
-          problem?.title ??
-          'No se pudo extender el pase. Alcanzaste el tope de extensiones o el server rechazo la operacion.';
-        throw new Error(message);
+        // BR-16: tope de extensiones del barrio. El detail del server es
+        // tecnico ("extension_count 2 alcanzo el tope 2"): el residente
+        // ve el motivo y que puede hacer (#33).
+        // El contrato no declara errores para este endpoint: error llega como never.
+        const problem: unknown = error;
+        if (isProblemDetail(problem) && problem.rule === 'BR-16') {
+          throw new Error(
+            'Este pase ya llegó al máximo de extensiones del barrio. Si la visita se tiene que ir, tocá "Que se retire".',
+          );
+        }
+        throw new Error('No se pudo extender el pase. Reintentá en unos segundos.');
       }
       return data;
     },
