@@ -201,7 +201,7 @@ function EditWorkerModalInner({
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Dar de baja al trabajador"
-              className="self-center py-2 active:opacity-60 disabled:opacity-40"
+              className="min-h-12 self-center justify-center px-4 active:opacity-60 disabled:opacity-40"
             >
               <Text className="text-footnote leading-[18px] text-text-muted">
                 Dar de baja
