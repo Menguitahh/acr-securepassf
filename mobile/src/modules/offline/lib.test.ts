@@ -160,6 +160,15 @@ describe('parseOutboxEvent', () => {
     expect(parseOutboxEvent(event('e1'))).not.toBeNull();
   });
 
+  // WBS-119: el lote elegido sin red tiene que sobrevivir la lectura del
+  // outbox y viajar en el sync.
+  it('conserva el lotId elegido y lo manda en el sync', () => {
+    const parsed = parseOutboxEvent({ ...event('e1'), lotId: 'lot-14' });
+    expect(parsed?.lotId).toBe('lot-14');
+    expect(parsed && toSyncEvent(parsed)).toMatchObject({ lotId: 'lot-14' });
+    expect(parseOutboxEvent(event('e2'))?.lotId).toBeNull();
+  });
+
   it('rechaza formas invalidas', () => {
     expect(parseOutboxEvent(null)).toBeNull();
     expect(parseOutboxEvent({ ...event('e1'), direction: 'SIDEWAYS' })).toBeNull();

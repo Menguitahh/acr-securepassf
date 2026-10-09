@@ -606,7 +606,7 @@ describe('toScanResult', () => {
   // que caer en unknown: ni allowed, ni needs_enrollment, ni empty (que
   // dispararia el offline). La respuesta trae worker.lots, que no debe
   // confundirse con un ingreso.
-  it('NEEDS_LOT_SELECTION de trabajador devuelve unknown (fail-closed hasta E y F)', () => {
+  it('NEEDS_LOT_SELECTION de trabajador pide elegir entre los lotes del server (WBS-119)', () => {
     const outcome = toScanResult(
       {
         result: 'NEEDS_LOT_SELECTION',
@@ -622,7 +622,19 @@ describe('toScanResult', () => {
       },
       TOKEN,
     );
-    expect(outcome).toEqual({ kind: 'unknown', result: 'NEEDS_LOT_SELECTION' });
+    expect(outcome).toEqual({
+      kind: 'result',
+      value: {
+        status: 'needs_lot_selection',
+        token: TOKEN,
+        workerName: 'Carlos Diaz',
+        lots: [
+          { lotId: 'lot-1', code: 'L-1' },
+          { lotId: 'lot-2', code: 'L-2' },
+        ],
+        offlineScan: null,
+      },
+    });
   });
 
   it('respuesta sin result devuelve empty (caller puede caer al offline)', () => {
@@ -817,6 +829,7 @@ describe('validateOffline - trabajador (WBS-118)', () => {
 
   const permission = (overrides: Partial<WorkerPermission> = {}): WorkerPermission => ({
     jti: JTI,
+    lotId: 'lot-m4',
     lotCode: 'M4-L12',
     weekdays: [2],
     dailyFrom: '08:00',
@@ -836,19 +849,22 @@ describe('validateOffline - trabajador (WBS-118)', () => {
   it('en franja, enrolado y sincronizado entra y devuelve los lotes en franja', () => {
     expect(validateOffline(workerToken(), ctxWith([permission()]))).toEqual({
       status: 'allowed_worker',
-      lotCodes: ['M4-L12'],
+      lots: [{ lotId: 'lot-m4', code: 'M4-L12' }],
     });
   });
 
   it('con varios lotes devuelve solo los que estan en franja', () => {
     const ctx = ctxWith([
-      permission({ lotCode: 'M4-L12' }),
-      permission({ lotCode: 'M7-L03', dailyFrom: '14:00', dailyUntil: '18:00' }),
-      permission({ lotCode: 'M9-L01', weekdays: [2, 3] }),
+      permission({ lotId: 'lot-m4', lotCode: 'M4-L12' }),
+      permission({ lotId: 'lot-m7', lotCode: 'M7-L03', dailyFrom: '14:00', dailyUntil: '18:00' }),
+      permission({ lotId: 'lot-m9', lotCode: 'M9-L01', weekdays: [2, 3] }),
     ]);
     expect(validateOffline(workerToken(), ctx)).toEqual({
       status: 'allowed_worker',
-      lotCodes: ['M4-L12', 'M9-L01'],
+      lots: [
+        { lotId: 'lot-m4', code: 'M4-L12' },
+        { lotId: 'lot-m9', code: 'M9-L01' },
+      ],
     });
   });
 

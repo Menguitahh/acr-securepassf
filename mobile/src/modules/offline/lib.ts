@@ -152,6 +152,8 @@ export function parseOutboxEvent(value: unknown): OutboxEvent | null {
     companions: value.companions,
     capturedAt: value.capturedAt,
     documentNumber: value.documentNumber,
+    // WBS-119: sin esto el lote elegido sin red no llegaba al sync.
+    lotId: 'lotId' in value && hasNonEmptyString(value.lotId) ? value.lotId : null,
   };
 }
 
@@ -249,6 +251,8 @@ export function toSyncEvent(
     // enrolamiento — cache local mentiroso, data corruption silenciosa.
     // Tests: "regresion: evento con documentNumber no viaja sin el DNI".
     ...(event.documentNumber !== null ? { documentNumber: event.documentNumber } : {}),
+    // WBS-119: el sync evalua la franja de ese lote en capturedAt.
+    ...(event.lotId ? { lotId: event.lotId } : {}),
   };
 }
 

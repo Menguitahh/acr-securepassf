@@ -57,6 +57,7 @@ export type TokenPayload = InvitationPayload | WorkerPayload;
 // evalua con la tz de la fila: franja y zona viajan juntas (spec WBS-118).
 export type WorkerPermission = {
   jti: string;
+  lotId: string;
   lotCode: string;
   weekdays: number[];
   dailyFrom: string;
@@ -93,7 +94,7 @@ export type OfflineContext = {
 
 export type AccessDecision =
   | { status: 'allowed' }
-  | { status: 'allowed_worker'; lotCodes: string[] }
+  | { status: 'allowed_worker'; lots: LotChoice[] }
   | { status: 'needs_enrollment'; subject: EnrollmentSubject }
   | { status: 'denied'; reason: DenialReason; message: string };
 
@@ -135,6 +136,16 @@ export type ScanResult =
       // para invitados (el lote sale de la invitacion) y sin red.
       lots: LotChoice[];
     }
+  // WBS-119: trabajador con franja en mas de un lote. El guardia elige a
+  // cual va; con red se reenvia validate con ese lotId, sin red el evento
+  // del outbox lo lleva. offlineScan null = lo pidio el server.
+  | {
+      status: 'needs_lot_selection';
+      token: string;
+      workerName: string | null;
+      lots: LotChoice[];
+      offlineScan: OfflineScan | null;
+    }
   | { status: 'denied'; reason: DenialReason; message: string };
 
 export type DniData = {
@@ -144,3 +155,5 @@ export type DniData = {
   gender: 'M' | 'F' | null;
   birthDate: string | null;
 };
+
+export type LotSelection = Extract<ScanResult, { status: 'needs_lot_selection' }>;
