@@ -1,8 +1,9 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/common/components/button';
+import { TorchButton } from '@/modules/scanner/components/torch-button';
 
 type QrCameraProps = {
   onScan: (token: string) => void;
@@ -43,32 +44,3 @@ export function QrCamera({ onScan }: QrCameraProps) {
   );
 }
 
-function TorchButton({
-  on,
-  onToggle,
-}: {
-  on: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onToggle}
-      accessibilityRole="button"
-      accessibilityLabel={on ? 'Apagar linterna' : 'Encender linterna'}
-      accessibilityState={{ selected: on }}
-      className={`absolute right-4 top-4 h-12 min-w-[96px] items-center justify-center rounded-md border px-4 ${
-        on
-          ? 'border-text-primary bg-text-primary'
-          : 'border-text-primary bg-bg-elevated/70'
-      }`}
-    >
-      <Text
-        className={`text-body font-semibold ${
-          on ? 'text-bg-base' : 'text-text-primary'
-        }`}
-      >
-        Linterna
-      </Text>
-    </Pressable>
-  );
-}
