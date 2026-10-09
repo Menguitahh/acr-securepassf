@@ -1,11 +1,12 @@
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Modal, ScrollView, Switch, Text, View } from 'react-native';
 
 import type { components } from '@securepass/contracts';
 
 import { Button } from '@/common/components/button';
 import { Input } from '@/common/components/input';
+import { ModalHeader } from '@/common/components/modal-header';
 import { isProblemDetail, problemCode } from '@/common/api/problem';
 import { isValidEmail } from '@/modules/family/email';
 import { useGraduateMinor } from '@/modules/family/minors-hooks';
@@ -120,14 +121,7 @@ export function GraduateMinorModal({ visible, onClose, lotId, minor, onFeedback 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={close}>
       <View className="flex-1 bg-bg-base">
-        <View className="flex-row items-center justify-between border-b border-border px-6 py-4">
-          <Text className="text-title font-semibold text-text-primary">
-            Activar cuenta
-          </Text>
-          <Pressable onPress={close} hitSlop={8}>
-            <Text className="text-body text-text-muted">Cerrar</Text>
-          </Pressable>
-        </View>
+        <ModalHeader title="Activar cuenta" onClose={close} />
 
         <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 py-4">
           <Text className="text-body leading-[22px] text-text-primary">

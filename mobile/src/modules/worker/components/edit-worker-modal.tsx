@@ -6,6 +6,7 @@ import type { components } from '@securepass/contracts';
 
 import { Button } from '@/common/components/button';
 import { Input } from '@/common/components/input';
+import { ModalHeader } from '@/common/components/modal-header';
 import { useUpdateWorker } from '@/modules/worker/hooks';
 import {
   FORM_ERROR_MESSAGES,
@@ -141,14 +142,7 @@ function EditWorkerModalInner({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 bg-bg-base">
-        <View className="flex-row items-center justify-between border-b border-border px-6 py-4">
-          <Text className="text-title font-semibold text-text-primary">
-            Editar trabajador
-          </Text>
-          <Pressable onPress={onClose} hitSlop={8}>
-            <Text className="text-body text-text-muted">Cerrar</Text>
-          </Pressable>
-        </View>
+        <ModalHeader title="Editar trabajador" onClose={onClose} />
 
         <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 py-4">
           {inactive ? (

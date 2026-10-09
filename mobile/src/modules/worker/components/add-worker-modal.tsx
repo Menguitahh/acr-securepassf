@@ -1,9 +1,10 @@
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, ScrollView, Text, View } from 'react-native';
 
 import { Button } from '@/common/components/button';
 import { Input } from '@/common/components/input';
+import { ModalHeader } from '@/common/components/modal-header';
 import { problemCode } from '@/common/api/problem';
 import { useAddWorker } from '@/modules/worker/hooks';
 import {
@@ -119,14 +120,7 @@ export function AddWorkerModal({ visible, onClose, lotId, onFeedback }: Props) {
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={close}>
       <View className="flex-1 bg-bg-base">
-        <View className="flex-row items-center justify-between border-b border-border px-6 py-4">
-          <Text className="text-title font-semibold text-text-primary">
-            Habilitar trabajador
-          </Text>
-          <Pressable onPress={close} hitSlop={8}>
-            <Text className="text-body text-text-muted">Cerrar</Text>
-          </Pressable>
-        </View>
+        <ModalHeader title="Habilitar trabajador" onClose={close} />
 
         <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 py-4">
           <View className="gap-3">
