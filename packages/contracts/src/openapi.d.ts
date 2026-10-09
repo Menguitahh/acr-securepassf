@@ -1066,13 +1066,13 @@ export interface components {
         };
         OnboardUserResponse: {
             /** Format: uuid */
-            userId?: string;
-            role?: string;
-            status?: string;
-            reused?: boolean;
-            changed?: boolean;
-            email?: string;
-            fullName?: string;
+            userId: string;
+            role: string;
+            status: string;
+            reused: boolean;
+            changed: boolean;
+            email: string;
+            fullName: string;
         };
         CreateLotRequest: {
             code: string;
@@ -1081,18 +1081,18 @@ export interface components {
         };
         LotResponse: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
-            neighborhoodId?: string;
-            code?: string;
-            street?: string;
-            number?: string;
+            neighborhoodId: string;
+            code: string;
+            street: string | null;
+            number: string | null;
             /** @enum {string} */
-            status?: "ACTIVE" | "SUSPENDED" | "VACANT";
+            status: "ACTIVE" | "SUSPENDED" | "VACANT";
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
             /** Format: date-time */
-            updatedAt?: string;
+            updatedAt: string;
         };
         AddLotMemberRequest: {
             /** Format: uuid */
@@ -1103,17 +1103,17 @@ export interface components {
         };
         LotMemberResponse: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
-            lotId?: string;
+            lotId: string;
             /** Format: uuid */
-            userId?: string;
-            relation?: string;
-            isOwner?: boolean;
-            canInvite?: boolean;
-            active?: boolean;
+            userId: string;
+            relation: string | null;
+            isOwner: boolean;
+            canInvite: boolean;
+            active: boolean;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
         };
         ActivateRequest: {
             password: string;
@@ -1283,8 +1283,8 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
-            dailyOrderValid?: boolean;
             nonEmpty?: boolean;
+            dailyOrderValid?: boolean;
             scheduleBundled?: boolean;
         };
         UpdateWorkerResponse: {
@@ -1429,50 +1429,50 @@ export interface components {
         };
         Bucket: {
             /** Format: date-time */
-            start?: string;
+            start: string;
             /** Format: int64 */
-            in?: number;
+            in: number;
             /** Format: int64 */
-            out?: number;
+            out: number;
         };
         TrafficResponse: {
             /** Format: date-time */
-            from?: string;
+            from: string;
             /** Format: date-time */
-            to?: string;
-            bucket?: string;
-            buckets?: components["schemas"]["Bucket"][];
+            to: string;
+            bucket: string;
+            buckets: components["schemas"]["Bucket"][];
         };
         OverviewResponse: {
             /** Format: date */
-            date?: string;
+            date: string;
             /** Format: int64 */
-            currentOccupancy?: number;
+            currentOccupancy: number;
             /** Format: int64 */
-            allowedIn?: number;
+            allowedIn: number;
             /** Format: int64 */
-            allowedOut?: number;
+            allowedOut: number;
             /** Format: int64 */
-            denied?: number;
-            denialsByReason?: {
+            denied: number;
+            denialsByReason: {
                 [key: string]: number;
             };
         };
         Overstay: {
             /** Format: uuid */
-            stayId?: string;
-            subjectName?: string;
-            subjectDocument?: string;
-            lotCode?: string;
+            stayId: string;
+            subjectName: string;
+            subjectDocument: string | null;
+            lotCode: string;
             /** Format: date-time */
-            enteredAt?: string;
+            enteredAt: string;
             /** Format: date-time */
-            expectedUntil?: string;
+            expectedUntil: string;
             /** Format: int64 */
-            minutesElapsed?: number;
+            minutesElapsed: number;
         };
         OverstaysResponse: {
-            items?: components["schemas"]["Overstay"][];
+            items: components["schemas"]["Overstay"][];
         };
         ActivationLookupResponse: {
             maskedEmail?: string;

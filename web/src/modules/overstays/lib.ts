@@ -18,22 +18,17 @@ export function formatDurationEs(minutes: number): string {
   return `${hours}h ${rest}min`;
 }
 
-// Filas sin id o sin fecha de entrada no se pueden mostrar ni ordenar: se
-// descartan en vez de romper la tabla.
+// Todos los campos son required (securepassb#196). lotCode llega "" cuando
+// la estadia no tiene lote: eso es presentacion, no un dato faltante.
 export function toOverstayRows(items: components["schemas"]["Overstay"][]): OverstayRow[] {
-  return items.flatMap((item) => {
-    if (!item.stayId || !item.enteredAt) return [];
-    return [
-      {
-        stayId: item.stayId,
-        lotCode: item.lotCode || "Sin lote",
-        subjectName: item.subjectName || "Sin nombre",
-        enteredAt: item.enteredAt,
-        expectedUntil: item.expectedUntil ?? "",
-        minutesElapsed: item.minutesElapsed ?? 0,
-      },
-    ];
-  });
+  return items.map((item) => ({
+    stayId: item.stayId,
+    lotCode: item.lotCode || "Sin lote",
+    subjectName: item.subjectName || "Sin nombre",
+    enteredAt: item.enteredAt,
+    expectedUntil: item.expectedUntil,
+    minutesElapsed: item.minutesElapsed,
+  }));
 }
 
 // Opciones de la tabla sin React: las usa el componente (useTable) y el

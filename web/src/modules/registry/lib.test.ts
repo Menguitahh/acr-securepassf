@@ -10,11 +10,11 @@ import {
 } from "@/modules/registry/lib";
 
 describe("toLotRows", () => {
-  it("arma la direccion y descarta filas incompletas", () => {
+  it("arma la direccion; calle y numero null quedan vacios", () => {
+    const meta = { neighborhoodId: "n", createdAt: "2026-10-01T00:00:00Z", updatedAt: "2026-10-01T00:00:00Z" };
     const rows = toLotRows([
-      { id: "1", code: "A-001", street: "Los Alamos", number: "12", status: "ACTIVE" },
-      { id: "2", code: "A-002", status: "VACANT" },
-      { code: "sin-id", status: "ACTIVE" },
+      { ...meta, id: "1", code: "A-001", street: "Los Alamos", number: "12", status: "ACTIVE" },
+      { ...meta, id: "2", code: "A-002", street: null, number: null, status: "VACANT" },
     ]);
     expect(rows).toEqual([
       { id: "1", code: "A-001", address: "Los Alamos 12", status: "ACTIVE" },
@@ -24,6 +24,7 @@ describe("toLotRows", () => {
 
   it("formatAddress ignora partes vacias", () => {
     expect(formatAddress("  ", "5")).toBe("5");
+    expect(formatAddress(null, null)).toBe("");
   });
 });
 

@@ -12,7 +12,7 @@ export function useOverstays() {
     queryFn: async () => {
       const { data, response } = await api.GET("/api/v1/admin/metrics/overstays");
       if (!response.ok || !data) throw new Error(`Overstays HTTP ${response.status}`);
-      return toOverstayRows(data.items ?? []);
+      return toOverstayRows(data.items);
     },
     refetchInterval: OVERSTAYS_REFETCH_MS,
   });
