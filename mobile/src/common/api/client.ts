@@ -13,8 +13,23 @@ export class SessionExpiredError extends Error {
   }
 }
 
+// Sin red, fetch rechaza con el texto crudo de la plataforma ("fetch failed:
+// java.io.IOException..."). Las vistas muestran error.message: se reemplaza
+// por uno para el guardia. Quien distingue "sin red" sigue con su catch.
+export class NetworkError extends Error {
+  constructor() {
+    super('Sin conexión con el servidor.');
+  }
+}
+
+function send(request: Request): Promise<Response> {
+  return fetch(request).catch(() => {
+    throw new NetworkError();
+  });
+}
+
 // Sin Bearer ni retry: el refresh no puede disparar otro refresh.
-const publicApi = createClient<paths>({ baseUrl: API_BASE_URL });
+const publicApi = createClient<paths>({ baseUrl: API_BASE_URL, fetch: send });
 
 // Login y refresh son publicos: ni Bearer (uno vencido puede hacer que el
 // filtro JWT rechace el request) ni refresh ante un 401 (un 401 del login
@@ -86,12 +101,12 @@ function withBearer(request: Request, token: string | null): Request {
 }
 
 async function authFetch(request: Request): Promise<Response> {
-  if (isPublicAuth(request)) return fetch(request);
+  if (isPublicAuth(request)) return send(request);
 
   const sentWith = await loadAccessToken();
   // El body de un Request se lee una sola vez: el reintento sale del clon.
   const retry = request.clone();
-  const response = await fetch(withBearer(request, sentWith));
+  const response = await send(withBearer(request, sentWith));
   if (response.status !== 401) return response;
 
   // 401 tardio: otro request ya refresco mientras este viajaba con el
@@ -100,7 +115,7 @@ async function authFetch(request: Request): Promise<Response> {
   const token = current && current !== sentWith ? current : await refreshOnce();
 
   // Un solo reintento. Si vuelve 401, seguir refrescando seria un loop.
-  const retried = await fetch(withBearer(retry, token));
+  const retried = await send(withBearer(retry, token));
   if (retried.status === 401) {
     await endSession('expired');
     throw new SessionExpiredError();

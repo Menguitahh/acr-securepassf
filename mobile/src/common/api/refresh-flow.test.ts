@@ -156,10 +156,21 @@ describe('refresh flow', () => {
       return json(401);
     });
 
-    await expect(api.GET(STAYS)).rejects.toThrow('Network request failed');
+    await expect(api.GET(STAYS)).rejects.toThrow('Sin conexión con el servidor.');
     expect(useSessionStore.getState().status).toBe('signedIn');
     expect(store.get(ACCESS)).toBe('A0');
     expect(store.get(REFRESH)).toBe('R0');
+  });
+
+  // #206: la vista muestra error.message; no el texto crudo de la plataforma.
+  it('sin red el request rechaza con un mensaje para el usuario', async () => {
+    const { api, NetworkError } = await setup(async () => {
+      throw new TypeError('fetch failed: java.io.IOException: unexpected end of stream');
+    });
+
+    const failure = api.GET(STAYS);
+    await expect(failure).rejects.toBeInstanceOf(NetworkError);
+    await expect(failure).rejects.toThrow('Sin conexión con el servidor.');
   });
 
   it('refresh con 5xx no desloguea: el refresh sigue siendo valido', async () => {
