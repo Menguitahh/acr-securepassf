@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { NEAR_EXPIRY_MINUTES, WARNING_LEAD_MINUTES } from '@/modules/stays/data';
 import {
+  parseStoredStays,
   computeWarningSchedule,
   formatRemaining,
   isNearExpiry,
@@ -156,5 +157,26 @@ describe('formatRemaining', () => {
     expect(formatRemaining(120)).toBe('Quedan 2 h');
     expect(formatRemaining(15)).toBe('Quedan 15 min');
     expect(formatRemaining(0)).toBe('Vencido');
+  });
+});
+
+describe('parseStoredStays (#208)', () => {
+  const now = Date.parse('2026-10-09T12:00:00Z');
+
+  it('nada guardado o forma rara: undefined', () => {
+    expect(parseStoredStays(undefined, now)).toBeUndefined();
+    expect(parseStoredStays({ stays: [] }, now)).toBeUndefined();
+    expect(parseStoredStays([{ subjectName: 'Sin id' }], now)).toBeUndefined();
+  });
+
+  it('recalcula minutesRemaining con expectedUntil', () => {
+    const stored = [{ id: 's1', subjectName: 'Ana', expectedUntil: '2026-10-09T12:30:00Z', minutesRemaining: 300, otro: 1 }];
+    expect(parseStoredStays(stored, now)).toEqual([
+      { id: 's1', subjectName: 'Ana', expectedUntil: '2026-10-09T12:30:00Z', minutesRemaining: 30 },
+    ]);
+  });
+
+  it('sin expectedUntil no inventa minutos', () => {
+    expect(parseStoredStays([{ id: 's2', warned: true, minutesRemaining: 5 }], now)).toEqual([{ id: 's2', warned: true }]);
   });
 });

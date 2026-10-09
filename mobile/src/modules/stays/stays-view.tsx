@@ -52,7 +52,9 @@ export function StaysView() {
     );
   };
 
-  if (isError) {
+  // #208: con una lista (de la sesion o guardada) se muestra aunque el
+  // refetch falle; el error solo tapa la pantalla si no hay nada que mostrar.
+  if (isError && data === undefined) {
     return (
       <View className="flex-1 bg-bg-base">
         <ErrorState
@@ -93,6 +95,13 @@ export function StaysView() {
       data={sorted}
       keyExtractor={(item) => item.id ?? ''}
       contentContainerClassName="gap-3 px-6 pb-6"
+      ListHeaderComponent={
+        isError ? (
+          <Text className="text-footnote text-text-muted">
+            Sin conexión: es la última lista recibida. Se actualiza sola cuando vuelva la red.
+          </Text>
+        ) : null
+      }
       renderItem={({ item }) => {
         const locallyWarned = isLocallyWarned(item, local, now);
         const near = locallyWarned || isNearExpiry(item);

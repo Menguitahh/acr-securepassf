@@ -12,6 +12,41 @@ export type WarningSchedule =
   | { action: 'cancel' }
   | { action: 'skip'; reason: 'no-expected-until' | 'already-warned' | 'already-past' | 'scheduled' };
 
+const STAY_STRING_FIELDS = [
+  'id',
+  'invitationId',
+  'subjectName',
+  'lotCode',
+  'enteredAt',
+  'expectedUntil',
+  'exitRequestedAt',
+] as const;
+
+// #208: ultima lista de presentes guardada, para arrancar sin red.
+// minutesRemaining lo calculo el server al guardar: se recalcula con
+// expectedUntil para no mostrar un "faltan" de hace horas. undefined =
+// nada guardado o ilegible.
+export function parseStoredStays(value: unknown, now: number): Stay[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const items: unknown[] = value;
+  const stays: Stay[] = [];
+  for (const item of items) {
+    if (typeof item !== 'object' || item === null) return undefined;
+    const stay: Stay = {};
+    for (const key of STAY_STRING_FIELDS) {
+      const field: unknown = Reflect.get(item, key);
+      if (typeof field === 'string') stay[key] = field;
+    }
+    const warned: unknown = Reflect.get(item, 'warned');
+    if (typeof warned === 'boolean') stay.warned = warned;
+    if (typeof stay.id !== 'string') return undefined;
+    const expected = stay.expectedUntil ? Date.parse(stay.expectedUntil) : Number.NaN;
+    if (!Number.isNaN(expected)) stay.minutesRemaining = Math.floor((expected - now) / MINUTE_MS);
+    stays.push(stay);
+  }
+  return stays;
+}
+
 // Momento del aviso: expected_until - lead. Null si no hay fecha valida.
 export function warningFireAt(stay: Stay): number | null {
   if (!stay.expectedUntil) return null;

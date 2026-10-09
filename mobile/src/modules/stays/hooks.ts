@@ -2,12 +2,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 import { api } from '@/common/api/client';
+import { readLastKnown, rememberLastKnown } from '@/common/query/last-known';
 import { getNotifications } from '@/common/notifications/safe';
 import { GATE_ID } from '@/modules/scanner/data';
 import { STAYS_REFRESH_MS } from '@/modules/stays/data';
+import { parseStoredStays } from '@/modules/stays/lib';
 import { syncStayWarnings } from '@/modules/stays/notifications';
 import type { Stay } from '@/modules/stays/types';
 import { forgetWarning } from '@/modules/stays/warnings-store';
+
+const LAST_STAYS = 'stays.open';
 
 export function useOpenStays() {
   return useQuery({
@@ -15,8 +19,16 @@ export function useOpenStays() {
     queryFn: async () => {
       const { data, error } = await api.GET('/api/v1/stays/open');
       if (error || !data) throw new Error('No se pudo cargar la lista de presentes.');
-      return data.stays ?? [];
+      const stays = data.stays ?? [];
+      rememberLastKnown(LAST_STAYS, stays);
+      return stays;
     },
+    // #208: sin red al arrancar, la ultima lista conocida. Se pide al server
+    // igual al montar.
+    initialData: () => parseStoredStays(readLastKnown(LAST_STAYS), Date.now()),
+    // Vencido a proposito: dispara el fetch, y "ahora" para resaltar avisos
+    // vencidos queda cerca de la hora real.
+    initialDataUpdatedAt: () => Date.now() - STAYS_REFRESH_MS,
     // Cache indefinida para que la lista quede visible sin red; el
     // refetch por intervalo mantiene el dato fresco cuando hay conexion.
     // networkMode 'offlineFirst' evita que query invalide la cache al perder red.

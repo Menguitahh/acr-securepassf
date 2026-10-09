@@ -128,17 +128,17 @@ describe('parseCurrentShift', () => {
 
 describe('parseStoredShift (#204)', () => {
   it('nada guardado o ilegible: undefined', () => {
-    expect(parseStoredShift(null)).toBeUndefined();
-    expect(parseStoredShift('{roto')).toBeUndefined();
-    expect(parseStoredShift('{"startedAt":"x"}')).toBeUndefined();
+    expect(parseStoredShift(undefined)).toBeUndefined();
+    expect(parseStoredShift('texto')).toBeUndefined();
+    expect(parseStoredShift({ startedAt: 'x' })).toBeUndefined();
   });
 
   it('el server dijo que no habia turno: null', () => {
-    expect(parseStoredShift('null')).toBeNull();
+    expect(parseStoredShift(null)).toBeNull();
   });
 
   it('turno guardado: solo los campos conocidos', () => {
-    expect(parseStoredShift('{"id":"s1","startedAt":"2026-10-09T08:00:00Z","otro":1,"gateId":2}')).toEqual({
+    expect(parseStoredShift({ id: 's1', startedAt: '2026-10-09T08:00:00Z', otro: 1, gateId: 2 })).toEqual({
       id: 's1',
       startedAt: '2026-10-09T08:00:00Z',
     });

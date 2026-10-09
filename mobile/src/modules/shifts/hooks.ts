@@ -1,29 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import Storage from 'expo-sqlite/kv-store';
 
 import { api } from '@/common/api/client';
 import { GATE_ID } from '@/modules/scanner/data';
-import { useSessionStore } from '@/modules/auth/session-store';
+import { readLastKnown, rememberLastKnown } from '@/common/query/last-known';
 import { parseCurrentShift, parseStoredShift } from '@/modules/shifts/lib';
 import type { Shift } from '@/modules/shifts/types';
 
 const SHIFTS_KEY = ['shifts', 'current'] as const;
 
-// #204: el ultimo turno que confirmo el server, por guardia. Sin red al
-// arrancar, el scanner sigue con este en vez de quedar trabado.
-function storageKey(): string | null {
-  const userId = useSessionStore.getState().user?.id;
-  return userId ? `shifts.current.${userId}` : null;
-}
+// #204: sin red al arrancar, el scanner sigue con el ultimo turno conocido
+// en vez de quedar trabado.
+const LAST_SHIFT = 'shifts.current';
 
 function rememberShift(shift: Shift | null): void {
-  const key = storageKey();
-  if (key) Storage.setItemSync(key, JSON.stringify(shift));
+  rememberLastKnown(LAST_SHIFT, shift);
 }
 
 function lastKnownShift(): Shift | null | undefined {
-  const key = storageKey();
-  return key ? parseStoredShift(Storage.getItemSync(key)) : undefined;
+  return parseStoredShift(readLastKnown(LAST_SHIFT));
 }
 
 export function useCurrentShift() {

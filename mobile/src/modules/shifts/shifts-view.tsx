@@ -22,7 +22,8 @@ export function ShiftsView() {
   const router = useRouter();
   const [notes, setNotes] = useState('');
 
-  if (isError) {
+  // Con el turno guardado (#204) se muestra aunque el server no responda.
+  if (isError && data === undefined) {
     return (
       <View className="flex-1 bg-bg-base">
         <ErrorState

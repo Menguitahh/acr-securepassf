@@ -30,14 +30,8 @@ const SHIFT_FIELDS = [
 
 // #204: ultimo turno conocido, guardado para arrancar sin red. null = el
 // server dijo que no habia turno; undefined = nada guardado o ilegible.
-export function parseStoredShift(raw: string | null): Shift | null | undefined {
-  if (raw === null) return undefined;
-  let value: unknown;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    return undefined;
-  }
+export function parseStoredShift(value: unknown): Shift | null | undefined {
+  if (value === undefined) return undefined;
   if (value === null) return null;
   if (typeof value !== 'object') return undefined;
   const shift: Shift = {};
