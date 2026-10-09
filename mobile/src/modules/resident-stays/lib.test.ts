@@ -49,3 +49,10 @@ describe('exitAlreadyRequested', () => {
     expect(exitAlreadyRequested(stay({ exitRequestedAt: '' }))).toBe(false);
   });
 });
+
+describe('pendingResidentStays tras extender', () => {
+  it('saca la estadia extendida mas alla del umbral y deja la que sigue por vencer', () => {
+    const list: Stay[] = [stay({ id: 'extendida', minutesRemaining: 130 }), stay({ id: 'por-vencer', minutesRemaining: 10 })];
+    expect(pendingResidentStays(list).map((s) => s.id)).toEqual(['por-vencer']);
+  });
+});
