@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "710991602384",
+    "project_id": "pass-85aa1",
+    "storage_bucket": "pass-85aa1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:710991602384:android:51c6b52d7ee81e8932f4d5",
+        "android_client_info": {
+          "package_name": "com.mengaasteam.securepass"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_nLoTlvk7SY67WBFpuALDc8NIffYUp7Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
