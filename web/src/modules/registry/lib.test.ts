@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  parseCsv,
+  toImportPreview,
   formatAddress,
   statusAction,
   toLotRows,
@@ -75,5 +77,52 @@ describe("toSubmitOutcome", () => {
 
   it("5xx o red: error generico accionable", () => {
     expect(toSubmitOutcome(500, null, null)).toMatchObject({ kind: "error" });
+  });
+});
+
+describe("parseCsv (#214)", () => {
+  it("detecta el separador y respeta comillas", () => {
+    expect(parseCsv('codigo;calle\r\nA-1;"Los Robles; casa"\r\n')).toEqual([
+      ["codigo", "calle"],
+      ["A-1", "Los Robles; casa"],
+    ]);
+    expect(parseCsv('\uFEFFcodigo,calle\nA-2,"Dice ""hola"""\n\n')).toEqual([
+      ["codigo", "calle"],
+      ["A-2", 'Dice "hola"'],
+    ]);
+  });
+});
+
+describe("toImportPreview (#214)", () => {
+  const header = "Código,calle,numero,titular_nombre,titular_dni,titular_email";
+
+  it("marca errores por fila sin cortar las demas", () => {
+    const csv = [
+      header,
+      "A-1,Los Robles,1,Ana Gomez,30111222,ana@ejemplo.com",
+      ",Sin codigo,2,,,",
+      "A-3,,,Solo Nombre,,",
+      "A-4,,,Beto,123,beto@ejemplo.com",
+      "a-1,repetido,,,,",
+      "B-9,,,,,",
+    ].join("\n");
+    const out = toImportPreview(csv, new Set(["B-9"]));
+    expect(out.kind).toBe("ok");
+    if (out.kind !== "ok") return;
+    expect(out.rows.map((r) => [r.line, r.status])).toEqual([
+      [2, "ready"],
+      [3, "invalid"],
+      [4, "invalid"],
+      [5, "invalid"],
+      [6, "invalid"],
+      [7, "ready"],
+    ]);
+    expect(out.rows[0]).toMatchObject({ row: { owner: { dni: "30111222" } }, lotExists: false });
+    expect(out.rows[5]).toMatchObject({ lotExists: true, row: { owner: null } });
+  });
+
+  it("sin columna codigo o sin filas es error del archivo", () => {
+    expect(toImportPreview("calle,numero\nx,1", new Set())).toMatchObject({ kind: "error" });
+    expect(toImportPreview(header, new Set())).toMatchObject({ kind: "error" });
   });
 });

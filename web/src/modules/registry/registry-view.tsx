@@ -5,6 +5,7 @@ import { useState } from "react";
 import { EmptyState } from "@/common/components/empty-state";
 import { ErrorState } from "@/common/components/error-state";
 import { LoadingState } from "@/common/components/loading-state";
+import { ImportForm } from "@/modules/registry/components/import-form";
 import { LotForm } from "@/modules/registry/components/lot-form";
 import { LotsTable } from "@/modules/registry/components/lots-table";
 import { OnboardForm } from "@/modules/registry/components/onboard-form";
@@ -32,6 +33,12 @@ export function RegistryView() {
           Nuevo lote
         </h2>
         <LotForm />
+      </section>
+      <section aria-labelledby="import-title" className="flex flex-col gap-3 rounded-lg border border-border bg-bg-surface p-6">
+        <h2 id="import-title" className="text-lg font-semibold">
+          Importar padrón
+        </h2>
+        <ImportForm />
       </section>
       <section aria-labelledby="new-guard-title" className="flex flex-col gap-3 rounded-lg border border-border bg-bg-surface p-6">
         <h2 id="new-guard-title" className="text-lg font-semibold">

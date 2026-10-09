@@ -38,3 +38,23 @@ export type SubmitOutcome =
   | { kind: "done" }
   | { kind: "invalid"; fields: FieldErrors }
   | { kind: "error"; message: string };
+
+// US-09 (#214): import del padron desde CSV. Una fila es un lote y, si trae
+// los tres datos, su titular.
+export type ImportRow = {
+  line: number;
+  code: string;
+  street: string;
+  number: string;
+  owner: OnboardInput | null;
+};
+
+export type ImportPreviewRow =
+  | { line: number; status: "ready"; row: ImportRow; lotExists: boolean }
+  | { line: number; status: "invalid"; code: string; message: string };
+
+export type ImportPreview =
+  | { kind: "ok"; rows: ImportPreviewRow[] }
+  | { kind: "error"; message: string };
+
+export type ImportResultRow = { line: number; code: string; ok: boolean; message: string };

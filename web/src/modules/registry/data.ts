@@ -21,3 +21,9 @@ export const FIELD_LABELS: Record<string, string> = {
 };
 
 export const DNI_PATTERN = /^\d{7,8}$/;
+
+// US-09 (#214): columnas del CSV del padron. codigo es la unica obligatoria;
+// el titular va completo (nombre, DNI y email) o no va.
+export const IMPORT_COLUMNS = ["codigo", "calle", "numero", "titular_nombre", "titular_dni", "titular_email"] as const;
+
+export const IMPORT_TEMPLATE = `${IMPORT_COLUMNS.join(",")}\nA-101,Los Robles,101,Ana Gomez,30111222,ana@ejemplo.com\nA-102,Los Robles,102,,,`;
