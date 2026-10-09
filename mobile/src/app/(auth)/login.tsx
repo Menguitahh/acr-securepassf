@@ -52,6 +52,11 @@ export default function LoginScreen() {
           onPress={() => void onSubmit()}
           disabled={isPending || identifier.trim() === '' || password === ''}
         />
+        <Button
+          label="Olvidé mi contraseña"
+          onPress={() => router.push('/(auth)/forgot-password')}
+          disabled={isPending}
+        />
       </View>
     </View>
   );

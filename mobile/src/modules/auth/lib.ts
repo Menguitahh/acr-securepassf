@@ -2,6 +2,15 @@ import type { components } from '@securepass/contracts';
 
 import type { SessionUser } from '@/modules/auth/types';
 
+// US-53 (#212): el server responde 204 exista o no la cuenta. Solo el 429
+// (limite por IP o por email) y las fallas cambian el mensaje.
+export function forgotPasswordError(status: number): string | null {
+  if (status === 204) return null;
+  if (status === 429) return 'Pediste demasiados enlaces. Esperá unos minutos y volvé a intentar.';
+  if (status === 400) return 'Email inválido. Revisá el formato.';
+  return 'No se pudo enviar el enlace. Intentá de nuevo en unos minutos.';
+}
+
 export function hasRole(user: SessionUser, role: string): boolean {
   return user.roles.includes(role);
 }

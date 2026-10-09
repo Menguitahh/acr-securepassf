@@ -1,10 +1,11 @@
+import { useMutation } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 
 import { api } from '@/common/api/client';
 import { isProblemDetail } from '@/common/api/problem';
 import { wipeLocalDatabase } from '@/common/db/database';
-import { hasRole, toSessionUser } from '@/modules/auth/lib';
+import { forgotPasswordError, hasRole, toSessionUser } from '@/modules/auth/lib';
 import { resolveOutboxFlush, type FlushDecision, type LogoutOutcome } from '@/modules/auth/logout';
 import { resolveNeighborhoodSwitch } from '@/modules/auth/reassign';
 import { useSessionStore } from '@/modules/auth/session-store';
@@ -159,4 +160,15 @@ export function useLogout(): () => Promise<LogoutOutcome> {
     useSessionStore.getState().signOut();
     return 'closed';
   }, []);
+}
+
+// US-53 (#212). Sin red, el mensaje es el del NetworkError del cliente.
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const { response } = await api.POST('/api/v1/auth/forgot-password', { body: { email } });
+      const message = forgotPasswordError(response.status);
+      if (message) throw new Error(message);
+    },
+  });
 }

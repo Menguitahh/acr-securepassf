@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  forgotPasswordError,
   hasMobileRole,
   hasRole,
   homeRouteFor,
@@ -194,5 +195,16 @@ describe('residentLots', () => {
       ],
     };
     expect(residentLots(user).map((lot) => lot.id)).toEqual(['casa', 'familia']);
+  });
+});
+
+describe('forgotPasswordError (#212)', () => {
+  it('204 no es error: la respuesta es igual exista o no la cuenta', () => {
+    expect(forgotPasswordError(204)).toBeNull();
+  });
+
+  it('429 y fallas dicen que hacer', () => {
+    expect(forgotPasswordError(429)).toMatch(/Esperá unos minutos/);
+    expect(forgotPasswordError(500)).toMatch(/Intentá de nuevo/);
   });
 });
