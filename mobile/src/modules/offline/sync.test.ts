@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { forgetEnrollment } from '@/modules/offline/enrollments-cache';
 import { classifyResults } from '@/modules/offline/sync';
 import type { OutboxEvent } from '@/modules/offline/types';
 
@@ -47,5 +48,35 @@ describe('classifyResults', () => {
   it('un DENIED normal no se loguea como bug del cliente', () => {
     classifyResults([event('e1')], [{ clientEventId: 'e1', result: 'DENIED', reason: 'REVOKED' }]);
     expect(errorLog).not.toHaveBeenCalled();
+  });
+});
+
+// #179: el enrolamiento de invitado hecho sin red queda en el cache del
+// telefono. Si el server no lo confirma, la fila tiene que irse: si no, ese
+// telefono deja pasar sin red al invitado sin volver a pedir el DNI.
+describe('classifyResults: enrolamiento de invitado sin confirmar (#179)', () => {
+  const guestToken = `SP1.${btoa(JSON.stringify({ v: 1, i: 'inv-9' }))}.sig`;
+  const enrollEvent = (id: string): OutboxEvent => ({
+    ...event(id),
+    token: guestToken,
+    localDecision: 'ALLOWED',
+    documentNumber: '30123456',
+  });
+
+  beforeEach(() => vi.mocked(forgetEnrollment).mockClear());
+
+  it.each(['DENIED', 'REJECTED'] as const)('%s borra el enrolamiento local', (result) => {
+    classifyResults([enrollEvent('e1')], [{ clientEventId: 'e1', result, reason: 'EXPIRED' }]);
+    expect(forgetEnrollment).toHaveBeenCalledWith('inv-9');
+  });
+
+  it('ENROLLED lo deja', () => {
+    classifyResults([enrollEvent('e1')], [{ clientEventId: 'e1', result: 'ENROLLED' }]);
+    expect(forgetEnrollment).not.toHaveBeenCalled();
+  });
+
+  it('un evento sin DNI no toca el cache aunque venga DENIED', () => {
+    classifyResults([event('e1')], [{ clientEventId: 'e1', result: 'DENIED', reason: 'NOT_ENROLLED' }]);
+    expect(forgetEnrollment).not.toHaveBeenCalled();
   });
 });
