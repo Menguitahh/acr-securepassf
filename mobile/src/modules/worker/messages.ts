@@ -33,9 +33,12 @@ type UpdateOutcome = NonNullable<components['schemas']['UpdateWorkerResponse']['
 // Solo UPDATED es alcanzable desde el edit modal (no manda `active`).
 // DEACTIVATED / ALREADY_INACTIVE / ALREADY_ACTIVE quedan para el flujo
 // de baja/reactivacion (E).
+// DEACTIVATED no promete inmediatez ("deja de funcionar" en presente) pero
+// tampoco explica sync/scanner: el titular sabe que la garita usa un lector,
+// no necesita saber que hay un pull periodico contra /access/revoked.
 const UPDATE_OUTCOME_MESSAGES: Record<UpdateOutcome, string> = {
   UPDATED: 'Cambios guardados.',
-  DEACTIVATED: 'Trabajador dado de baja.',
+  DEACTIVATED: 'Trabajador dado de baja. Su QR deja de funcionar en la garita.',
   ALREADY_INACTIVE: 'El trabajador ya estaba inactivo.',
   ALREADY_ACTIVE: 'El trabajador ya estaba activo.',
 };
