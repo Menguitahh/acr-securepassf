@@ -13,16 +13,17 @@ import type {
 
 type LotResponse = components["schemas"]["LotResponse"];
 
-// El contrato marca todo opcional (securepassb#196): una fila sin id, codigo
-// o estado no se puede mostrar ni accionar, se descarta.
 export function toLotRows(lots: readonly LotResponse[]): LotRow[] {
-  return lots.flatMap((lot) => {
-    if (!lot.id || !lot.code || !lot.status) return [];
-    return [{ id: lot.id, code: lot.code, address: formatAddress(lot.street, lot.number), status: lot.status }];
-  });
+  return lots.map((lot) => ({
+    id: lot.id,
+    code: lot.code,
+    address: formatAddress(lot.street, lot.number),
+    status: lot.status,
+  }));
 }
 
-export function formatAddress(street: string | undefined, number: string | undefined): string {
+// street y number son nullable (securepassb#196): un lote sin direccion.
+export function formatAddress(street: string | null, number: string | null): string {
   return [street?.trim(), number?.trim()].filter(Boolean).join(" ");
 }
 

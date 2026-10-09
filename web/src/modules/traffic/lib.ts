@@ -14,8 +14,7 @@ export function fillHourlyBuckets(
 ): TrafficPoint[] {
   const byStart = new Map<number, { in: number; out: number }>();
   for (const bucket of buckets) {
-    if (!bucket.start) continue;
-    byStart.set(Date.parse(bucket.start), { in: bucket.in ?? 0, out: bucket.out ?? 0 });
+    byStart.set(Date.parse(bucket.start), { in: bucket.in, out: bucket.out });
   }
 
   const points: TrafficPoint[] = [];

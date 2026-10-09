@@ -43,12 +43,18 @@ describe("formatDurationEs", () => {
 });
 
 describe("toOverstayRows", () => {
-  it("completa faltantes y descarta filas sin id o sin entrada", () => {
+  it("mapea los campos del server; lote vacio se muestra como Sin lote", () => {
     expect(
       toOverstayRows([
-        { stayId: "s1", enteredAt: "2026-09-23T10:00:00Z", minutesElapsed: 540, lotCode: "", subjectName: "Ana" },
-        { stayId: "s2" },
-        { enteredAt: "2026-09-23T10:00:00Z" },
+        {
+          stayId: "s1",
+          subjectName: "Ana",
+          subjectDocument: null,
+          lotCode: "",
+          enteredAt: "2026-09-23T10:00:00Z",
+          expectedUntil: "2026-09-23T12:00:00Z",
+          minutesElapsed: 540,
+        },
       ]),
     ).toEqual([
       {
@@ -56,7 +62,7 @@ describe("toOverstayRows", () => {
         lotCode: "Sin lote",
         subjectName: "Ana",
         enteredAt: "2026-09-23T10:00:00Z",
-        expectedUntil: "",
+        expectedUntil: "2026-09-23T12:00:00Z",
         minutesElapsed: 540,
       },
     ]);

@@ -14,7 +14,7 @@ export function useTraffic(range: InstantRange) {
         params: { query: { from: range.from, to: range.to } },
       });
       if (!response.ok || !data) throw new Error(`Traffic HTTP ${response.status}`);
-      return fillHourlyBuckets(range.from, range.to, data.buckets ?? []);
+      return fillHourlyBuckets(range.from, range.to, data.buckets);
     },
   });
 }
