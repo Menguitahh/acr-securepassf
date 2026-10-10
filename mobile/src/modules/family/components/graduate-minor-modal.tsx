@@ -65,7 +65,7 @@ export function GraduateMinorModal({ visible, onClose, lotId, minor, onFeedback 
       return;
     }
     if (!isValidEmail(email.trim())) {
-      setFormError('Email invalido. Revisá el formato.');
+      setFormError('Email inválido. Revisá el formato.');
       return;
     }
     if (needsDniOverride && dniOverride.trim().length === 0) {

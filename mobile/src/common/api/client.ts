@@ -9,7 +9,7 @@ import { loadTokens, saveTokens, saveUser } from '@/modules/auth/session-storage
 
 export class SessionExpiredError extends Error {
   constructor() {
-    super('La sesion expiro. Volvé a iniciar sesion.');
+    super('La sesión expiró. Volvé a iniciar sesión.');
   }
 }
 

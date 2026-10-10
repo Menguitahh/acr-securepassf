@@ -33,7 +33,7 @@ export default function PersonalQrScreen() {
         <ScreenHeader title="Mi QR" back />
         <EmptyState
           title="Todavia no tenés pase personal."
-          description="Cuando la administración te asigne uno, va a aparecer aca para entrar al barrio."
+          description="Cuando la administración te asigne uno, va a aparecer acá para entrar al barrio."
         />
       </View>
     );

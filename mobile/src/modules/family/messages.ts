@@ -83,7 +83,7 @@ export function messageForConflictCode(code: string | undefined): string {
 }
 
 // US-54: respuesta de POST /lots/{lotId}/members/{userId}/resend-activation.
-// "Reenviar activacion" -> "Le reenviamos el correo...". null = enviado.
+// "Reenviar activación" -> "Le reenviamos el correo...". null = enviado.
 export function messageForResendActivation(status: number): string | null {
   if (status === 204) return null;
   if (status === 429) return 'Ya le reenviaste el correo 3 veces en la última hora. Esperá un rato.';

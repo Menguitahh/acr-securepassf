@@ -77,7 +77,7 @@ export const FORM_ERROR_MESSAGES: Record<WorkerFormError, string> = {
   FULL_NAME_REQUIRED: 'Nombre completo requerido.',
   DNI_REQUIRED: 'DNI requerido.',
   CONTACT_REQUIRED: 'Cargá un email o un teléfono del trabajador.',
-  EMAIL_INVALID: 'Email invalido. Revisá el formato.',
+  EMAIL_INVALID: 'Email inválido. Revisá el formato.',
   PHONE_INVALID: 'Teléfono inválido. Usá solo números, espacios, + o guiones.',
   SERVICE_REQUIRED: 'Servicio requerido (ej. jardineria, plomeria).',
   WEEKDAYS_REQUIRED: 'Elegí al menos un día de la semana.',

@@ -8,7 +8,7 @@ import type { OutboxEvent } from '@/modules/offline/types';
 // a quien sincronice. El scanner no se abre sin sesion.
 export function enqueueOutboxEvent(event: OutboxEvent): void {
   const guardId = useSessionStore.getState().user?.id;
-  if (!guardId) throw new Error('No hay guardia en sesion: el ingreso no se puede registrar sin red.');
+  if (!guardId) throw new Error('No hay guardia en sesión: el ingreso no se puede registrar sin red.');
   const db = getDb();
   db.runSync(
     'INSERT INTO outbox (client_event_id, payload, created_at) VALUES (?, ?, ?)',

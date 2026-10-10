@@ -66,7 +66,7 @@ export function EnrollmentScreen({
     const parsed = parseArgentineDni(raw);
     if (!parsed) {
       setScanError(
-        'No se pudo leer el DNI. Verificá el codigo o cargá el numero manualmente.',
+        'No se pudo leer el DNI. Verificá el código o cargá el número manualmente.',
       );
       setMode({ kind: 'manual' });
       return;
@@ -87,7 +87,7 @@ export function EnrollmentScreen({
             </Text>
           ) : null}
           <Text className="rounded-md bg-bg-elevated/90 px-4 py-2 text-body text-text-primary">
-            Enfocá el codigo PDF417 del DNI
+            Enfocá el código PDF417 del DNI
           </Text>
         </View>
         <View className="absolute inset-x-0 bottom-8 px-6">
@@ -208,7 +208,7 @@ export function EnrollmentScreen({
         ) : null}
         {isSubmitting ? <Spinner /> : null}
       </View>
-      {/* Dos salidas distintas: "Reintentar camara" queda con la accion
+      {/* Dos salidas distintas: "Reintentar cámara" queda con la accion
           primaria (sigue enrolando, solo cambia el metodo de captura);
           "Cancelar" sale del enrolamiento entero y se separa con margen
           extra para que no se confunda con las de arriba. */}

@@ -78,7 +78,7 @@ export function StaysView() {
       <View className="flex-1 bg-bg-base">
         <EmptyState
           title="No hay presentes ahora."
-          description="Los ingresos autorizados van a aparecer aca hasta que se registre el egreso."
+          description="Los ingresos autorizados van a aparecer acá hasta que se registre el egreso."
         />
       </View>
     );

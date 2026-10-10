@@ -9,11 +9,11 @@ export const GATE_ID = process.env.EXPO_PUBLIC_GATE_ID;
 export const DUPLICATE_WINDOW_MS = 3000;
 
 export const DENIAL_MESSAGES: Record<DenialReason, string> = {
-  INVALID_SIGNATURE: 'Pase invalido. Pedí un pase nuevo al residente.',
+  INVALID_SIGNATURE: 'Pase inválido. Pedí un pase nuevo al residente.',
   REVOKED: 'Pase revocado por el residente.',
-  NOT_YET_VALID: 'Pase todavia no vigente. Revisá el horario de inicio.',
+  NOT_YET_VALID: 'Pase todavía no vigente. Revisá el horario de inicio.',
   EXPIRED: 'Pase vencido. Pedí un pase nuevo al residente.',
-  OUT_OF_SCHEDULE: 'Fuera del horario del pase. Revisá los dias y horarios permitidos.',
+  OUT_OF_SCHEDULE: 'Fuera del horario del pase. Revisá los días y horarios permitidos.',
   ALREADY_USED: 'Cupo del pase agotado. Pedí un pase nuevo al residente.',
   LOT_SUSPENDED: 'Lote suspendido. El residente no puede recibir visitas.',
   REPLAY: 'Pase ya utilizado. Si es un error del sistema, registrá el ingreso manualmente.',
@@ -21,5 +21,5 @@ export const DENIAL_MESSAGES: Record<DenialReason, string> = {
     'Falta configuración del barrio en este dispositivo. El pase puede ser válido; registrá el ingreso manualmente.',
   WORKER_NOT_SYNCED:
     'Este trabajador todavía no está cargado en este dispositivo. Registrá el ingreso manualmente.',
-  UNKNOWN: 'Pase no valido. Registrá el ingreso manualmente o pedí un pase nuevo.',
+  UNKNOWN: 'Pase no válido. Registrá el ingreso manualmente o pedí un pase nuevo.',
 };

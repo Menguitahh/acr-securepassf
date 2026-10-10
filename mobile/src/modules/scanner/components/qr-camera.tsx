@@ -21,7 +21,7 @@ export function QrCamera({ onScan }: QrCameraProps) {
           La camara esta deshabilitada. Habilitá el permiso para escanear pases.
         </Text>
         <Button
-          label="Habilitar camara"
+          label="Habilitar cámara"
           onPress={() => void requestPermission()}
         />
       </View>

@@ -69,11 +69,11 @@ export function validateInvitationForm(
     return { ok: false, error: 'Elegí la ventana de validez.' };
   }
   if (values.validUntil <= values.validFrom) {
-    return { ok: false, error: 'El fin de la ventana tiene que ser despues del inicio.' };
+    return { ok: false, error: 'El fin de la ventana tiene que ser después del inicio.' };
   }
   const windowDays = (values.validUntil.getTime() - values.validFrom.getTime()) / DAY_MS;
   if (windowDays > MAX_INVITATION_WINDOW_DAYS) {
-    return { ok: false, error: 'Un pase unico o de evento dura hasta 30 dias.' };
+    return { ok: false, error: 'Un pase único o de evento dura hasta 30 días.' };
   }
 
   const companions = parseBoundedInt(values.companions, 0, 20);

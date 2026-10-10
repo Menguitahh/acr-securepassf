@@ -204,8 +204,8 @@ export function useQrScanner(direction: 'IN' | 'OUT') {
         if (/MISMATCH/i.test(reason)) {
           setEnrollmentError(
             enrollment.subject.kind === 'worker'
-              ? 'El DNI no coincide con el del trabajador. Verificá el numero o registrá el ingreso manualmente.'
-              : 'El DNI no coincide con el que espera la invitacion. Verificá el numero o registrá el ingreso manualmente.',
+              ? 'El DNI no coincide con el del trabajador. Verificá el número o registrá el ingreso manualmente.'
+              : 'El DNI no coincide con el que espera la invitación. Verificá el número o registrá el ingreso manualmente.',
           );
         } else {
           setEnrollmentError(

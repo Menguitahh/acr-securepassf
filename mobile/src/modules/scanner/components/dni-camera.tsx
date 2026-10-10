@@ -26,7 +26,7 @@ export function DniCamera({ onScan }: DniCameraProps) {
           La camara esta deshabilitada. Habilitá el permiso para escanear DNI.
         </Text>
         <Button
-          label="Habilitar camara"
+          label="Habilitar cámara"
           onPress={() => void requestPermission()}
         />
       </View>

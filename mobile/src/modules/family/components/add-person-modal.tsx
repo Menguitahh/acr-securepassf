@@ -119,7 +119,7 @@ export function AddPersonModal({ visible, onClose, lotId, onFeedback }: Props) {
       return;
     }
     if (!isValidEmail(email.trim())) {
-      setFormError('Email invalido. Revisá el formato.');
+      setFormError('Email inválido. Revisá el formato.');
       return;
     }
     addFamily.mutate(

@@ -62,7 +62,7 @@ export function LotAutocomplete({
                 onPress={() => onSelect(lot)}
                 className="min-h-12 justify-center border-b border-border px-4 active:opacity-60"
               >
-                <Text className="text-body text-text-primary">{lot.code ?? '(sin codigo)'}</Text>
+                <Text className="text-body text-text-primary">{lot.code ?? '(sin código)'}</Text>
               </Pressable>
             ))
           )}
