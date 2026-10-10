@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  describePending,
+  resendActivationError,
   parseCsv,
   toImportPreview,
   formatAddress,
@@ -124,5 +126,18 @@ describe("toImportPreview (#214)", () => {
   it("sin columna codigo o sin filas es error del archivo", () => {
     expect(toImportPreview("calle,numero\nx,1", new Set())).toMatchObject({ kind: "error" });
     expect(toImportPreview(header, new Set())).toMatchObject({ kind: "error" });
+  });
+});
+
+describe("cuentas pendientes (US-54)", () => {
+  it("describe rol y lotes; sin rol con lote es trabajador", () => {
+    expect(describePending(["RESIDENT_OWNER"], ["A-1"])).toBe("Titular · A-1");
+    expect(describePending([], ["A-1", "A-14"])).toBe("Trabajador · A-1, A-14");
+    expect(describePending(["GUARD"], [])).toBe("Guardia");
+  });
+
+  it("errores del reenvio", () => {
+    expect(resendActivationError(204)).toBeNull();
+    expect(resendActivationError(429)).toMatch(/3 veces/);
   });
 });

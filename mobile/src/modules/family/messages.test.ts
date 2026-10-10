@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  messageForResendActivation,
   messageForAddOutcome,
   messageForConflictCode,
   messageForReactivation,
@@ -132,5 +133,14 @@ describe('messageForConflictCode', () => {
   it('code desconocido cae al mensaje generico de conflicto', () => {
     expect(messageForConflictCode('SOMETHING_NEW')).toContain('administración');
     expect(messageForConflictCode(undefined)).toContain('administración');
+  });
+});
+
+describe('messageForResendActivation (US-54)', () => {
+  it('enviado no es error; el limite y la cuenta activa dicen que pasa', () => {
+    expect(messageForResendActivation(204)).toBeNull();
+    expect(messageForResendActivation(429)).toMatch(/3 veces/);
+    expect(messageForResendActivation(409)).toMatch(/Ya activó/);
+    expect(messageForResendActivation(500)).toMatch(/intentá de nuevo/i);
   });
 });

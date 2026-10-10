@@ -6,6 +6,7 @@ import { EmptyState } from "@/common/components/empty-state";
 import { ErrorState } from "@/common/components/error-state";
 import { LoadingState } from "@/common/components/loading-state";
 import { ImportForm } from "@/modules/registry/components/import-form";
+import { PendingActivations } from "@/modules/registry/components/pending-activations";
 import { LotForm } from "@/modules/registry/components/lot-form";
 import { LotsTable } from "@/modules/registry/components/lots-table";
 import { OnboardForm } from "@/modules/registry/components/onboard-form";
@@ -27,6 +28,13 @@ export function RegistryView() {
           Lotes
         </h2>
         <LotsResult />
+      </section>
+      <section aria-labelledby="pending-title" className="flex flex-col gap-3">
+        <h2 id="pending-title" className="text-lg font-semibold">
+          Pendientes de activación
+        </h2>
+        <p className="text-sm text-text-muted">Cuentas que todavía no eligieron su contraseña. Si el correo venció, reenvialo.</p>
+        <PendingActivations />
       </section>
       <section aria-labelledby="new-lot-title" className="flex flex-col gap-3 rounded-lg border border-border bg-bg-surface p-6">
         <h2 id="new-lot-title" className="text-lg font-semibold">

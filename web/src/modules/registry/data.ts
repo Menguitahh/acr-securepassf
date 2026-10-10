@@ -27,3 +27,11 @@ export const DNI_PATTERN = /^\d{7,8}$/;
 export const IMPORT_COLUMNS = ["codigo", "calle", "numero", "titular_nombre", "titular_dni", "titular_email"] as const;
 
 export const IMPORT_TEMPLATE = `${IMPORT_COLUMNS.join(",")}\nA-101,Los Robles,101,Ana Gomez,30111222,ana@ejemplo.com\nA-102,Los Robles,102,,,`;
+
+// US-54: rol de la cuenta pendiente, para la tabla.
+export const ROLE_LABELS: Record<string, string> = {
+  RESIDENT_OWNER: "Titular",
+  RESIDENT_MEMBER: "Familiar",
+  GUARD: "Guardia",
+  ADMIN: "Admin",
+};

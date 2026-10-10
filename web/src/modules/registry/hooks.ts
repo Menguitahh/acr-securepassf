@@ -3,7 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/common/api/client";
-import { toLotRows, toSubmitOutcome } from "@/modules/registry/lib";
+import { resendActivationError, toLotRows, toSubmitOutcome } from "@/modules/registry/lib";
 import { LOTS_PAGE_SIZE } from "@/modules/registry/data";
 import type {
   ImportResultRow,
@@ -167,5 +167,30 @@ export function useImportRegistry() {
       return results;
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: LOTS_KEY }),
+  });
+}
+
+const PENDING_KEY = ["admin-pending-activations"] as const;
+
+// US-54: cuentas del barrio que todavia no se activaron.
+export function usePendingActivations() {
+  return useQuery({
+    queryKey: PENDING_KEY,
+    queryFn: async () => {
+      const { data, response } = await api.GET("/api/v1/admin/users/pending");
+      if (!response.ok || !data) throw new Error(`Pending HTTP ${response.status}`);
+      return data;
+    },
+  });
+}
+
+export function useResendAdminActivation() {
+  return useMutation({
+    mutationFn: async (userId: string): Promise<string | null> => {
+      const { response } = await api.POST("/api/v1/admin/users/{id}/resend-activation", {
+        params: { path: { id: userId } },
+      });
+      return resendActivationError(response.status);
+    },
   });
 }

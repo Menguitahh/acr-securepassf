@@ -1,6 +1,6 @@
 import type { components } from "@securepass/contracts";
 
-import { DNI_PATTERN, FIELD_LABELS, IMPORT_COLUMNS } from "@/modules/registry/data";
+import { DNI_PATTERN, FIELD_LABELS, IMPORT_COLUMNS, ROLE_LABELS } from "@/modules/registry/data";
 import type {
   FieldErrors,
   ImportPreview,
@@ -179,4 +179,20 @@ export function toImportPreview(text: string, existing: ReadonlySet<string>): Im
     };
   });
   return { kind: "ok", rows };
+}
+
+// US-54: como se presenta una cuenta pendiente. Sin rol de barrio y con
+// lotes es un trabajador.
+export function describePending(roles: readonly string[], lotCodes: readonly string[]): string {
+  const roleText = roles.map((role) => ROLE_LABELS[role] ?? role).join(", ") || "Trabajador";
+  return lotCodes.length ? `${roleText} · ${lotCodes.join(", ")}` : roleText;
+}
+
+// US-54: respuesta de POST /admin/users/{id}/resend-activation. null = enviado.
+export function resendActivationError(status: number): string | null {
+  if (status === 204) return null;
+  if (status === 429) return "Ya le reenviaste el correo 3 veces en la última hora. Esperá un rato.";
+  if (status === 409) return "Esa cuenta ya está activa.";
+  if (status === 404) return "Esa cuenta ya no está en el barrio.";
+  return "No se pudo reenviar el correo. Revisá la conexión y reintentá.";
 }

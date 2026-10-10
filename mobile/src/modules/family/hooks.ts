@@ -4,6 +4,7 @@ import type { components } from '@securepass/contracts';
 
 import { api } from '@/common/api/client';
 import { isProblemDetail } from '@/common/api/problem';
+import { messageForResendActivation } from '@/modules/family/messages';
 
 // El server manda problem+json con `detail` legible ("el usuario ya es
 // miembro del lote", "usuario no encontrado"): ese mensaje es el que va
@@ -75,6 +76,20 @@ export function useUpdateFamilyMember(lotId: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['family'] });
+    },
+  });
+}
+
+// US-54: el titular reenvia la activacion a un familiar o trabajador de su
+// lote que todavia no activo la cuenta.
+export function useResendActivation(lotId: string) {
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { response } = await api.POST('/api/v1/lots/{lotId}/members/{userId}/resend-activation', {
+        params: { path: { lotId, userId } },
+      });
+      const message = messageForResendActivation(response.status);
+      if (message) throw new Error(message);
     },
   });
 }

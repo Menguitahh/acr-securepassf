@@ -116,6 +116,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lots/{lotId}/members/{userId}/resend-activation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invitations": {
         parameters: {
             query?: never;
@@ -636,6 +652,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["pending"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1361,9 +1393,9 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
-            nonEmpty?: boolean;
             scheduleBundled?: boolean;
             dailyOrderValid?: boolean;
+            nonEmpty?: boolean;
         };
         UpdateWorkerResponse: {
             /** Format: uuid */
@@ -1484,6 +1516,8 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
+            /** @enum {string} */
+            userStatus?: "ACTIVE" | "PENDING_ACTIVATION" | "SUSPENDED" | "DELETED";
         };
         PagedInvitationsResponse: {
             items?: components["schemas"]["InvitationResponse"][];
@@ -1504,6 +1538,18 @@ export interface components {
             isOwner?: boolean;
             canInvite?: boolean;
             active?: boolean;
+            /** @enum {string} */
+            userStatus?: "ACTIVE" | "PENDING_ACTIVATION" | "SUSPENDED" | "DELETED";
+        };
+        PendingActivationResponse: {
+            /** Format: uuid */
+            userId: string;
+            fullName: string;
+            email: string | null;
+            roles: string[];
+            lotCodes: string[];
+            /** Format: date-time */
+            createdAt: string;
         };
         Bucket: {
             /** Format: date-time */
@@ -1816,6 +1862,27 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["AddWorkerResponse"];
                 };
+            };
+        };
+    };
+    resend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: string;
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -2753,6 +2820,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["InvitationResponse"];
+                };
+            };
+        };
+    };
+    pending: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PendingActivationResponse"][];
                 };
             };
         };

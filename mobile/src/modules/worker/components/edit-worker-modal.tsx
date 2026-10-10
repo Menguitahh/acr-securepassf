@@ -8,6 +8,8 @@ import { Button } from '@/common/components/button';
 import { Input } from '@/common/components/input';
 import { ModalHeader } from '@/common/components/modal-header';
 import { isValidEmail } from '@/modules/family/email';
+import { useResendActivation } from '@/modules/family/hooks';
+import { RESEND_ACTIVATION_DONE } from '@/modules/family/messages';
 import { useChangeWorkerEmail, useUpdateWorker } from '@/modules/worker/hooks';
 import {
   FORM_ERROR_MESSAGES,
@@ -64,6 +66,8 @@ function EditWorkerModalInner({
 
   const updateWorker = useUpdateWorker(lotId, userId);
   const changeEmail = useChangeWorkerEmail(lotId, userId);
+  const resend = useResendActivation(lotId);
+  const pending = worker.userStatus === 'PENDING_ACTIVATION';
   const [email, setEmail] = useState(worker.email ?? '');
   const [emailMessage, setEmailMessage] = useState<string | null>(null);
   const emailChanged = email.trim().toLowerCase() !== (worker.email ?? '').toLowerCase();
@@ -196,6 +200,21 @@ function EditWorkerModalInner({
             </Text>
             {emailMessage ? (
               <Text className="text-body leading-[22px] text-text-primary">{emailMessage}</Text>
+            ) : null}
+            {pending && !inactive && !emailChanged && worker.email ? (
+              <Button
+                label={resend.isPending ? 'Reenviando' : 'Reenviar activación'}
+                disabled={resend.isPending}
+                onPress={() =>
+                  resend.mutate(userId, {
+                    onSuccess: () => {
+                      onFeedback(RESEND_ACTIVATION_DONE, 'success');
+                      onClose();
+                    },
+                    onError: (err) => setEmailMessage(err.message),
+                  })
+                }
+              />
             ) : null}
             {emailChanged && !inactive ? (
               <Button

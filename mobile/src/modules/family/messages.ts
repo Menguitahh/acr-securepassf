@@ -81,3 +81,15 @@ export function messageForConflictCode(code: string | undefined): string {
       return 'Hay un conflicto con esta persona en el sistema. Contactá a la administración.';
   }
 }
+
+// US-54: respuesta de POST /lots/{lotId}/members/{userId}/resend-activation.
+// "Reenviar activacion" -> "Le reenviamos el correo...". null = enviado.
+export function messageForResendActivation(status: number): string | null {
+  if (status === 204) return null;
+  if (status === 429) return 'Ya le reenviaste el correo 3 veces en la última hora. Esperá un rato.';
+  if (status === 409) return 'Ya activó su cuenta, o no tiene email cargado.';
+  if (status === 404) return 'Esa persona ya no está en el lote.';
+  return 'No se pudo reenviar el correo. Revisá la conexión e intentá de nuevo.';
+}
+
+export const RESEND_ACTIVATION_DONE = 'Le reenviamos el correo para activar la cuenta.';

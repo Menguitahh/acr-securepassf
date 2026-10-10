@@ -10,10 +10,11 @@ import { ScreenHeader } from '@/common/components/screen-header';
 import { Spinner } from '@/common/components/spinner';
 import { residentLots } from '@/modules/auth/lib';
 import { useSessionStore } from '@/modules/auth/session-store';
-import { useFamilyMembers, useUpdateFamilyMember } from '@/modules/family/hooks';
+import { Button } from '@/common/components/button';
+import { useFamilyMembers, useResendActivation, useUpdateFamilyMember } from '@/modules/family/hooks';
 import { useMinors, useDeleteMinor } from '@/modules/family/minors-hooks';
 import { computeAgeYears } from '@/modules/family/age';
-import { messageForReactivation, messageForUpdateOutcome } from '@/modules/family/messages';
+import { messageForReactivation, messageForUpdateOutcome, RESEND_ACTIVATION_DONE } from '@/modules/family/messages';
 import { AddPersonModal } from '@/modules/family/components/add-person-modal';
 import { GraduateMinorModal } from '@/modules/family/components/graduate-minor-modal';
 import { formatSchedule } from '@/modules/worker/lib';
@@ -36,6 +37,7 @@ export default function FamilyMembersScreen() {
   const workersQ = useWorkers(lotId);
   const user = useSessionStore((state) => state.user);
   const updateMember = useUpdateFamilyMember(lotId);
+  const resend = useResendActivation(lotId);
   const deleteMinor = useDeleteMinor(lotId);
 
   const lot = (user ? residentLots(user) : []).find((item) => item.id === lotId);
@@ -172,6 +174,13 @@ export default function FamilyMembersScreen() {
                   onReactivate={() =>
                     confirmReactivateMember(m.userId ?? '', m.fullName ?? 'Este familiar')
                   }
+                  onResend={() =>
+                    resend.mutate(m.userId ?? '', {
+                      onSuccess: () => showFeedback(RESEND_ACTIVATION_DONE, 'success'),
+                      onError: (err) => showFeedback(err.message, 'warning'),
+                    })
+                  }
+                  isResending={resend.isPending && resend.variables === m.userId}
                 />
               ))}
             </View>
@@ -293,6 +302,9 @@ function WorkerRow({
           <Text className="text-footnote leading-[18px] text-text-muted">
             {worker.service ?? 'Sin servicio'}
           </Text>
+          {worker.userStatus === 'PENDING_ACTIVATION' && !inactive ? (
+            <Text className="text-footnote leading-[18px] text-text-muted">Pendiente de activación</Text>
+          ) : null}
         </View>
         {inactive ? (
           <Text className="rounded-full bg-bg-elevated px-2.5 py-1 text-footnote text-text-muted">
@@ -380,14 +392,19 @@ function MemberRow({
   onToggleInvite,
   onRemove,
   onReactivate,
+  onResend,
+  isResending,
 }: {
   member: FamilyMember;
   isOwner: boolean;
   onToggleInvite: (next: boolean) => void;
   onRemove: () => void;
   onReactivate: () => void;
+  onResend: () => void;
+  isResending: boolean;
 }) {
   const inactive = member.active === false;
+  const pending = member.userStatus === 'PENDING_ACTIVATION';
   const relation = member.relation && !member.isOwner ? ` · ${member.relation}` : '';
 
   return (
@@ -401,6 +418,9 @@ function MemberRow({
           <Text className="text-footnote leading-[18px] text-text-muted">
             {inactive ? 'Inactivo' : (member.email ?? member.phone ?? '')}
           </Text>
+          {pending && !inactive ? (
+            <Text className="text-footnote leading-[18px] text-text-muted">Pendiente de activación</Text>
+          ) : null}
         </View>
         {member.isOwner ? (
           <Text className="rounded-full bg-bg-elevated px-2.5 py-1 text-footnote text-text-muted">
@@ -433,6 +453,9 @@ function MemberRow({
             <Text className="text-footnote leading-[18px] text-text-muted">Dar de baja</Text>
           </Pressable>
         )
+      ) : null}
+      {isOwner && pending && !inactive ? (
+        <Button label={isResending ? 'Reenviando' : 'Reenviar activación'} onPress={onResend} disabled={isResending} />
       ) : null}
     </View>
   );
