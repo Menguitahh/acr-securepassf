@@ -16,7 +16,7 @@ import { computeAgeYears } from '@/modules/family/age';
 import { messageForReactivation, messageForUpdateOutcome } from '@/modules/family/messages';
 import { AddPersonModal } from '@/modules/family/components/add-person-modal';
 import { GraduateMinorModal } from '@/modules/family/components/graduate-minor-modal';
-import { WEEKDAY_LABELS } from '@/modules/worker/data';
+import { formatSchedule } from '@/modules/worker/lib';
 import { useWorkers } from '@/modules/worker/hooks';
 import { AddWorkerModal } from '@/modules/worker/components/add-worker-modal';
 import { EditWorkerModal } from '@/modules/worker/components/edit-worker-modal';
@@ -281,12 +281,6 @@ function WorkerRow({
   isOwner: boolean;
   onEdit: () => void;
 }) {
-  const days = (worker.weekdays ?? [])
-    .slice()
-    .sort((a, b) => a - b)
-    .map((iso) => WEEKDAY_LABELS[iso - 1]?.label ?? '')
-    .filter((s) => s.length > 0)
-    .join(' ');
   const inactive = worker.active === false;
 
   const body = (
@@ -307,7 +301,7 @@ function WorkerRow({
         ) : null}
       </View>
       <Text className="text-footnote leading-[18px] text-text-muted">
-        {days || 'Sin días'} · {worker.dailyFrom ?? '--:--'}–{worker.dailyUntil ?? '--:--'}
+        {formatSchedule(worker.weekdays, worker.dailyFrom, worker.dailyUntil)}
       </Text>
     </>
   );

@@ -1,4 +1,5 @@
 import { isValidEmail } from '@/modules/family/email';
+import { WEEKDAY_LABELS } from '@/modules/worker/data';
 
 // HH:mm en 24h, zero-padded. Mismo formato que espera el backend
 // (AddWorkerRequest.dailyFrom/Until, pattern ^([01]\d|2[0-3]):[0-5]\d$).
@@ -84,3 +85,19 @@ export const FORM_ERROR_MESSAGES: Record<WorkerFormError, string> = {
   DAILY_ORDER_INVALID:
     'El horario de fin tiene que ser posterior al de inicio. Los turnos que cruzan la medianoche no se pueden cargar.',
 };
+
+// "L M M J V · 08:00–18:00". Lo usan la lista del titular y la pantalla del
+// trabajador (US-65).
+export function formatSchedule(
+  weekdays: readonly number[] | undefined,
+  dailyFrom: string | undefined,
+  dailyUntil: string | undefined,
+): string {
+  const days = (weekdays ?? [])
+    .slice()
+    .sort((a, b) => a - b)
+    .map((iso) => WEEKDAY_LABELS[iso - 1]?.label ?? '')
+    .filter((label) => label.length > 0)
+    .join(' ');
+  return `${days || 'Sin días'} · ${dailyFrom ?? '--:--'}–${dailyUntil ?? '--:--'}`;
+}

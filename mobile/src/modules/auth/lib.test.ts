@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  isWorker,
   forgotPasswordError,
   hasMobileRole,
   hasRole,
@@ -206,5 +207,22 @@ describe('forgotPasswordError (#212)', () => {
   it('429 y fallas dicen que hacer', () => {
     expect(forgotPasswordError(429)).toMatch(/Esperá unos minutos/);
     expect(forgotPasswordError(500)).toMatch(/Intentá de nuevo/);
+  });
+});
+
+describe('trabajador (US-65)', () => {
+  const worker = {
+    id: 'w1',
+    fullName: 'Wanda',
+    neighborhoodId: 'n1',
+    neighborhoodTimezone: null,
+    roles: [],
+    lots: [{ id: 'l1', code: 'A-1', kind: 'WORKER' as const }],
+  };
+
+  it('tiene pantalla en la app y va a la suya', () => {
+    expect(isWorker(worker)).toBe(true);
+    expect(hasMobileRole(worker)).toBe(true);
+    expect(homeRouteFor(worker)).toBe('/(worker)/pass');
   });
 });

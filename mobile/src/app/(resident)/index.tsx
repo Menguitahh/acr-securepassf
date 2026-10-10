@@ -13,7 +13,7 @@ import { typeLabel } from '@/modules/invitation/data';
 import { useActiveInvitations } from '@/modules/invitation/hooks';
 import { formatWindow, remainingUses } from '@/modules/invitation/lib';
 import { PendingStaysCard } from '@/modules/resident-stays/pending-stays-card';
-import { initials } from '@/modules/auth/lib';
+import { initials, isWorker } from '@/modules/auth/lib';
 import { useSessionStore } from '@/modules/auth/session-store';
 
 export default function ResidentHomeScreen() {
@@ -21,6 +21,11 @@ export default function ResidentHomeScreen() {
   const router = useRouter();
   const user = useSessionStore((state) => state.user);
   const insets = useSafeAreaInsets();
+  // US-65: residente que ademas trabaja en otra casa del barrio.
+  const workerQrButton =
+    user && isWorker(user) ? (
+      <Button label="Mi QR de trabajo" onPress={() => router.push('/(worker)/pass')} />
+    ) : null;
 
   if (isError) {
     return (
@@ -46,6 +51,11 @@ export default function ResidentHomeScreen() {
           actionLabel="Crear invitación"
           onAction={() => router.push('/(resident)/create')}
         />
+        {workerQrButton ? (
+          <View className="px-6" style={{ paddingBottom: insets.bottom + 16 }}>
+            {workerQrButton}
+          </View>
+        ) : null}
       </View>
     );
   }
@@ -70,6 +80,7 @@ export default function ResidentHomeScreen() {
               variant="primary"
             />
             <Button label="Mi QR" onPress={() => router.push('/(resident)/qr-personal')} />
+            {workerQrButton}
           </View>
         }
         renderItem={({ item, index }) => (

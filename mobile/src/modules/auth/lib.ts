@@ -42,15 +42,22 @@ export function isResident(user: SessionUser): boolean {
 // destino: mandarlo a /login es el unico estado terminal del flujo de
 // redirects. Sin eso, index -> (resident) -> /login -> index cicla sin fin.
 export function hasMobileRole(user: SessionUser): boolean {
-  return hasRole(user, 'GUARD') || isResident(user);
+  return hasRole(user, 'GUARD') || isResident(user) || isWorker(user);
 }
 
-export type HomeRoute = '/(guard)/scanner' | '/(resident)' | '/login';
+// US-65: el trabajador no tiene rol de barrio; lo define tener al menos un
+// lote donde trabaja.
+export function isWorker(user: SessionUser): boolean {
+  return user.lots.some((lot) => lot.kind === 'WORKER');
+}
+
+export type HomeRoute = '/(guard)/scanner' | '/(resident)' | '/(worker)/pass' | '/login';
 
 export function homeRouteFor(user: SessionUser | null): HomeRoute {
   if (!user) return '/login';
   if (hasRole(user, 'GUARD')) return '/(guard)/scanner';
   if (isResident(user)) return '/(resident)';
+  if (isWorker(user)) return '/(worker)/pass';
   return '/login';
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  formatSchedule,
   fromHHmm,
   toHHmm,
   validateWorkerForm,
@@ -148,5 +149,15 @@ describe('validateWorkerSchedule', () => {
         dailyUntil: at(8),
       }),
     ).toBe('DAILY_ORDER_INVALID');
+  });
+});
+
+describe('formatSchedule', () => {
+  it('ordena los dias y arma la franja', () => {
+    expect(formatSchedule([5, 1, 3], '08:00', '12:00')).toBe('L M V · 08:00–12:00');
+  });
+
+  it('sin dias ni horas no rompe', () => {
+    expect(formatSchedule(undefined, undefined, undefined)).toBe('Sin días · --:--–--:--');
   });
 });
