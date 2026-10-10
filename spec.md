@@ -1253,7 +1253,7 @@ Formato: `US-<n>` → issue. Prioridad: **P0** bloqueante del MVP, **P1** necesa
 | ID | Historia | Prioridad | Criterios de aceptación |
 |---|---|---|---|
 | US-10 | Como residente quiero generar un pase único para una visita. | P0 | QR generado en < 500 ms; ventana horaria obligatoria; `max_uses = 1` forzado. |
-| US-11 | Como residente quiero compartir el pase por WhatsApp. | P0 | Share sheet nativo con imagen del QR + texto con nombre del barrio, lote y ventana horaria. |
+| US-11 | Como residente quiero compartir el pase por WhatsApp. | P0 | Share sheet nativo con la imagen del QR: solo el QR con su zona de silencio, "Pase de acceso · Solo válido en portería" y la vigencia. Sin nombre del invitado, barrio, lote ni link (#233): esos datos los ve el guardia al escanear. |
 | US-12 | Como residente quiero generar un pase de evento con cupo. | P1 | `max_uses` entre 2 y 200; contador de usos restantes visible en tiempo real. |
 | US-13 | Como residente quiero un pase recurrente para mi empleada o jardinero. | P1 | Días de semana + franja horaria; escaneo fuera de la franja devuelve `OUT_OF_SCHEDULE`. |
 | US-14 | Como residente quiero revocar un pase que ya no aplica. | P0 | Revocación efectiva online < 1 s; en garita offline, tras la próxima sync (≤ 60 s). |

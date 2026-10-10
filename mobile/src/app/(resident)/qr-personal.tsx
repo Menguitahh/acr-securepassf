@@ -1,8 +1,9 @@
 import { Picker } from '@react-native-picker/picker';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
+
+import { QrTile } from '@/common/components/qr-tile';
 import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
-import QRCode from 'react-native-qrcode-svg';
 
 import { EmptyState } from '@/common/components/empty-state';
 import { ErrorState } from '@/common/components/error-state';
@@ -10,7 +11,6 @@ import { ScreenHeader } from '@/common/components/screen-header';
 import { Spinner } from '@/common/components/spinner';
 import { useMyPasses } from '@/modules/invitation/hooks';
 
-const QR_SIZE = 280;
 
 export default function PersonalQrScreen() {
   const { data, isLoading, isError } = useMyPasses();
@@ -65,9 +65,9 @@ export default function PersonalQrScreen() {
 
         <Animated.View
           entering={FadeInDown.duration(450).reduceMotion(ReduceMotion.System)}
-          className="items-center gap-6 rounded-2xl bg-[#fafafa] p-6"
+          className="items-center gap-3 rounded-lg bg-[#fafafa] pb-6"
         >
-          {pass?.qrToken ? <QRCode value={pass.qrToken} size={QR_SIZE} /> : null}
+          {pass?.qrToken ? <QrTile value={pass.qrToken} /> : null}
           <View className="items-center gap-1">
             <Text className="text-body font-semibold leading-[22px] text-[#09090b]">
               {pass?.neighborhoodName ?? ''}

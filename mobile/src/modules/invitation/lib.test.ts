@@ -4,8 +4,7 @@ import {
   createInvitationErrorMessage,
   formatWindow,
   remainingUses,
-  shareLines,
-  truncateShareLine,
+  passValidity,
   validateInvitationForm,
   type InvitationFormValues,
 } from '@/modules/invitation/lib';
@@ -201,35 +200,19 @@ describe('validateInvitationForm', () => {
   });
 });
 
-describe('shareLines', () => {
-  it('arma las lineas de la tarjeta: invitado, barrio y lote, ventana y link', () => {
-    const lines = shareLines(
-      {
-        guestName: 'Maria Lopez',
-        neighborhoodName: 'Barrio Las Acacias',
-        shareUrl: 'https://securepass.app/i/abc123',
-        validFrom: '2026-08-20T18:00:00Z',
-        validUntil: '2026-08-20T23:59:00Z',
-      },
-      'M4-L12',
-      'Barrio Las Acacias',
-    );
-    expect(lines).toHaveLength(4);
-    expect(lines[0]).toBe('Maria Lopez');
-    expect(lines[1]).toBe('Barrio Las Acacias - Lote M4-L12');
-    expect(lines[3]).toBe('https://securepass.app/i/abc123');
+describe('passValidity (#233)', () => {
+  const from = '2026-10-10T12:00:00Z';
+  const until = '2026-10-10T20:00:00Z';
+
+  it('dice desde y hasta cuando vale, sin datos del invitado', () => {
+    expect(passValidity(from, until, Date.parse('2026-10-10T15:00:00Z'))).toMatchObject({ kind: 'valid' });
+    expect(passValidity(from, until, Date.parse('2026-10-10T15:00:00Z'))?.label).toMatch(/^Válido hasta /);
+    expect(passValidity(from, until, Date.parse('2026-10-10T09:00:00Z'))?.label).toMatch(/^Válido desde /);
+    expect(passValidity(from, until, Date.parse('2026-10-10T20:00:00Z'))).toEqual({ kind: 'expired', label: 'Vencido' });
   });
 
-  it('omite lineas sin datos', () => {
-    expect(shareLines({}, null, null)).toEqual([]);
-    expect(shareLines({ guestName: 'Juan' }, null, null)).toEqual(['Juan']);
-  });
-
-  it('trunca lineas largas', () => {
-    const long = 'a'.repeat(60);
-    const truncated = truncateShareLine(long);
-    expect(truncated.length).toBeLessThan(long.length);
-    expect(truncated.endsWith('…')).toBe(true);
-    expect(truncateShareLine('corto')).toBe('corto');
+  it('sin ventana o con fechas rotas no muestra nada', () => {
+    expect(passValidity(undefined, until, 0)).toBeNull();
+    expect(passValidity('x', until, 0)).toBeNull();
   });
 });

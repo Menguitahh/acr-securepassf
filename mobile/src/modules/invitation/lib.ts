@@ -1,5 +1,7 @@
 import type { components } from '@securepass/contracts';
 
+import type { PassValidity } from '@/modules/invitation/types';
+
 import { isProblemDetail } from '@/common/api/problem';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -131,29 +133,13 @@ function parseBoundedInt(raw: string, min: number, max: number): number | null {
   return value;
 }
 
-const MAX_SHARE_LINE_CHARS = 34;
-
-export function truncateShareLine(value: string): string {
-  if (value.length <= MAX_SHARE_LINE_CHARS) return value;
-  return `${value.slice(0, MAX_SHARE_LINE_CHARS - 1)}…`;
-}
-
-// Lineas de la tarjeta que se comparte (spec US-11): invitado, barrio,
-// lote con ventana y el link del pase.
-export function shareLines(
-  invitation: components['schemas']['InvitationResponse'],
-  lotCode: string | null,
-  neighborhoodName: string | null,
-): string[] {
-  const lines: string[] = [];
-  if (invitation.guestName) lines.push(truncateShareLine(invitation.guestName));
-  if (neighborhoodName || lotCode) {
-    const parts = [neighborhoodName, lotCode ? `Lote ${lotCode}` : null];
-    lines.push(truncateShareLine(parts.filter((part) => part !== null).join(' - ')));
-  }
-  if (invitation.validFrom && invitation.validUntil) {
-    lines.push(truncateShareLine(formatWindow(invitation.validFrom, invitation.validUntil)));
-  }
-  if (invitation.shareUrl) lines.push(truncateShareLine(invitation.shareUrl));
-  return lines;
+// #233: la tarjeta del QR no lleva datos personales; solo cuando vale.
+export function passValidity(from: string | undefined, until: string | undefined, now: number): PassValidity | null {
+  if (!from || !until) return null;
+  const start = Date.parse(from);
+  const end = Date.parse(until);
+  if (Number.isNaN(start) || Number.isNaN(end)) return null;
+  if (now >= end) return { kind: 'expired', label: 'Vencido' };
+  if (now < start) return { kind: 'upcoming', label: `Válido desde ${formatDateTime(from)}` };
+  return { kind: 'valid', label: `Válido hasta ${formatDateTime(until)}` };
 }

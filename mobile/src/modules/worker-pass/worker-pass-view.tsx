@@ -1,5 +1,6 @@
 import { ScrollView, Text, View } from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
+
+import { QrTile } from '@/common/components/qr-tile';
 
 import { Button } from '@/common/components/button';
 import { EmptyState } from '@/common/components/empty-state';
@@ -12,7 +13,6 @@ import { useSessionStore } from '@/modules/auth/session-store';
 import { formatSchedule } from '@/modules/worker/lib';
 import { useWorkerQr } from '@/modules/worker-pass/hooks';
 
-const QR_SIZE = 280;
 
 // US-65: pantalla unica. Nombre, QR grande y las casas donde trabaja con su
 // horario. Nada mas del barrio.
@@ -66,9 +66,7 @@ export function WorkerPassView() {
       {header}
       <ScrollView contentContainerClassName="items-center gap-6 px-6 pb-8">
         <Text className="text-2xl font-semibold text-text-primary">{user?.fullName ?? ''}</Text>
-        <View className="items-center rounded-2xl bg-[#fafafa] p-6">
-          <QRCode value={data.token} size={QR_SIZE} />
-        </View>
+        <QrTile value={data.token} />
         <Text className="text-center text-body text-text-muted">
           Mostralo en la garita. Sirve en todas las casas donde trabajás, en tu horario.
         </Text>

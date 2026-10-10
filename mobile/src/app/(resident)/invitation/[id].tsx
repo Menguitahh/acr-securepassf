@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import * as Sharing from 'expo-sharing';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import QRCode from 'react-native-qrcode-svg';
 import Svg, { G, Rect, Text as SvgText } from 'react-native-svg';
@@ -12,13 +12,17 @@ import { Button } from '@/common/components/button';
 import { ErrorState } from '@/common/components/error-state';
 import { ScreenHeader } from '@/common/components/screen-header';
 import { Spinner } from '@/common/components/spinner';
-import { useSessionStore } from '@/modules/auth/session-store';
 import { useInvitation } from '@/modules/invitation/hooks';
-import { formatWindow, shareLines } from '@/modules/invitation/lib';
+import { passValidity } from '@/modules/invitation/lib';
 
-const CARD_WIDTH = 340;
-const CARD_HEIGHT = 440;
-const QR_SIZE = 280;
+// #233: la tarjeta es la misma imagen que se comparte. Solo el QR con su
+// zona de silencio (32 de margen sobre 256, mas de 4 modulos) y una leyenda
+// sin datos personales: nombre, lote y barrio los ve el guardia al escanear.
+const CARD_WIDTH = 320;
+const CARD_HEIGHT = 392;
+const QR_SIZE = 256;
+const QR_MARGIN = (CARD_WIDTH - QR_SIZE) / 2;
+const SCREEN_PADDING = 24;
 
 function toPngBytes(dataUrl: string): Uint8Array {
   const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
@@ -32,10 +36,11 @@ export default function InvitationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, isLoading, isError, error } = useInvitation(id);
   const router = useRouter();
-  const lots = useSessionStore((state) => state.user?.lots) ?? [];
-  const lotCode = lots.find((lot) => lot.id === data?.lotId)?.code ?? null;
+  const { width } = useWindowDimensions();
   const svgRef = useRef<Svg | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
+  // Hora de apertura: alcanza para el indicador de vigencia.
+  const [openedAt] = useState(() => Date.now());
 
   if (isError) {
     return (
@@ -49,8 +54,11 @@ export default function InvitationDetailScreen() {
   }
   if (isLoading) return <View className="flex-1 bg-bg-base"><Spinner /></View>;
 
-  const lines = shareLines(data ?? {}, lotCode, data?.neighborhoodName ?? null);
   const isActive = data?.status === 'ACTIVE' && data.qrToken;
+  const validity = passValidity(data?.validFrom, data?.validUntil, openedAt);
+  // En pantallas chicas la tarjeta se achica entera (viewBox fijo).
+  const cardWidth = Math.min(CARD_WIDTH, width - SCREEN_PADDING * 2);
+  const cardHeight = (cardWidth / CARD_WIDTH) * CARD_HEIGHT;
 
   const share = () => {
     const svg = svgRef.current;
@@ -73,47 +81,46 @@ export default function InvitationDetailScreen() {
   return (
     <View className="flex-1 bg-bg-base">
       <ScreenHeader title={data?.guestName ?? 'Pase'} back />
-      <View className="flex-1 items-center justify-center gap-6 px-6">
+      <ScrollView contentContainerClassName="flex-grow items-center justify-center gap-6 px-6 pb-8">
         {isActive && data.qrToken ? (
-          <>
-            <Animated.View
-              entering={FadeInDown.duration(450).reduceMotion(ReduceMotion.System)}
-              className="items-center gap-6"
-            >
+          <Animated.View
+            entering={FadeInDown.duration(450).reduceMotion(ReduceMotion.System)}
+            className="w-full items-center gap-6"
+          >
             <Svg
               ref={svgRef}
-              width={CARD_WIDTH}
-              height={CARD_HEIGHT}
+              width={cardWidth}
+              height={cardHeight}
               viewBox={`0 0 ${CARD_WIDTH} ${CARD_HEIGHT}`}
+              accessibilityLabel="Código QR del pase"
             >
               <Rect width={CARD_WIDTH} height={CARD_HEIGHT} rx={16} fill="#fafafa" />
-              <G transform={`translate(${(CARD_WIDTH - QR_SIZE) / 2}, 30)`}>
-                <QRCode value={data.qrToken} size={QR_SIZE} />
+              <G transform={`translate(${QR_MARGIN}, ${QR_MARGIN})`}>
+                <QRCode value={data.qrToken} size={QR_SIZE} ecl="M" />
               </G>
-              {lines.map((line, index) => (
-                <SvgText
-                  key={line}
-                  x={24}
-                  y={340 + index * 24}
-                  fill="#09090b"
-                  fontSize={15}
-                  fontWeight={index === 0 ? 'bold' : 'normal'}
-                >
-                  {line}
+              <SvgText x={CARD_WIDTH / 2} y={QR_MARGIN + QR_SIZE + 38} fill="#09090b" fontSize={16}
+                fontWeight="bold" textAnchor="middle">
+                Pase de acceso
+              </SvgText>
+              <SvgText x={CARD_WIDTH / 2} y={QR_MARGIN + QR_SIZE + 60} fill="#52525b" fontSize={13}
+                textAnchor="middle">
+                Solo válido en portería
+              </SvgText>
+              {validity ? (
+                <SvgText x={CARD_WIDTH / 2} y={QR_MARGIN + QR_SIZE + 80} fill="#52525b" fontSize={13}
+                  textAnchor="middle">
+                  {validity.label}
                 </SvgText>
-              ))}
+              ) : null}
             </Svg>
-            <Text className="text-center text-footnote leading-[18px] text-text-muted">
-              {formatWindow(data?.validFrom, data?.validUntil)}
-            </Text>
             {shareError ? (
-              <Text className="text-center text-body leading-[22px] text-text-primary">
+              <Text accessibilityRole="alert" className="text-center text-body leading-[22px] text-text-primary">
                 {shareError}
               </Text>
             ) : null}
-            <View className="w-full max-w-[340px]">
+            <View className="w-full" style={{ maxWidth: cardWidth }}>
               <Button
-                label="Compartir pase"
+                label="Compartir o guardar"
                 onPress={() => {
                   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   share();
@@ -121,12 +128,14 @@ export default function InvitationDetailScreen() {
                 variant="primary"
               />
             </View>
-            </Animated.View>
-          </>
+            <Text className="text-center text-footnote leading-[18px] text-text-muted" style={{ maxWidth: cardWidth }}>
+              La imagen no tiene datos del invitado. El guardia los ve al escanearla.
+            </Text>
+          </Animated.View>
         ) : (
           <>
             <Text className="text-center text-title font-semibold leading-[28px] text-text-primary">
-              El pase no esta activo.
+              El pase no está activo.
             </Text>
             <Text className="max-w-[300px] text-center text-body leading-[22px] text-text-muted">
               Un pase {data?.status === 'EXPIRED' ? 'vencido' : 'usado o revocado'} no se puede
@@ -139,7 +148,7 @@ export default function InvitationDetailScreen() {
             />
           </>
         )}
-      </View>
+      </ScrollView>
     </View>
   );
 }
