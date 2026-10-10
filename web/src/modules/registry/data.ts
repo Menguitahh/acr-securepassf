@@ -35,3 +35,14 @@ export const ROLE_LABELS: Record<string, string> = {
   GUARD: "Guardia",
   ADMIN: "Admin",
 };
+
+// #121: estado de la cuenta de una persona.
+export const PERSON_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: "Activa",
+  PENDING_ACTIVATION: "Pendiente de activación",
+  SUSPENDED: "Suspendida",
+};
+
+// Mismos limites que el backend (SuspendUserUseCase).
+export const SUSPEND_REASON_MIN = 3;
+export const SUSPEND_REASON_MAX = 280;

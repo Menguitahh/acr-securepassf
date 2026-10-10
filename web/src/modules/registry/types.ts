@@ -34,10 +34,13 @@ export type OnboardInput = {
 export type FieldErrors = Partial<Record<string, string>>;
 
 // Resultado de un submit contra el backend: listo, o errores para mostrar.
+// suspended (#121): el DNI es de una persona suspendida; si la suspendio otro
+// barrio, el admin puede pedirle la revision.
 export type SubmitOutcome =
   | { kind: "done" }
   | { kind: "invalid"; fields: FieldErrors }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string }
+  | { kind: "suspended"; message: string; userId: string; canRequestReview: boolean };
 
 // US-09 (#214): import del padron desde CSV. Una fila es un lote y, si trae
 // los tres datos, su titular.
@@ -58,3 +61,7 @@ export type ImportPreview =
   | { kind: "error"; message: string };
 
 export type ImportResultRow = { line: number; code: string; ok: boolean; message: string };
+
+// #121: persona del barrio en la busqueda de Padron.
+export type Person = components["schemas"]["PersonResponse"];
+export type Suspension = components["schemas"]["SuspensionResponse"];

@@ -1,6 +1,13 @@
 import type { components } from "@securepass/contracts";
 
-import { DNI_PATTERN, FIELD_LABELS, IMPORT_COLUMNS, ROLE_LABELS } from "@/modules/registry/data";
+import {
+  DNI_PATTERN,
+  FIELD_LABELS,
+  IMPORT_COLUMNS,
+  ROLE_LABELS,
+  SUSPEND_REASON_MAX,
+  SUSPEND_REASON_MIN,
+} from "@/modules/registry/data";
 import type {
   FieldErrors,
   ImportPreview,
@@ -11,6 +18,7 @@ import type {
   OnboardInput,
   StatusAction,
   SubmitOutcome,
+  Suspension,
 } from "@/modules/registry/types";
 
 type LotResponse = components["schemas"]["LotResponse"];
@@ -81,6 +89,8 @@ export function toSubmitOutcome(status: number, body: unknown, conflict: string 
     if (hasErrors(fields)) return { kind: "invalid", fields };
   }
   if (status === 409) {
+    const suspended = suspendedConflict(body);
+    if (suspended) return suspended;
     return { kind: "error", message: conflict ?? problemDetail(body) ?? "Ya existe un registro con esos datos." };
   }
   if (status === 403) return { kind: "error", message: "Tu usuario no tiene permiso para esto. Pedíselo a otro admin del barrio." };
@@ -195,4 +205,99 @@ export function resendActivationError(status: number): string | null {
   if (status === 409) return "Esa cuenta ya está activa.";
   if (status === 404) return "Esa cuenta ya no está en el barrio.";
   return "No se pudo reenviar el correo. Revisá la conexión y reintentá.";
+}
+
+const DATE = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "numeric", year: "numeric" });
+
+// #121: quien suspendio, cuando y por que. Una suspension anterior a #121 no
+// tiene datos.
+export function describeSuspension(s: Suspension): string {
+  if (!s.neighborhoodName) return "Suspendida. No se registró qué barrio la suspendió.";
+  const who = s.ownNeighborhood ? "tu barrio" : s.neighborhoodName;
+  const when = s.suspendedAt ? ` el ${DATE.format(new Date(s.suspendedAt))}` : "";
+  const why = s.reason ? ` Motivo: ${s.reason}` : "";
+  return `Suspendida por ${who}${when}.${why}`;
+}
+
+// #121: el 409 USER_SUSPENDED del alta trae la suspension. Sin ella (otro
+// 409) devuelve null y sigue el mensaje generico.
+export function suspendedConflict(body: unknown): SubmitOutcome | null {
+  if (typeof body !== "object" || body === null) return null;
+  if (!("code" in body) || body.code !== "USER_SUSPENDED") return null;
+  const userId = "existingUserId" in body && typeof body.existingUserId === "string" ? body.existingUserId : null;
+  const raw = "suspension" in body ? body.suspension : null;
+  if (!userId) return null;
+  const suspension = parseSuspension(raw);
+  if (!suspension || !suspension.neighborhoodName) {
+    return {
+      kind: "suspended",
+      userId,
+      canRequestReview: false,
+      message: "Esta persona está suspendida en Securepass y no se registró qué barrio la suspendió. No se puede dar de alta.",
+    };
+  }
+  if (suspension.ownNeighborhood) {
+    return {
+      kind: "suspended",
+      userId,
+      canRequestReview: false,
+      message: `Esta persona está suspendida por tu barrio. ${reasonSentence(suspension)}Levantá la suspensión en Personas y volvé a darla de alta.`,
+    };
+  }
+  return {
+    kind: "suspended",
+    userId,
+    canRequestReview: true,
+    message: `Esta persona está suspendida por ${suspension.neighborhoodName}. ${reasonSentence(suspension)}Solo ese barrio la puede levantar: pedile que revise la suspensión.`,
+  };
+}
+
+function reasonSentence(s: Suspension): string {
+  return s.reason ? `Motivo: ${s.reason}. ` : "";
+}
+
+function parseSuspension(raw: unknown): Suspension | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const text = (key: string): string | null => {
+    const value: unknown = Reflect.get(raw, key);
+    return typeof value === "string" ? value : null;
+  };
+  const own: unknown = Reflect.get(raw, "ownNeighborhood");
+  return {
+    neighborhoodName: text("neighborhoodName"),
+    reason: text("reason"),
+    suspendedAt: text("suspendedAt"),
+    ownNeighborhood: own === true,
+  };
+}
+
+// #121: el motivo es obligatorio y queda a la vista del admin de otro barrio.
+export function validateSuspendReason(reason: string): string | null {
+  const length = reason.trim().length;
+  if (length < SUSPEND_REASON_MIN) return `Escribí el motivo, de ${SUSPEND_REASON_MIN} a ${SUSPEND_REASON_MAX} caracteres.`;
+  if (length > SUSPEND_REASON_MAX) return `El motivo va hasta ${SUSPEND_REASON_MAX} caracteres.`;
+  return null;
+}
+
+// Respuestas de suspender, levantar y pedir revision. null = hecho.
+export function suspendError(status: number): string | null {
+  if (status === 204) return null;
+  if (status === 400) return `Escribí el motivo, de ${SUSPEND_REASON_MIN} a ${SUSPEND_REASON_MAX} caracteres. Tu propia cuenta no se puede suspender.`;
+  if (status === 404) return "Esa persona ya no está en el barrio.";
+  if (status === 409) return "Esa cuenta ya está suspendida o dada de baja.";
+  return "No se pudo suspender. Revisá la conexión y reintentá.";
+}
+
+export function liftSuspensionError(status: number): string | null {
+  if (status === 204) return null;
+  if (status === 409) return "La suspensión la puso otro barrio: solo ese barrio la puede levantar.";
+  if (status === 404) return "Esa persona ya no está en el barrio.";
+  return "No se pudo levantar la suspensión. Revisá la conexión y reintentá.";
+}
+
+export function suspensionReviewError(status: number): string | null {
+  if (status === 202) return null;
+  if (status === 429) return "Ya pediste la revisión de esta persona en las últimas 24 horas. Esperá la respuesta por email.";
+  if (status === 409) return "Ese barrio no tiene admins activos para revisarla.";
+  return "No se pudo pedir la revisión. Revisá la conexión y reintentá.";
 }

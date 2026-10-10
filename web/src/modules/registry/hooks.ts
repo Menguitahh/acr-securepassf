@@ -3,7 +3,14 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/common/api/client";
-import { resendActivationError, toLotRows, toSubmitOutcome } from "@/modules/registry/lib";
+import {
+  liftSuspensionError,
+  resendActivationError,
+  suspendError,
+  suspensionReviewError,
+  toLotRows,
+  toSubmitOutcome,
+} from "@/modules/registry/lib";
 import { LOTS_PAGE_SIZE } from "@/modules/registry/data";
 import type {
   ImportResultRow,
@@ -145,7 +152,7 @@ async function importRow(row: ImportRow, existingId: string | undefined): Promis
 }
 
 function outcomeMessage(outcome: SubmitOutcome): string {
-  if (outcome.kind === "error") return outcome.message;
+  if (outcome.kind === "error" || outcome.kind === "suspended") return outcome.message;
   if (outcome.kind === "invalid") return Object.values(outcome.fields).join(" ");
   return "";
 }
@@ -191,6 +198,66 @@ export function useResendAdminActivation() {
         params: { path: { id: userId } },
       });
       return resendActivationError(response.status);
+    },
+  });
+}
+
+const PEOPLE_KEY = ["admin-people"] as const;
+
+// #121: personas del barrio por nombre o DNI. term ya viene recortado.
+export function usePeopleSearch(term: string) {
+  return useQuery({
+    queryKey: [...PEOPLE_KEY, term],
+    enabled: term.length >= 2,
+    queryFn: async () => {
+      const { data, response } = await api.GET("/api/v1/admin/users", { params: { query: { q: term } } });
+      if (!response.ok || !data) throw new Error(`People HTTP ${response.status}`);
+      return data;
+    },
+  });
+}
+
+export function useSuspendUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, reason }: { userId: string; reason: string }): Promise<string | null> => {
+      const { response } = await api.POST("/api/v1/admin/users/{id}/suspend", {
+        params: { path: { id: userId } },
+        body: { reason: reason.trim() },
+      });
+      return suspendError(response.status);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PEOPLE_KEY });
+      void queryClient.invalidateQueries({ queryKey: PENDING_KEY });
+    },
+  });
+}
+
+export function useLiftSuspension() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string): Promise<string | null> => {
+      const { response } = await api.POST("/api/v1/admin/users/{id}/lift-suspension", {
+        params: { path: { id: userId } },
+      });
+      return liftSuspensionError(response.status);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PEOPLE_KEY });
+      void queryClient.invalidateQueries({ queryKey: PENDING_KEY });
+    },
+  });
+}
+
+export function useRequestSuspensionReview() {
+  return useMutation({
+    mutationFn: async (userId: string): Promise<string | null> => {
+      const { response } = await api.POST("/api/v1/admin/users/{id}/suspension-review", {
+        params: { path: { id: userId } },
+        body: {},
+      });
+      return suspensionReviewError(response.status);
     },
   });
 }

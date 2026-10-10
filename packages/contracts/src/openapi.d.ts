@@ -347,9 +347,41 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["search_1"];
         put?: never;
         post: operations["create_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}/suspension-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requestSuspensionReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["suspend"];
         delete?: never;
         options?: never;
         head?: never;
@@ -366,6 +398,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["resendActivation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}/lift-suspension": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["liftSuspension"];
         delete?: never;
         options?: never;
         head?: never;
@@ -957,8 +1005,8 @@ export interface components {
             weekdays: number[];
             dailyFrom: string;
             dailyUntil: string;
-            contactPresent?: boolean;
             dailyOrderValid?: boolean;
+            contactPresent?: boolean;
         };
         AddWorkerResponse: {
             /** Format: uuid */
@@ -1179,6 +1227,12 @@ export interface components {
             changed: boolean;
             email: string;
             fullName: string;
+        };
+        SuspensionReviewRequest: {
+            message?: string;
+        };
+        SuspendRequest: {
+            reason: string;
         };
         CreateLotRequest: {
             code: string;
@@ -1411,9 +1465,9 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
-            dailyOrderValid?: boolean;
-            scheduleBundled?: boolean;
             nonEmpty?: boolean;
+            scheduleBundled?: boolean;
+            dailyOrderValid?: boolean;
         };
         UpdateWorkerResponse: {
             /** Format: uuid */
@@ -1558,6 +1612,24 @@ export interface components {
             active?: boolean;
             /** @enum {string} */
             userStatus?: "ACTIVE" | "PENDING_ACTIVATION" | "SUSPENDED" | "DELETED";
+        };
+        PersonResponse: {
+            /** Format: uuid */
+            userId: string;
+            fullName: string;
+            documentNumber: string | null;
+            email: string | null;
+            status: string;
+            roles: string[];
+            lotCodes: string[];
+            suspension: components["schemas"]["SuspensionResponse"] | null;
+        };
+        SuspensionResponse: {
+            neighborhoodName: string | null;
+            reason: string | null;
+            /** Format: date-time */
+            suspendedAt: string | null;
+            ownNeighborhood: boolean;
         };
         PendingActivationResponse: {
             /** Format: uuid */
@@ -2279,6 +2351,28 @@ export interface operations {
             };
         };
     };
+    search_1: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PersonResponse"][];
+                };
+            };
+        };
+    };
     create_1: {
         parameters: {
             query?: never;
@@ -2303,7 +2397,75 @@ export interface operations {
             };
         };
     };
+    requestSuspensionReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuspensionReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    suspend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuspendRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     resendActivation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    liftSuspension: {
         parameters: {
             query?: never;
             header?: never;

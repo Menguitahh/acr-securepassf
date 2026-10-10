@@ -7,6 +7,7 @@ import { ErrorState } from "@/common/components/error-state";
 import { LoadingState } from "@/common/components/loading-state";
 import { ImportForm } from "@/modules/registry/components/import-form";
 import { PendingActivations } from "@/modules/registry/components/pending-activations";
+import { PeopleSearch } from "@/modules/registry/components/people-search";
 import { LotForm } from "@/modules/registry/components/lot-form";
 import { LotsTable } from "@/modules/registry/components/lots-table";
 import { OnboardForm } from "@/modules/registry/components/onboard-form";
@@ -35,6 +36,16 @@ export function RegistryView() {
         </h2>
         <p className="text-sm text-text-muted">Cuentas que todavía no eligieron su contraseña. Si el correo venció, reenvialo.</p>
         <PendingActivations />
+      </section>
+      <section aria-labelledby="people-title" className="flex flex-col gap-3">
+        <h2 id="people-title" className="text-lg font-semibold">
+          Personas
+        </h2>
+        <p className="text-sm text-text-muted">
+          Buscá a alguien del barrio para suspenderlo. Una persona suspendida no entra a ningún barrio de Securepass, y
+          solo tu barrio puede levantar la suspensión.
+        </p>
+        <PeopleSearch />
       </section>
       <section aria-labelledby="new-lot-title" className="flex flex-col gap-3 rounded-lg border border-border bg-bg-surface p-6">
         <h2 id="new-lot-title" className="text-lg font-semibold">

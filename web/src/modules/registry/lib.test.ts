@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  describeSuspension,
+  liftSuspensionError,
+  suspendedConflict,
+  suspensionReviewError,
+  validateSuspendReason,
   describePending,
   resendActivationError,
   parseCsv,
@@ -139,5 +144,45 @@ describe("cuentas pendientes (US-54)", () => {
   it("errores del reenvio", () => {
     expect(resendActivationError(204)).toBeNull();
     expect(resendActivationError(429)).toMatch(/3 veces/);
+  });
+});
+
+describe("suspension de personas (#121)", () => {
+  const otro = { neighborhoodName: "Los Robles", reason: "Robo", suspendedAt: "2026-10-03T15:00:00Z", ownNeighborhood: false };
+
+  it("describe quien, cuando y por que; sin datos si es anterior a #121", () => {
+    expect(describeSuspension(otro)).toMatch(/^Suspendida por Los Robles el \d{1,2}\/10\/2026\. Motivo: Robo$/);
+    expect(describeSuspension({ ...otro, ownNeighborhood: true })).toMatch(/^Suspendida por tu barrio/);
+    expect(describeSuspension({ neighborhoodName: null, reason: null, suspendedAt: null, ownNeighborhood: true })).toBe(
+      "Suspendida. No se registró qué barrio la suspendió.",
+    );
+  });
+
+  it("el 409 USER_SUSPENDED de otro barrio permite pedir revision", () => {
+    const body = { code: "USER_SUSPENDED", existingUserId: "u1", suspension: otro };
+    expect(toSubmitOutcome(409, body, null)).toMatchObject({ kind: "suspended", userId: "u1", canRequestReview: true });
+    expect(suspendedConflict(body)).toMatchObject({ message: expect.stringContaining("Motivo: Robo.") });
+  });
+
+  it("si la suspendio el propio barrio, manda a levantarla; sin datos no ofrece nada", () => {
+    expect(
+      suspendedConflict({ code: "USER_SUSPENDED", existingUserId: "u1", suspension: { ...otro, ownNeighborhood: true } }),
+    ).toMatchObject({ canRequestReview: false, message: expect.stringContaining("Levantá la suspensión") });
+    expect(suspendedConflict({ code: "USER_SUSPENDED", existingUserId: "u1" })).toMatchObject({ canRequestReview: false });
+  });
+
+  it("otro 409 sigue con el mensaje generico", () => {
+    expect(suspendedConflict({ code: "EMAIL_TAKEN" })).toBeNull();
+    expect(toSubmitOutcome(409, { code: "EMAIL_TAKEN", detail: "x" }, null)).toEqual({ kind: "error", message: "x" });
+  });
+
+  it("valida el motivo y traduce las respuestas", () => {
+    expect(validateSuspendReason("  no ")).toMatch(/de 3 a 280/);
+    expect(validateSuspendReason("x".repeat(281))).toMatch(/hasta 280/);
+    expect(validateSuspendReason("Robo en el lote")).toBeNull();
+    expect(liftSuspensionError(204)).toBeNull();
+    expect(liftSuspensionError(409)).toMatch(/otro barrio/);
+    expect(suspensionReviewError(202)).toBeNull();
+    expect(suspensionReviewError(429)).toMatch(/24 horas/);
   });
 });
