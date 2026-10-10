@@ -39,6 +39,30 @@ export function validateManualAccess(
       gateId,
       clientEventId,
       capturedAt: new Date().toISOString(),
+      companions: values.companions,
     },
   };
+}
+
+// WBS-36: el autocompletado filtra la lista de lotes guardada en el telefono,
+// asi funciona sin red. Prefijo del codigo, sin mayusculas, hasta 10.
+export function filterLots<T extends { code?: string }>(lots: readonly T[], query: string): T[] {
+  const q = query.trim().toUpperCase();
+  if (!q) return [];
+  return lots.filter((lot) => (lot.code ?? '').toUpperCase().startsWith(q)).slice(0, 10);
+}
+
+// Lista de lotes guardada: lo de otra version de la app se descarta.
+export function parseStoredLots(value: unknown): { id: string; code: string }[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const items: unknown[] = value;
+  const lots: { id: string; code: string }[] = [];
+  for (const item of items) {
+    if (typeof item !== 'object' || item === null) return undefined;
+    const id: unknown = Reflect.get(item, 'id');
+    const code: unknown = Reflect.get(item, 'code');
+    if (typeof id !== 'string' || typeof code !== 'string') return undefined;
+    lots.push({ id, code });
+  }
+  return lots;
 }

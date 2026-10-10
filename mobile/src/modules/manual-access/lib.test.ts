@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { validateManualAccess } from '@/modules/manual-access/lib';
+import { filterLots, parseStoredLots, validateManualAccess } from '@/modules/manual-access/lib';
 import type { ManualAccessFormValues } from '@/modules/manual-access/types';
 
 const GATE = 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
@@ -13,6 +13,7 @@ function base(overrides: Partial<ManualAccessFormValues> = {}): ManualAccessForm
     subjectDocument: '30123456',
     lotCode: 'M4-L12',
     lotId: LOT,
+    companions: 0,
     ...overrides,
   };
 }
@@ -73,5 +74,30 @@ describe('validateManualAccess', () => {
     expect(
       validateManualAccess(base({ lotCode: 'M4-L12', lotId: null }), GATE, CLIENT),
     ).toMatchObject({ ok: false, error: 'Elegí un lote del listado.' });
+  });
+});
+
+describe('filterLots (WBS-36)', () => {
+  const lots = [{ id: '1', code: 'A-001' }, { id: '2', code: 'A-14' }, { id: '3', code: 'B-100' }];
+
+  it('filtra por prefijo sin distinguir mayusculas', () => {
+    expect(filterLots(lots, 'a-1').map((l) => l.code)).toEqual(['A-14']);
+    expect(filterLots(lots, ' a').map((l) => l.code)).toEqual(['A-001', 'A-14']);
+    expect(filterLots(lots, '')).toEqual([]);
+  });
+});
+
+describe('parseStoredLots (WBS-36)', () => {
+  it('lista valida o nada', () => {
+    expect(parseStoredLots([{ id: '1', code: 'A-1', otro: 2 }])).toEqual([{ id: '1', code: 'A-1' }]);
+    expect(parseStoredLots([{ id: 1 }])).toBeUndefined();
+    expect(parseStoredLots('x')).toBeUndefined();
+  });
+});
+
+describe('validateManualAccess acompanantes (US-24)', () => {
+  it('manda la cantidad elegida', () => {
+    const out = validateManualAccess(base({ companions: 3 }), GATE, CLIENT);
+    expect(out).toMatchObject({ ok: true, payload: { companions: 3 } });
   });
 });

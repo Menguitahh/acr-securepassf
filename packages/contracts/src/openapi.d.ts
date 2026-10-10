@@ -644,6 +644,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lots/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["active"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invitations/{id}": {
         parameters: {
             query?: never;
@@ -941,8 +957,8 @@ export interface components {
             weekdays: number[];
             dailyFrom: string;
             dailyUntil: string;
-            dailyOrderValid?: boolean;
             contactPresent?: boolean;
+            dailyOrderValid?: boolean;
         };
         AddWorkerResponse: {
             /** Format: uuid */
@@ -1343,6 +1359,8 @@ export interface components {
             clientEventId: string;
             /** Format: date-time */
             capturedAt?: string;
+            /** Format: int32 */
+            companions?: number;
         };
         ManualAccessResponse: {
             /** Format: uuid */
@@ -1393,8 +1411,8 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
-            scheduleBundled?: boolean;
             dailyOrderValid?: boolean;
+            scheduleBundled?: boolean;
             nonEmpty?: boolean;
         };
         UpdateWorkerResponse: {
@@ -2785,6 +2803,26 @@ export interface operations {
             query: {
                 q: string;
             };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LotAutocompleteResponse"][];
+                };
+            };
+        };
+    };
+    active: {
+        parameters: {
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;

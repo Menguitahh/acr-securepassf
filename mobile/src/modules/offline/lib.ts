@@ -1,3 +1,4 @@
+import type { ManualAccessRequest } from '@/modules/manual-access/types';
 import type { components } from '@securepass/contracts';
 
 import { BACKOFF_SCHEDULE_MS, LOCAL_DENIAL_REASONS } from '@/modules/offline/data';
@@ -347,4 +348,42 @@ export function extractEnrollmentSubject(token: string): EnrollmentSubject | nul
   } catch {
     return null;
   }
+}
+
+// WBS-36: cola de ingresos manuales guardada. Lo que no tenga la forma de un
+// ManualAccessRequest se descarta.
+export function parseManualQueue(value: unknown): ManualAccessRequest[] {
+  if (!Array.isArray(value)) return [];
+  const items: unknown[] = value;
+  const out: ManualAccessRequest[] = [];
+  for (const item of items) {
+    if (typeof item !== 'object' || item === null) continue;
+    const field = (key: string): unknown => Reflect.get(item, key);
+    const subjectName = field('subjectName');
+    const subjectDocument = field('subjectDocument');
+    const lotId = field('lotId');
+    const gateId = field('gateId');
+    const clientEventId = field('clientEventId');
+    const capturedAt = field('capturedAt');
+    const companions = field('companions');
+    if (
+      typeof subjectName !== 'string' ||
+      typeof subjectDocument !== 'string' ||
+      typeof lotId !== 'string' ||
+      typeof gateId !== 'string' ||
+      typeof clientEventId !== 'string'
+    ) {
+      continue;
+    }
+    out.push({
+      subjectName,
+      subjectDocument,
+      lotId,
+      gateId,
+      clientEventId,
+      ...(typeof capturedAt === 'string' ? { capturedAt } : {}),
+      ...(typeof companions === 'number' ? { companions } : {}),
+    });
+  }
+  return out;
 }

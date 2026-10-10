@@ -1,7 +1,8 @@
 import * as Crypto from 'expo-crypto';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, ScrollView, Text } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { Alert, ScrollView, Text, View } from 'react-native';
 
 import { Button } from '@/common/components/button';
 import { Input } from '@/common/components/input';
@@ -12,8 +13,10 @@ import { validateManualAccess } from '@/modules/manual-access/lib';
 import type { ManualAccessFormValues } from '@/modules/manual-access/types';
 import { GATE_ID } from '@/modules/scanner/data';
 
+const COMPANION_OPTIONS = Array.from({ length: 11 }, (_, n) => n);
+
 function empty(): ManualAccessFormValues {
-  return { subjectName: '', subjectDocument: '', lotCode: '', lotId: null };
+  return { subjectName: '', subjectDocument: '', lotCode: '', lotId: null, companions: 0 };
 }
 
 export function ManualAccessView() {
@@ -36,10 +39,13 @@ export function ManualAccessView() {
     }
     setFormError(null);
     mutate.mutate(result.payload, {
-      onSuccess: (data) => {
+      onSuccess: (outcome) => {
+        // "Registrar ingreso" -> "Ingreso registrado"; sin red queda en la cola.
         Alert.alert(
-          'Ingreso registrado',
-          `${data.subjectName ?? values.subjectName} · DNI ${data.subjectDocument ?? values.subjectDocument}`,
+          outcome.kind === 'queued' ? 'Ingreso registrado sin conexión' : 'Ingreso registrado',
+          outcome.kind === 'queued'
+            ? `${outcome.subjectName} · DNI ${outcome.subjectDocument}. Queda en la cola y se envía solo cuando vuelva la red.`
+            : `${outcome.subjectName} · DNI ${outcome.subjectDocument}`,
           [{ text: 'Listo', onPress: () => router.back() }],
         );
       },
@@ -53,7 +59,8 @@ export function ManualAccessView() {
     <ScrollView contentContainerClassName="gap-4 px-6 pb-8" keyboardShouldPersistTaps="handled">
       <Text className="text-body text-text-muted">
         Cargá el ingreso de un visitante que llegue sin pase (proveedores,
-        visita imprevista). Queda registrado como MANUAL.
+        visita imprevista). Queda registrado como MANUAL. Funciona sin red: se
+        envía solo cuando vuelve la conexión.
       </Text>
       <Input
         label="Nombre y apellido"
@@ -83,6 +90,23 @@ export function ManualAccessView() {
         }
         editable={!mutate.isPending}
       />
+      <View className="gap-2">
+        <Text className="text-footnote font-medium text-text-muted">Acompañantes</Text>
+        {/* CLAUDE.md: control nativo, no un stepper custom. */}
+        <View className="rounded-xl border border-border bg-bg-elevated">
+          <Picker
+            selectedValue={values.companions}
+            onValueChange={(value) => set('companions', Number(value))}
+            enabled={!mutate.isPending}
+            dropdownIconColor="#a1a1aa"
+            accessibilityLabel="Cantidad de acompañantes"
+          >
+            {COMPANION_OPTIONS.map((n) => (
+              <Picker.Item key={n} label={n === 0 ? 'Sin acompañantes' : String(n)} value={n} />
+            ))}
+          </Picker>
+        </View>
+      </View>
       {formError ? <Text className="text-body text-deny">{formError}</Text> : null}
       {mutate.isPending ? <Spinner /> : null}
       <Button

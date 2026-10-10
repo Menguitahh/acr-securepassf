@@ -13,6 +13,7 @@ import {
   toWorkerCacheSnapshot,
   type OutboxOrphanRow,
   type SyncCycleDeps,
+  parseManualQueue,
 } from '@/modules/offline/lib';
 import type { OutboxEvent } from '@/modules/offline/types';
 
@@ -606,5 +607,13 @@ describe('reconcileGuestEnrollments (#179)', () => {
 
   it('lista del server vacia borra todo menos lo pendiente', () => {
     expect(reconcileGuestEnrollments([], ['p'], ['x', 'p'])).toEqual({ add: [], remove: ['x'] });
+  });
+});
+
+describe('parseManualQueue (WBS-36)', () => {
+  it('conserva los ingresos validos y descarta lo roto', () => {
+    const ok = { subjectName: 'A', subjectDocument: '30123456', lotId: 'l', gateId: 'g', clientEventId: 'c', companions: 2 };
+    expect(parseManualQueue([ok, { subjectName: 'sin lote' }, null])).toEqual([ok]);
+    expect(parseManualQueue('x')).toEqual([]);
   });
 });

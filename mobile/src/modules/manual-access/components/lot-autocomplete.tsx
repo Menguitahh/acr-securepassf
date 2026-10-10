@@ -2,7 +2,8 @@ import { Pressable, Text, View } from 'react-native';
 
 import { Input } from '@/common/components/input';
 import { Spinner } from '@/common/components/spinner';
-import { useLotSearch } from '@/modules/manual-access/hooks';
+import { useActiveLots } from '@/modules/manual-access/hooks';
+import { filterLots } from '@/modules/manual-access/lib';
 import type { LotSuggestion } from '@/modules/manual-access/types';
 
 type LotAutocompleteProps = {
@@ -23,7 +24,8 @@ export function LotAutocomplete({
   onSelect,
   editable,
 }: LotAutocompleteProps) {
-  const search = useLotSearch(value);
+  const lots = useActiveLots();
+  const matches = filterLots(lots.data ?? [], value);
 
   const showList = !selectedId && value.trim().length > 0;
 
@@ -39,20 +41,20 @@ export function LotAutocomplete({
       />
       {showList ? (
         <View className="max-h-56 rounded-lg border border-border bg-bg-surface">
-          {search.isFetching ? (
+          {lots.data === undefined && lots.isFetching ? (
             <View className="items-center py-3">
               <Spinner />
             </View>
-          ) : search.isError ? (
-            <Text className="px-4 py-3 text-body text-deny">
-              No se pudo buscar. Reintentá en unos segundos.
+          ) : lots.data === undefined ? (
+            <Text className="px-4 py-3 text-body text-text-primary">
+              No hay lotes guardados en este teléfono. Conectate una vez para descargarlos.
             </Text>
-          ) : (search.data ?? []).length === 0 ? (
+          ) : matches.length === 0 ? (
             <Text className="px-4 py-3 text-body text-text-muted">
               Sin coincidencias.
             </Text>
           ) : (
-            (search.data ?? []).map((lot) => (
+            matches.map((lot) => (
               <Pressable
                 key={lot.id ?? lot.code ?? ''}
                 accessibilityRole="button"

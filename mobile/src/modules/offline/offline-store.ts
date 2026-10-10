@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import { pendingManual } from '@/modules/offline/manual-queue';
+
 import { countPendingEvents } from '@/modules/offline/outbox';
 
 type OfflineStore = {
@@ -12,6 +14,7 @@ type OfflineStore = {
 export const useOfflineStore = create<OfflineStore>((set) => ({
   pendingCount: 0,
   isOffline: false,
-  refreshPendingCount: () => set({ pendingCount: countPendingEvents() }),
+  // WBS-36: la cola incluye los ingresos manuales registrados sin red.
+  refreshPendingCount: () => set({ pendingCount: countPendingEvents() + pendingManual().length }),
   setIsOffline: (offline) => set({ isOffline: offline }),
 }));

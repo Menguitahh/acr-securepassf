@@ -6,6 +6,7 @@ import { syncWorkerCache } from '@/modules/offline/worker-cache';
 import { PRUNE_NULL_GATE_MAX_AGE_MS, SYNC_INTERVAL_MS } from '@/modules/offline/data';
 import { useOfflineStore } from '@/modules/offline/offline-store';
 import { pruneOrphanOutboxEvents } from '@/modules/offline/outbox';
+import { flushManualQueue } from '@/modules/offline/manual-queue';
 import { retryDelayMs, syncOutbox } from '@/modules/offline/sync';
 
 function isOnline(state: Network.NetworkState): boolean {
@@ -54,8 +55,10 @@ export function useOutboxSync() {
       syncingRef.current = true;
       try {
         const outcome = await syncOutbox();
+        // WBS-36: los ingresos manuales sin red, en el mismo ciclo.
+        const manual = await flushManualQueue();
         refreshPendingCount();
-        if (outcome === 'error') scheduleRetry();
+        if (outcome === 'error' || manual === 'error') scheduleRetry();
       } finally {
         syncingRef.current = false;
       }
