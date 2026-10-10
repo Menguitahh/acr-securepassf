@@ -3,7 +3,7 @@ import type { components } from '@securepass/contracts';
 type InvitationType = NonNullable<components['schemas']['InvitationResponse']['type']>;
 
 const TYPE_LABELS: Record<InvitationType, string> = {
-  SINGLE: 'Unica',
+  SINGLE: 'Única',
   EVENT: 'Evento',
 };
 
@@ -25,3 +25,6 @@ export const STATUS_LABELS: Record<
   EXPIRED: 'Vencida',
   REVOKED: 'Revocada',
 };
+
+// Selector de acompañantes del pase: 0 a 20, mismo tope que la validacion.
+export const COMPANION_OPTIONS: readonly number[] = Array.from({ length: 21 }, (_, n) => n);

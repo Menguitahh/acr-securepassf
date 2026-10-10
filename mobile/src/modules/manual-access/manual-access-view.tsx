@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import * as Crypto from 'expo-crypto';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -41,6 +42,7 @@ export function ManualAccessView() {
     mutate.mutate(result.payload, {
       onSuccess: (outcome) => {
         // "Registrar ingreso" -> "Ingreso registrado"; sin red queda en la cola.
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert(
           outcome.kind === 'queued' ? 'Ingreso registrado sin conexión' : 'Ingreso registrado',
           outcome.kind === 'queued'
@@ -58,22 +60,21 @@ export function ManualAccessView() {
   return (
     <ScrollView contentContainerClassName="gap-4 px-6 pb-8" keyboardShouldPersistTaps="handled">
       <Text className="text-body text-text-muted">
-        Cargá el ingreso de un visitante que llegue sin pase (proveedores,
-        visita imprevista). Queda registrado como MANUAL. Funciona sin red: se
-        envía solo cuando vuelve la conexión.
+        Visitantes sin pase: proveedores o visitas imprevistas. Funciona sin
+        red y se envía cuando vuelve la conexión.
       </Text>
       <Input
         label="Nombre y apellido"
         value={values.subjectName}
         onChangeText={(subjectName) => set('subjectName', subjectName)}
-        placeholder="Juan Perez"
+        placeholder="Ej.: Ana Pérez"
         editable={!mutate.isPending}
       />
       <Input
         label="DNI"
         value={values.subjectDocument}
         onChangeText={(subjectDocument) => set('subjectDocument', subjectDocument)}
-        placeholder="30123456"
+        placeholder="Ej.: 30123456"
         keyboardType="number-pad"
         editable={!mutate.isPending}
       />

@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -34,9 +35,10 @@ export function ScreenHeader({ title, subtitle, back = false, right }: ScreenHea
             accessibilityLabel="Volver"
             onPress={handleBack}
             hitSlop={12}
-            className="-ml-2 mb-1 min-h-12 justify-center active:opacity-60"
+            className="-ml-2 mb-1 min-h-12 min-w-12 flex-row items-center gap-1 self-start pr-3 active:opacity-60"
           >
-            <Text className="text-body text-text-muted">Volver</Text>
+            <Ionicons name="chevron-back" size={22} color="#fafafa" />
+            <Text className="text-body text-text-primary">Volver</Text>
           </Pressable>
         ) : null}
         <Text className="text-large-title font-bold leading-[41px] tracking-[-0.4px] text-text-primary">

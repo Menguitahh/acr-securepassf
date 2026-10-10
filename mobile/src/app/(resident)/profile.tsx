@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
@@ -67,7 +68,7 @@ export default function ProfileScreen() {
                     {lot.isOwner ? 'Titular' : 'Miembro'}
                   </Text>
                 </View>
-                <Text className="text-body leading-[22px] text-text-muted">{'>'}</Text>
+                <Ionicons name="chevron-forward" size={20} color="#a1a1aa" />
               </Pressable>
             ))
           )}

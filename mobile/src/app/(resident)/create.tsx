@@ -9,6 +9,7 @@ import { DateField } from '@/common/components/date-field';
 import { Input } from '@/common/components/input';
 import { ScreenHeader } from '@/common/components/screen-header';
 import { useSessionStore } from '@/modules/auth/session-store';
+import { COMPANION_OPTIONS } from '@/modules/invitation/data';
 import { useCreateInvitation } from '@/modules/invitation/hooks';
 import {
   MAX_INVITATION_WINDOW_DAYS,
@@ -17,7 +18,7 @@ import {
 } from '@/modules/invitation/lib';
 
 const INVITATION_TYPES = [
-  { value: 'SINGLE', label: 'Unica' },
+  { value: 'SINGLE', label: 'Única' },
   { value: 'EVENT', label: 'Evento' },
 ] as const;
 
@@ -136,15 +137,25 @@ export default function CreateInvitationScreen() {
           />
           <Text className="text-footnote text-text-muted">
             El invitado va a tener que mostrar el DNI en garita la primera
-            vez que entra: el guardia lo verifica contra este numero.
+            vez que entra: el guardia lo verifica contra este número.
           </Text>
-          <Input
-            label="Acompanantes (0 a 20)"
-            value={values.companions}
-            onChangeText={(companions) => setValue('companions', companions)}
-            keyboardType="number-pad"
-            editable={!isPending}
-          />
+          <View className="gap-2">
+            <Text className="text-footnote font-semibold text-text-muted">Acompañantes</Text>
+            <View className="min-h-12 justify-center rounded-xl border border-border bg-bg-elevated">
+              <Picker
+                accessibilityLabel="Acompañantes"
+                enabled={!isPending}
+                selectedValue={values.companions === '' ? '0' : values.companions}
+                onValueChange={(value) => setValue('companions', String(value))}
+                dropdownIconColor="#fafafa"
+                style={{ color: '#fafafa' }}
+              >
+                {COMPANION_OPTIONS.map((n) => (
+                  <Picker.Item key={n} label={n === 0 ? 'Sin acompañantes' : String(n)} value={String(n)} />
+                ))}
+              </Picker>
+            </View>
+          </View>
         </View>
 
         <View className="gap-3">
@@ -165,7 +176,7 @@ export default function CreateInvitationScreen() {
         <View className="gap-3">
           <SectionLabel>Vigencia</SectionLabel>
           <DateField
-            label="Valido desde"
+            label="Válido desde"
             value={values.validFrom}
             onChange={(validFrom) => setValue('validFrom', validFrom)}
             mode="datetime"
@@ -173,7 +184,7 @@ export default function CreateInvitationScreen() {
             disabled={isPending}
           />
           <DateField
-            label="Valido hasta"
+            label="Válido hasta"
             value={values.validUntil}
             onChange={(validUntil) => setValue('validUntil', validUntil)}
             mode="datetime"

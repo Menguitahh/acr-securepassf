@@ -1,4 +1,5 @@
-import { Alert, FlatList, Pressable, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { AccessibilityInfo, Alert, FlatList, Text, View } from 'react-native';
 
 import { Button } from '@/common/components/button';
 import { EmptyState } from '@/common/components/empty-state';
@@ -29,19 +30,24 @@ export function StaysView() {
   const askClose = (stay: Stay) => {
     const name = stay.subjectName ?? 'este ingreso';
     Alert.alert(
-      'Cerrar estadia',
+      'Registrar egreso',
       `¿Registrar el egreso de ${name}?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Cerrar',
-          style: 'destructive',
+          text: 'Registrar egreso',
           onPress: () => {
             if (!stay.id) return;
             close.mutate(stay.id, {
+              // La fila sale de la lista; la vibracion y el aviso de lector
+              // de pantalla confirman sin otro toque.
+              onSuccess: () => {
+                void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                AccessibilityInfo.announceForAccessibility(`Egreso registrado: ${name}`);
+              },
               onError: (err) =>
                 Alert.alert(
-                  'No se pudo cerrar',
+                  'No se pudo registrar el egreso',
                   err instanceof Error ? err.message : 'Reintentá en unos segundos.',
                 ),
             });
@@ -108,11 +114,8 @@ export function StaysView() {
         const exitRequested = typeof item.exitRequestedAt === 'string' && item.exitRequestedAt.length > 0;
         const near = locallyWarned || isNearExpiry(item) || exitRequested;
         return (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Cerrar estadia de ${item.subjectName ?? 'presente'}`}
-            onPress={() => askClose(item)}
-            className={`min-h-12 rounded-lg border p-4 active:opacity-70 ${
+          <View
+            className={`rounded-lg border p-4 ${
               near
                 ? 'border-warn bg-warn/10'
                 : 'border-border bg-bg-surface'
@@ -141,16 +144,21 @@ export function StaysView() {
                 </Text>
               ) : null}
             </View>
-            {near && item.invitationId ? (
-              <View className="mt-3">
-                <Button
-                  label="Avisar al residente"
-                  disabled={notify.isPending}
-                  onPress={() => notifyResident(item)}
-                />
+            <View className="mt-3 flex-row gap-3">
+              <View className="flex-1">
+                <Button label="Registrar egreso" onPress={() => askClose(item)} />
               </View>
-            ) : null}
-          </Pressable>
+              {near && item.invitationId ? (
+                <View className="flex-1">
+                  <Button
+                    label="Avisar al residente"
+                    disabled={notify.isPending}
+                    onPress={() => notifyResident(item)}
+                  />
+                </View>
+              ) : null}
+            </View>
+          </View>
         );
       }}
     />

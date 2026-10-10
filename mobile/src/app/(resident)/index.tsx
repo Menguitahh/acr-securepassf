@@ -52,6 +52,7 @@ export default function ResidentHomeScreen() {
           onAction={() => router.push('/(resident)/create')}
         />
         <View className="gap-3 px-6" style={{ paddingBottom: insets.bottom + 16 }}>
+          <Button label="Mi QR" onPress={() => router.push('/(resident)/qr-personal')} />
           <Button label="Historial de accesos" onPress={() => router.push('/(resident)/history')} />
           {workerQrButton}
         </View>
@@ -66,23 +67,31 @@ export default function ResidentHomeScreen() {
         data={data}
         keyExtractor={(item) => item.id ?? ''}
         contentContainerClassName="gap-3 px-6"
+        // Acciones arriba: con muchas invitaciones, "Crear invitación" no se
+        // va al final de la lista.
         ListHeaderComponent={
-          <View className="pb-3">
-            <PendingStaysCard />
-          </View>
-        }
-        ListFooterComponent={
-          <View className="gap-3 pb-10 pt-8">
+          <View className="gap-3 pb-3">
             <Button
               label="Crear invitación"
               onPress={() => router.push('/(resident)/create')}
               variant="primary"
             />
-            <Button label="Mi QR" onPress={() => router.push('/(resident)/qr-personal')} />
-            <Button label="Historial de accesos" onPress={() => router.push('/(resident)/history')} />
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Button label="Mi QR" onPress={() => router.push('/(resident)/qr-personal')} />
+              </View>
+              <View className="flex-1">
+                <Button label="Historial" onPress={() => router.push('/(resident)/history')} />
+              </View>
+            </View>
             {workerQrButton}
+            <PendingStaysCard />
+            <Text className="pt-3 text-footnote font-semibold uppercase tracking-wide text-text-muted">
+              Pases activos
+            </Text>
           </View>
         }
+        ListFooterComponent={<View className="pb-10" />}
         renderItem={({ item, index }) => (
           <Animated.View
             entering={FadeInDown.delay(Math.min(index * 60, 300)).reduceMotion(ReduceMotion.System)}

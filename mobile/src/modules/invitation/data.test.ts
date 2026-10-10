@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { typeLabel } from '@/modules/invitation/data';
 
 describe('typeLabel', () => {
-  it('SINGLE devuelve "Unica"', () => {
-    expect(typeLabel('SINGLE')).toBe('Unica');
+  it('SINGLE devuelve "Única"', () => {
+    expect(typeLabel('SINGLE')).toBe('Única');
   });
 
   it('EVENT devuelve "Evento"', () => {

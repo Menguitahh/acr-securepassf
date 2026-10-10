@@ -35,7 +35,7 @@ export function LotAutocomplete({
         label="Lote"
         value={value}
         onChangeText={onChange}
-        placeholder="M4-L12"
+        placeholder="Ej.: A-03"
         autoCapitalize="characters"
         editable={editable}
       />
