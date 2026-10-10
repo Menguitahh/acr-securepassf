@@ -9,3 +9,6 @@ export type AccessLogRowText = {
   outcome: string;
   denied: boolean;
 };
+
+// US-26: filtro del historial del residente.
+export type HistoryFilter = 'ALL' | 'ALLOWED' | 'DENIED';

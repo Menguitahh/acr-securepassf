@@ -51,11 +51,10 @@ export default function ResidentHomeScreen() {
           actionLabel="Crear invitación"
           onAction={() => router.push('/(resident)/create')}
         />
-        {workerQrButton ? (
-          <View className="px-6" style={{ paddingBottom: insets.bottom + 16 }}>
-            {workerQrButton}
-          </View>
-        ) : null}
+        <View className="gap-3 px-6" style={{ paddingBottom: insets.bottom + 16 }}>
+          <Button label="Historial de accesos" onPress={() => router.push('/(resident)/history')} />
+          {workerQrButton}
+        </View>
       </View>
     );
   }
@@ -80,6 +79,7 @@ export default function ResidentHomeScreen() {
               variant="primary"
             />
             <Button label="Mi QR" onPress={() => router.push('/(resident)/qr-personal')} />
+            <Button label="Historial de accesos" onPress={() => router.push('/(resident)/history')} />
             {workerQrButton}
           </View>
         }

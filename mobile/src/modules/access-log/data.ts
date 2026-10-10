@@ -15,3 +15,12 @@ export const DENIAL_LABELS: Record<string, string> = {
   NEIGHBORHOOD_TZ_MISSING: 'Barrio sin zona horaria',
   UNKNOWN: 'Motivo desconocido',
 };
+
+export const HISTORY_FILTERS: readonly { value: 'ALL' | 'ALLOWED' | 'DENIED'; label: string }[] = [
+  { value: 'ALL', label: 'Todos' },
+  { value: 'ALLOWED', label: 'Permitidos' },
+  { value: 'DENIED', label: 'Denegados' },
+];
+
+// Tamano de pagina de GET /access-logs (ListAccessLogsUseCase.DEFAULT_SIZE).
+export const HISTORY_PAGE_SIZE = 25;
