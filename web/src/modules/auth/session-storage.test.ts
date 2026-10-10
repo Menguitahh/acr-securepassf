@@ -6,6 +6,7 @@ import type { SessionUser } from "@/modules/auth/types";
 import { memoryStorage } from "@/test/memory-storage";
 
 const user: SessionUser = {
+  kind: "admin",
   id: "u1",
   fullName: "Ana Admin",
   neighborhoodId: "n1",

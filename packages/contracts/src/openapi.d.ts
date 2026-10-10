@@ -100,7 +100,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/lots/{lotId}/workers": {
+    "/api/v1/platform/neighborhoods": {
         parameters: {
             query?: never;
             header?: never;
@@ -108,6 +108,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["list_1"];
+        put?: never;
+        post: operations["create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lots/{lotId}/workers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_2"];
         put?: never;
         post: operations["add"];
         delete?: never;
@@ -139,9 +155,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_2"];
+        get: operations["list_3"];
         put?: never;
-        post: operations["create"];
+        post: operations["create_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -235,7 +251,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_3"];
+        get: operations["list_4"];
         put?: never;
         post: operations["add_1"];
         delete?: never;
@@ -349,7 +365,7 @@ export interface paths {
         };
         get: operations["search_1"];
         put?: never;
-        post: operations["create_1"];
+        post: operations["create_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -427,9 +443,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_4"];
+        get: operations["list_5"];
         put?: never;
-        post: operations["create_2"];
+        post: operations["create_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -875,7 +891,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_5"];
+        get: operations["list_6"];
         put?: never;
         post?: never;
         delete?: never;
@@ -996,6 +1012,21 @@ export interface components {
         CloseShiftRequest: {
             handoverNotes?: string;
         };
+        CreateNeighborhoodRequest: {
+            name: string;
+            slug: string;
+            timezone: string;
+            gateName?: string;
+            adminEmail: string;
+            adminFullName: string;
+            adminDni: string;
+        };
+        ProvisionedNeighborhoodResponse: {
+            /** Format: uuid */
+            neighborhoodId: string;
+            /** Format: uuid */
+            adminUserId: string;
+        };
         AddWorkerRequest: {
             fullName: string;
             dni: string;
@@ -1005,8 +1036,8 @@ export interface components {
             weekdays: number[];
             dailyFrom: string;
             dailyUntil: string;
-            dailyOrderValid?: boolean;
             contactPresent?: boolean;
+            dailyOrderValid?: boolean;
         };
         AddWorkerResponse: {
             /** Format: uuid */
@@ -1466,8 +1497,8 @@ export interface components {
             dailyUntil?: string;
             active?: boolean;
             nonEmpty?: boolean;
-            scheduleBundled?: boolean;
             dailyOrderValid?: boolean;
+            scheduleBundled?: boolean;
         };
         UpdateWorkerResponse: {
             /** Format: uuid */
@@ -1555,6 +1586,23 @@ export interface components {
             size?: number;
             /** Format: int64 */
             total?: number;
+        };
+        NeighborhoodAdminResponse: {
+            fullName: string;
+            email: string | null;
+            status: string;
+        };
+        NeighborhoodOverviewResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            timezone: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int64 */
+            lotCount: number;
+            admins: components["schemas"]["NeighborhoodAdminResponse"][];
         };
         WorkerQrResponse: {
             /** Format: uuid */
@@ -1911,6 +1959,50 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["NeighborhoodOverviewResponse"][];
+                };
+            };
+        };
+    };
+    create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateNeighborhoodRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProvisionedNeighborhoodResponse"];
+                };
+            };
+        };
+    };
+    list_2: {
+        parameters: {
+            query?: never;
+            header?: never;
             path: {
                 lotId: string;
             };
@@ -1976,7 +2068,7 @@ export interface operations {
             };
         };
     };
-    list_2: {
+    list_3: {
         parameters: {
             query?: {
                 lotId?: string;
@@ -2000,7 +2092,7 @@ export interface operations {
             };
         };
     };
-    create: {
+    create_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -2165,7 +2257,7 @@ export interface operations {
             };
         };
     };
-    list_3: {
+    list_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -2373,7 +2465,7 @@ export interface operations {
             };
         };
     };
-    create_1: {
+    create_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -2485,7 +2577,7 @@ export interface operations {
             };
         };
     };
-    list_4: {
+    list_5: {
         parameters: {
             query?: {
                 page?: number;
@@ -2507,7 +2599,7 @@ export interface operations {
             };
         };
     };
-    create_2: {
+    create_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -3244,7 +3336,7 @@ export interface operations {
             };
         };
     };
-    list_5: {
+    list_6: {
         parameters: {
             query?: {
                 from?: string;

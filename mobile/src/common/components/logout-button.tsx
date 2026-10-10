@@ -22,7 +22,7 @@ export function LogoutButton() {
 
   return (
     <Button
-      label={isPending ? 'Cerrando sesión...' : 'Cerrar sesion'}
+      label={isPending ? 'Cerrando sesión...' : 'Cerrar sesión'}
       onPress={() => void onPress()}
       disabled={isPending}
     />

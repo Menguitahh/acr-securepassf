@@ -61,6 +61,14 @@ export function homeRouteFor(user: SessionUser | null): HomeRoute {
   return '/login';
 }
 
+// #229: cuentas sin pantalla en la app. El dueño de la plataforma no tiene
+// barrio (toSessionUser lo rechaza), por eso se mira el payload crudo.
+export function isWebOnlyAccount(payload: components['schemas']['UserPayload']): boolean {
+  if (payload.roles?.includes('PLATFORM_ADMIN')) return true;
+  const user = toSessionUser(payload);
+  return user !== null && !hasMobileRole(user);
+}
+
 export function toSessionUser(
   payload: components['schemas']['UserPayload'],
 ): SessionUser | null {

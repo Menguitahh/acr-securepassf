@@ -1,12 +1,18 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export const ADMIN_ROLE = "ADMIN";
+export const PLATFORM_ROLE = "PLATFORM_ADMIN";
+
+// #229: header con el que el duenio de la plataforma ve un barrio.
+export const VIEW_HEADER = "X-Neighborhood-Id";
 
 // Access y user en localStorage (compartidos entre tabs), refresh en
 // sessionStorage (muere con el tab). Razon en web/docs/auth.md.
 export const ACCESS_TOKEN_KEY = "securepass.access-token";
 export const REFRESH_TOKEN_KEY = "securepass.refresh-token";
 export const USER_KEY = "securepass.user";
+// Barrio elegido por el duenio de la plataforma: por tab, como el refresh.
+export const VIEWING_KEY = "securepass.viewing";
 
 export const SIGN_OUT_MESSAGES = {
   expired: "Tu sesión expiró. Ingresá de nuevo para seguir.",

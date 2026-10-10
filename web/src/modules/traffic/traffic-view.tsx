@@ -8,16 +8,16 @@ import { LoadingState } from "@/common/components/loading-state";
 import { RangeForm } from "@/common/components/range-form";
 import { checkRange, defaultRange } from "@/common/date-range/lib";
 import type { DateRange } from "@/common/date-range/types";
-import { useSessionStore } from "@/modules/auth/session-store";
+import { useNeighborhoodTimeZone } from "@/modules/auth/hooks";
 import { TrafficChart } from "@/modules/traffic/components/traffic-chart";
 import { useTraffic } from "@/modules/traffic/hooks";
 import { summarize } from "@/modules/traffic/lib";
 
 export function TrafficView() {
-  const session = useSessionStore((state) => state.session);
-  // AdminGuard solo renderiza esto con sesion; el chequeo angosta el tipo.
-  if (session.status !== "signedIn") return null;
-  return <Traffic timeZone={session.user.neighborhoodTimezone} />;
+  const timeZone = useNeighborhoodTimeZone();
+  // AdminGuard solo renderiza esto dentro de un barrio; el chequeo angosta el tipo.
+  if (!timeZone) return null;
+  return <Traffic timeZone={timeZone} />;
 }
 
 interface TrafficProps {

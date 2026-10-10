@@ -2,10 +2,11 @@ import createClient from "openapi-fetch";
 import type { paths } from "@securepass/contracts";
 
 import { publicApi } from "@/common/api/public-client";
-import { API_BASE_URL } from "@/modules/auth/data";
-import { isAdmin, toSessionUser } from "@/modules/auth/lib";
+import { API_BASE_URL, VIEW_HEADER } from "@/modules/auth/data";
+import { canUseDashboard, toSessionUser } from "@/modules/auth/lib";
 import { endSession, revokeRemote } from "@/modules/auth/session";
 import { loadAccessToken, loadRefreshToken, saveSession, saveTokens } from "@/modules/auth/session-storage";
+import { useSessionStore } from "@/modules/auth/session-store";
 
 export class SessionEndedError extends Error {
   constructor() {
@@ -36,7 +37,7 @@ async function refresh(): Promise<string> {
 
   const tokens = { accessToken: data.accessToken, refreshToken: data.refreshToken };
   const user = data.user ? toSessionUser(data.user) : null;
-  if (user && !isAdmin(user)) {
+  if (user && !canUseDashboard(user)) {
     await revokeRemote(tokens);
     endSession("notAdmin");
     throw new SessionEndedError();
@@ -62,6 +63,9 @@ function withBearer(request: Request, token: string | null): Request {
   if (token && !request.headers.has("Authorization")) {
     request.headers.set("Authorization", `Bearer ${token}`);
   }
+  // #229: el duenio de la plataforma pide los datos del barrio que eligio.
+  const viewing = useSessionStore.getState().viewing;
+  if (viewing) request.headers.set(VIEW_HEADER, viewing.id);
   return request;
 }
 

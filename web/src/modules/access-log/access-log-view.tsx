@@ -15,12 +15,12 @@ import {
 import { useAccessLogExport } from "@/modules/access-log/hooks";
 import { exportNotice } from "@/modules/access-log/lib";
 import type { ResultFilter } from "@/modules/access-log/types";
-import { useSessionStore } from "@/modules/auth/session-store";
+import { useNeighborhoodTimeZone } from "@/modules/auth/hooks";
 
 export function AccessLogView() {
-  const session = useSessionStore((state) => state.session);
-  // AdminGuard solo renderiza esto con sesion; el chequeo angosta el tipo.
-  if (session.status !== "signedIn") return null;
+  const timeZone = useNeighborhoodTimeZone();
+  // AdminGuard solo renderiza esto dentro de un barrio; el chequeo angosta el tipo.
+  if (!timeZone) return null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -28,7 +28,7 @@ export function AccessLogView() {
         <h1 className="text-2xl font-semibold">Bitácora</h1>
         <p className="text-sm text-text-muted">Registro de todos los accesos del barrio</p>
       </header>
-      <ExportSection timeZone={session.user.neighborhoodTimezone} />
+      <ExportSection timeZone={timeZone} />
     </div>
   );
 }

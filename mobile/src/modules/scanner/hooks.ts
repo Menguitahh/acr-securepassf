@@ -179,7 +179,7 @@ export function useQrScanner(direction: 'IN' | 'OUT') {
         });
         if (error || !data) {
           setEnrollmentError(
-            'No se pudo enrolar. Revisá la conexion e intentá de nuevo, o registrá el ingreso manualmente.',
+            'No se pudo enrolar. Revisá la conexión e intentá de nuevo, o registrá el ingreso manualmente.',
           );
           return;
         }

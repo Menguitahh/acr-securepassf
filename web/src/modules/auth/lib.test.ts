@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { LOGIN_ERRORS } from "@/modules/auth/data";
-import { isAdmin, loginErrorMessage, retryAfterMinutes, toSessionUser } from "@/modules/auth/lib";
+import { canUseDashboard, isSessionUser, loginErrorMessage, parseViewing, retryAfterMinutes, toSessionUser } from "@/modules/auth/lib";
 
 describe("loginErrorMessage", () => {
   it("401 es credenciales incorrectas", () => {
@@ -23,7 +23,7 @@ describe("loginErrorMessage", () => {
   });
 });
 
-describe("toSessionUser / isAdmin", () => {
+describe("toSessionUser / canUseDashboard", () => {
   it("rechaza payloads incompletos", () => {
     expect(toSessionUser({ id: "u1", fullName: "Ana", neighborhoodTimezone: "America/Argentina/Mendoza" })).toBeNull();
   });
@@ -42,7 +42,43 @@ describe("toSessionUser / isAdmin", () => {
       neighborhoodTimezone: "America/Argentina/Mendoza",
       roles: ["RESIDENT_OWNER", "ADMIN"],
     });
-    expect(user && isAdmin(user)).toBe(true);
-    expect(isAdmin({ id: "u1", fullName: "Ana", neighborhoodId: "n1", neighborhoodTimezone: "America/Argentina/Mendoza", roles: ["RESIDENT_OWNER"] })).toBe(false);
+    expect(user && canUseDashboard(user)).toBe(true);
+    expect(canUseDashboard({ kind: "admin", id: "u1", fullName: "Ana", neighborhoodId: "n1", neighborhoodTimezone: "America/Argentina/Mendoza", roles: ["RESIDENT_OWNER"] })).toBe(false);
+  });
+});
+
+describe("duenio de la plataforma (#229)", () => {
+  it("entra sin barrio propio y puede usar el dashboard", () => {
+    const user = toSessionUser({ id: "p1", fullName: "Duenio", neighborhoodTimezone: "", roles: ["PLATFORM_ADMIN"] });
+    expect(user).toEqual({ kind: "platform", id: "p1", fullName: "Duenio", roles: ["PLATFORM_ADMIN"] });
+    expect(user && canUseDashboard(user)).toBe(true);
+    expect(user && isSessionUser(user)).toBe(true);
+  });
+
+  it("la plataforma gana aunque ademas administre un barrio", () => {
+    const user = toSessionUser({
+      id: "p1",
+      fullName: "Duenio",
+      neighborhoodId: "n1",
+      neighborhoodTimezone: "America/Argentina/Mendoza",
+      roles: ["ADMIN", "PLATFORM_ADMIN"],
+    });
+    expect(user?.kind).toBe("platform");
+  });
+
+  it("una sesion guardada sin kind no valida", () => {
+    expect(
+      isSessionUser({ id: "u1", fullName: "Ana", neighborhoodId: "n1", neighborhoodTimezone: "America/Argentina/Mendoza", roles: ["ADMIN"] }),
+    ).toBe(false);
+  });
+
+  it("el barrio que se mira se valida al leerlo", () => {
+    expect(parseViewing({ id: "n1", name: "Los Robles", timeZone: "America/Argentina/Mendoza" })).toEqual({
+      id: "n1",
+      name: "Los Robles",
+      timeZone: "America/Argentina/Mendoza",
+    });
+    expect(parseViewing({ id: "n1", name: "Los Robles", timeZone: "Marte/Olympus" })).toBeNull();
+    expect(parseViewing("x")).toBeNull();
   });
 });

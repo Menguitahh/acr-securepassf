@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from "react";
 
+import { useReadOnly } from "@/modules/auth/hooks";
 import { OnboardForm } from "@/modules/registry/components/onboard-form";
 import { LOT_STATUS_LABELS } from "@/modules/registry/data";
 import { useUpdateLotStatus } from "@/modules/registry/hooks";
@@ -25,6 +26,7 @@ export function LotsTable({ rows }: Props) {
   const [open, setOpen] = useState<Open>(null);
   const [error, setError] = useState<{ id: string; message: string } | null>(null);
   const updateStatus = useUpdateLotStatus();
+  const readOnly = useReadOnly();
 
   const confirm = async (row: LotRow) => {
     const action = statusAction(row.status);
@@ -59,6 +61,9 @@ export function LotsTable({ rows }: Props) {
                   <td className="px-4 py-3">{row.address || <span className="text-text-muted">Sin dirección</span>}</td>
                   <td className="px-4 py-3">{LOT_STATUS_LABELS[row.status]}</td>
                   <td className="px-4 py-3">
+                    {readOnly ? (
+                      <span className="text-text-muted">Solo lectura</span>
+                    ) : (
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -79,6 +84,7 @@ export function LotsTable({ rows }: Props) {
                         </button>
                       )}
                     </div>
+                    )}
                   </td>
                 </tr>
                 {confirming && action.kind !== "none" && (

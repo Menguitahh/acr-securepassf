@@ -5,7 +5,7 @@ import type { SessionUser } from "@/modules/auth/types";
 import { memoryStorage } from "@/test/memory-storage";
 
 const OVERVIEW = "/api/v1/admin/metrics/overview";
-const admin: SessionUser = { id: "u1", fullName: "Ana Admin", neighborhoodId: "n1", neighborhoodTimezone: "America/Argentina/Mendoza", roles: ["ADMIN"] };
+const admin: SessionUser = { kind: "admin", id: "u1", fullName: "Ana Admin", neighborhoodId: "n1", neighborhoodTimezone: "America/Argentina/Mendoza", roles: ["ADMIN"] };
 
 type Handler = (request: Request) => Promise<Response>;
 

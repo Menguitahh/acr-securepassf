@@ -1,20 +1,28 @@
 import type { components } from "@securepass/contracts";
 
 import { isValidTimeZone } from "@/common/lib/datetime";
-import { ADMIN_ROLE, LOGIN_ERRORS } from "@/modules/auth/data";
-import type { SessionUser } from "@/modules/auth/types";
+import { ADMIN_ROLE, LOGIN_ERRORS, PLATFORM_ROLE } from "@/modules/auth/data";
+import type { SessionUser, Viewing } from "@/modules/auth/types";
 
-export function isAdmin(user: SessionUser): boolean {
-  return user.roles.includes(ADMIN_ROLE);
+// El dashboard es para el admin de un barrio y para el duenio de la
+// plataforma (#229). Residentes y guardias usan la app.
+export function canUseDashboard(user: SessionUser): boolean {
+  return user.kind === "platform" || user.roles.includes(ADMIN_ROLE);
 }
 
 export function toSessionUser(
   payload: components["schemas"]["UserPayload"],
 ): SessionUser | null {
-  if (!payload.id || !payload.fullName || !payload.neighborhoodId) return null;
-  if (!payload.roles) return null;
+  if (!payload.id || !payload.fullName || !payload.roles) return null;
+  // El duenio de la plataforma no tiene barrio propio: entra al panel aunque
+  // ademas administre uno.
+  if (payload.roles.includes(PLATFORM_ROLE)) {
+    return { kind: "platform", id: payload.id, fullName: payload.fullName, roles: payload.roles };
+  }
+  if (!payload.neighborhoodId) return null;
   if (!isValidTimeZone(payload.neighborhoodTimezone)) return null;
   return {
+    kind: "admin",
     id: payload.id,
     fullName: payload.fullName,
     neighborhoodId: payload.neighborhoodId,
@@ -23,16 +31,32 @@ export function toSessionUser(
   };
 }
 
+function text(value: object, key: string): string | null {
+  const field: unknown = Reflect.get(value, key);
+  return typeof field === "string" ? field : null;
+}
+
 export function isSessionUser(value: unknown): value is SessionUser {
   if (typeof value !== "object" || value === null) return false;
-  if (!("id" in value) || typeof value.id !== "string") return false;
-  if (!("fullName" in value) || typeof value.fullName !== "string") return false;
-  if (!("neighborhoodId" in value) || typeof value.neighborhoodId !== "string") return false;
-  // Sesiones guardadas antes de este campo no validan: login de nuevo.
-  if (!("neighborhoodTimezone" in value) || typeof value.neighborhoodTimezone !== "string") return false;
-  if (!isValidTimeZone(value.neighborhoodTimezone)) return false;
-  if (!("roles" in value) || !Array.isArray(value.roles)) return false;
-  return value.roles.every((role) => typeof role === "string");
+  if (!text(value, "id") || !text(value, "fullName")) return false;
+  const roles: unknown = Reflect.get(value, "roles");
+  if (!Array.isArray(roles) || !roles.every((role) => typeof role === "string")) return false;
+  const kind = text(value, "kind");
+  if (kind === "platform") return true;
+  // Sesiones guardadas antes de kind o de neighborhoodTimezone no validan:
+  // login de nuevo.
+  if (kind !== "admin" || !text(value, "neighborhoodId")) return false;
+  const timeZone = text(value, "neighborhoodTimezone");
+  return timeZone !== null && isValidTimeZone(timeZone);
+}
+
+export function parseViewing(value: unknown): Viewing | null {
+  if (typeof value !== "object" || value === null) return null;
+  const id = text(value, "id");
+  const name = text(value, "name");
+  const timeZone = text(value, "timeZone");
+  if (!id || !name || !timeZone || !isValidTimeZone(timeZone)) return null;
+  return { id, name, timeZone };
 }
 
 // 429 del login: Retry-After viene en segundos. Se redondea para arriba

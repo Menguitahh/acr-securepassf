@@ -5,7 +5,8 @@ import { Alert } from 'react-native';
 import { api } from '@/common/api/client';
 import { isProblemDetail } from '@/common/api/problem';
 import { wipeLocalDatabase } from '@/common/db/database';
-import { forgotPasswordError, hasRole, toSessionUser } from '@/modules/auth/lib';
+import { WEB_ONLY_MESSAGE } from '@/modules/auth/data';
+import { forgotPasswordError, hasRole, isWebOnlyAccount, toSessionUser } from '@/modules/auth/lib';
 import { resolveOutboxFlush, type FlushDecision, type LogoutOutcome } from '@/modules/auth/logout';
 import { resolveNeighborhoodSwitch } from '@/modules/auth/reassign';
 import { endSession } from '@/modules/auth/session';
@@ -57,13 +58,17 @@ export function useLogin() {
           setError(
             problem?.status === 401
               ? 'Credenciales incorrectas. Revisá el email y la contraseña.'
-              : 'No se pudo conectar con el servidor. Revisá tu conexion.',
+              : 'No se pudo conectar con el servidor. Revisá tu conexión.',
           );
+          return false;
+        }
+        if (data.user && isWebOnlyAccount(data.user)) {
+          setError(WEB_ONLY_MESSAGE);
           return false;
         }
         const user = data.user ? toSessionUser(data.user) : null;
         if (!user) {
-          setError('El servidor devolvió una sesion incompleta. Intentá de nuevo.');
+          setError('El servidor devolvió una sesión incompleta. Intentá de nuevo.');
           return false;
         }
         // Antes de guardar la sesion: si el guardia cancela, no queda nada
@@ -86,7 +91,7 @@ export function useLogin() {
         useSessionStore.getState().signIn(user);
         return true;
       } catch {
-        setError('No se pudo conectar con el servidor. Revisá tu conexion.');
+        setError('No se pudo conectar con el servidor. Revisá tu conexión.');
         return false;
       } finally {
         setIsPending(false);

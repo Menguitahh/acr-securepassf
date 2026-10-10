@@ -12,12 +12,16 @@ import { LotForm } from "@/modules/registry/components/lot-form";
 import { LotsTable } from "@/modules/registry/components/lots-table";
 import { OnboardForm } from "@/modules/registry/components/onboard-form";
 import { LOTS_PAGE_SIZE } from "@/modules/registry/data";
+import { useReadOnly } from "@/modules/auth/hooks";
 import { useLots } from "@/modules/registry/hooks";
 
 const PAGE_BUTTON =
   "min-h-12 rounded-md border border-border px-4 text-sm font-medium hover:bg-bg-elevated disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-text-primary";
 
 export function RegistryView() {
+  // #229: el duenio de la plataforma ve los lotes sin los formularios ni las
+  // acciones (el backend rechaza igual cualquier escritura).
+  const readOnly = useReadOnly();
   return (
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-1">
@@ -30,48 +34,52 @@ export function RegistryView() {
         </h2>
         <LotsResult />
       </section>
-      <section aria-labelledby="pending-title" className="flex flex-col gap-3">
-        <h2 id="pending-title" className="text-lg font-semibold">
-          Pendientes de activación
-        </h2>
-        <p className="text-sm text-text-muted">Cuentas que todavía no eligieron su contraseña. Si el correo venció, reenvialo.</p>
-        <PendingActivations />
-      </section>
-      <section aria-labelledby="people-title" className="flex flex-col gap-3">
-        <h2 id="people-title" className="text-lg font-semibold">
-          Personas
-        </h2>
-        <p className="text-sm text-text-muted">
-          Buscá a alguien del barrio para suspenderlo. Una persona suspendida no entra a ningún barrio de Securepass, y
-          solo tu barrio puede levantar la suspensión.
-        </p>
-        <PeopleSearch />
-      </section>
-      <section aria-labelledby="new-lot-title" className="flex flex-col gap-3 rounded-lg border border-border bg-bg-surface p-6">
-        <h2 id="new-lot-title" className="text-lg font-semibold">
-          Nuevo lote
-        </h2>
-        <LotForm />
-      </section>
-      <section aria-labelledby="import-title" className="flex flex-col gap-3 rounded-lg border border-border bg-bg-surface p-6">
-        <h2 id="import-title" className="text-lg font-semibold">
-          Importar padrón
-        </h2>
-        <ImportForm />
-      </section>
-      <section aria-labelledby="new-guard-title" className="flex flex-col gap-3 rounded-lg border border-border bg-bg-surface p-6">
-        <h2 id="new-guard-title" className="text-lg font-semibold">
-          Alta de guardia
-        </h2>
-        <p className="text-sm text-text-muted">Le llega un mail para activar la cuenta y elegir su contraseña.</p>
-        <OnboardForm
-          idPrefix="guard"
-          role="GUARD"
-          lotId={null}
-          submitLabel="Dar de alta guardia"
-          doneMessage="guardia dado de alta. Le enviamos el mail de activación."
-        />
-      </section>
+      {!readOnly && (
+        <>
+        <section aria-labelledby="pending-title" className="flex flex-col gap-3">
+          <h2 id="pending-title" className="text-lg font-semibold">
+            Pendientes de activación
+          </h2>
+          <p className="text-sm text-text-muted">Cuentas que todavía no eligieron su contraseña. Si el correo venció, reenvialo.</p>
+          <PendingActivations />
+        </section>
+        <section aria-labelledby="people-title" className="flex flex-col gap-3">
+          <h2 id="people-title" className="text-lg font-semibold">
+            Personas
+          </h2>
+          <p className="text-sm text-text-muted">
+            Buscá a alguien del barrio para suspenderlo. Una persona suspendida no entra a ningún barrio de Securepass, y
+            solo tu barrio puede levantar la suspensión.
+          </p>
+          <PeopleSearch />
+        </section>
+        <section aria-labelledby="new-lot-title" className="flex flex-col gap-3 rounded-lg border border-border bg-bg-surface p-6">
+          <h2 id="new-lot-title" className="text-lg font-semibold">
+            Nuevo lote
+          </h2>
+          <LotForm />
+        </section>
+        <section aria-labelledby="import-title" className="flex flex-col gap-3 rounded-lg border border-border bg-bg-surface p-6">
+          <h2 id="import-title" className="text-lg font-semibold">
+            Importar padrón
+          </h2>
+          <ImportForm />
+        </section>
+        <section aria-labelledby="new-guard-title" className="flex flex-col gap-3 rounded-lg border border-border bg-bg-surface p-6">
+          <h2 id="new-guard-title" className="text-lg font-semibold">
+            Alta de guardia
+          </h2>
+          <p className="text-sm text-text-muted">Le llega un mail para activar la cuenta y elegir su contraseña.</p>
+          <OnboardForm
+            idPrefix="guard"
+            role="GUARD"
+            lotId={null}
+            submitLabel="Dar de alta guardia"
+            doneMessage="guardia dado de alta. Le enviamos el mail de activación."
+          />
+        </section>
+        </>
+      )}
     </div>
   );
 }

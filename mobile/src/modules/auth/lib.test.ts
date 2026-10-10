@@ -1,17 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  isWorker,
-  forgotPasswordError,
-  hasMobileRole,
-  hasRole,
-  homeRouteFor,
-  initials,
-  isResident,
-  isSessionUser,
-  residentLots,
-  toSessionUser,
-} from '@/modules/auth/lib';
+import { forgotPasswordError, hasMobileRole, hasRole, homeRouteFor, initials, isResident, isSessionUser, isWebOnlyAccount, isWorker, residentLots, toSessionUser } from '@/modules/auth/lib';
 import type { SessionUser } from '@/modules/auth/types';
 
 const baseUser: SessionUser = {
@@ -224,5 +213,19 @@ describe('trabajador (US-65)', () => {
     expect(isWorker(worker)).toBe(true);
     expect(hasMobileRole(worker)).toBe(true);
     expect(homeRouteFor(worker)).toBe('/(worker)/pass');
+  });
+});
+
+describe('isWebOnlyAccount (#229)', () => {
+  const base = { id: 'u1', fullName: 'Ana', neighborhoodTimezone: 'America/Argentina/Mendoza', lots: [] };
+
+  it('el dueño de la plataforma y el admin solo usan el panel web', () => {
+    expect(isWebOnlyAccount({ ...base, roles: ['PLATFORM_ADMIN'] })).toBe(true);
+    expect(isWebOnlyAccount({ ...base, neighborhoodId: 'n1', roles: ['ADMIN'] })).toBe(true);
+  });
+
+  it('guardia y residente entran a la app', () => {
+    expect(isWebOnlyAccount({ ...base, neighborhoodId: 'n1', roles: ['GUARD'] })).toBe(false);
+    expect(isWebOnlyAccount({ ...base, neighborhoodId: 'n1', roles: ['ADMIN', 'RESIDENT_OWNER'] })).toBe(false);
   });
 });

@@ -94,6 +94,22 @@ criterio "cerrar el navegador corta la sesión" se verifica con "Abrir la
 página Nueva pestaña". En una computadora compartida, la salida confiable es
 "Cerrar sesión", que revoca la familia en el server.
 
+## Dueño de la plataforma (#229)
+
+Una sesión con `PLATFORM_ADMIN` no tiene barrio propio (`kind: "platform"` en
+`SessionUser`) y entra a `/plataforma`: lista de barrios y alta de barrio con
+su primer admin. "Ver barrio" guarda el barrio elegido en `sessionStorage`
+(`securepass.viewing`, por pestaña, como el refresh). Mientras está elegido:
+
+- el cliente HTTP manda `X-Neighborhood-Id` en cada request, y el backend
+  responde como si fuera el admin de ese barrio, en modo lectura;
+- el sidebar muestra "Viendo <barrio>" y "Volver a la plataforma";
+- Padrón esconde formularios y acciones (el backend rechaza igual cualquier
+  escritura con 403);
+- cambiar de barrio vacía el cache de queries: las keys no llevan el barrio.
+
+Dev: `platform@dev.local` / `platform123` (seed del backend).
+
 ## Configuración
 
 `NEXT_PUBLIC_API_URL` (default `http://localhost:8080`). El backend tiene

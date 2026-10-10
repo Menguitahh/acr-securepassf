@@ -1,6 +1,6 @@
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from "@/modules/auth/data";
-import { isSessionUser } from "@/modules/auth/lib";
-import type { SessionUser, StoredTokens } from "@/modules/auth/types";
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY, VIEWING_KEY } from "@/modules/auth/data";
+import { isSessionUser, parseViewing } from "@/modules/auth/lib";
+import type { SessionUser, StoredTokens, Viewing } from "@/modules/auth/types";
 
 // localStorage/sessionStorage pueden tirar (storage deshabilitado, modo
 // privado estricto). Las lecturas lo tratan como "no hay sesion"; las
@@ -54,7 +54,24 @@ export function clearSession(): void {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+    sessionStorage.removeItem(VIEWING_KEY);
   } catch {
     // Storage inaccesible: no hay nada que borrar que se pueda leer despues.
+  }
+}
+
+// #229: barrio que esta viendo el duenio de la plataforma. null lo borra.
+export function saveViewing(viewing: Viewing | null): void {
+  if (viewing) sessionStorage.setItem(VIEWING_KEY, JSON.stringify(viewing));
+  else sessionStorage.removeItem(VIEWING_KEY);
+}
+
+export function loadViewing(): Viewing | null {
+  const raw = read(() => sessionStorage, VIEWING_KEY);
+  if (!raw) return null;
+  try {
+    return parseViewing(JSON.parse(raw));
+  } catch {
+    return null;
   }
 }

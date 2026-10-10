@@ -27,7 +27,7 @@ export default function LoginScreen() {
       <Text className="text-2xl font-semibold text-text-primary">Securepass</Text>
       <View className="gap-4">
         <Input
-          label="Email o telefono"
+          label="Email o teléfono"
           value={identifier}
           onChangeText={setIdentifier}
           autoCapitalize="none"
@@ -35,7 +35,7 @@ export default function LoginScreen() {
           editable={!isPending}
         />
         <Input
-          label="Contrasena"
+          label="Contraseña"
           value={password}
           onChangeText={setPassword}
           secureTextEntry

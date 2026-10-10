@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { publicApi } from "@/common/api/public-client";
 import { ACCESS_TOKEN_KEY, LOGIN_ERRORS, SIGN_OUT_MESSAGES } from "@/modules/auth/data";
-import { isAdmin, loginErrorMessage, toSessionUser } from "@/modules/auth/lib";
+import { canUseDashboard, loginErrorMessage, toSessionUser } from "@/modules/auth/lib";
 import { endSession, restoreSession, revokeRemote } from "@/modules/auth/session";
 import { saveSession } from "@/modules/auth/session-storage";
 import { useSessionStore } from "@/modules/auth/session-store";
@@ -54,7 +54,7 @@ export function useLogin() {
 
       // Credenciales validas pero sin ADMIN: no se persiste nada y se
       // revoca la familia en el server. No queda sesion a medias.
-      if (!isAdmin(user)) {
+      if (!canUseDashboard(user)) {
         await revokeRemote(tokens);
         return { ok: false, message: SIGN_OUT_MESSAGES.notAdmin };
       }
@@ -73,4 +73,21 @@ export function useLogin() {
   }, []);
 
   return { login, isPending };
+}
+
+// Zona horaria del barrio que se esta mirando: el propio del admin, o el que
+// eligio el duenio de la plataforma. null fuera de un barrio.
+export function useNeighborhoodTimeZone(): string | null {
+  const session = useSessionStore((state) => state.session);
+  const viewing = useSessionStore((state) => state.viewing);
+  if (session.status !== "signedIn") return null;
+  if (session.user.kind === "admin") return session.user.neighborhoodTimezone;
+  return viewing?.timeZone ?? null;
+}
+
+// #229: el duenio de la plataforma ve los barrios sin modificarlos. El
+// backend rechaza igual cualquier escritura; esto evita mostrar botones que
+// darian 403.
+export function useReadOnly(): boolean {
+  return useSessionStore((state) => state.viewing !== null);
 }

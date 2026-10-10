@@ -3,14 +3,14 @@
 import { EmptyState } from "@/common/components/empty-state";
 import { ErrorState } from "@/common/components/error-state";
 import { LoadingState } from "@/common/components/loading-state";
-import { useSessionStore } from "@/modules/auth/session-store";
+import { useNeighborhoodTimeZone } from "@/modules/auth/hooks";
 import { OverstaysTable } from "@/modules/overstays/components/overstays-table";
 import { useOverstays } from "@/modules/overstays/hooks";
 
 export function OverstaysView() {
-  const session = useSessionStore((state) => state.session);
-  // AdminGuard solo renderiza esto con sesion; el chequeo angosta el tipo.
-  if (session.status !== "signedIn") return null;
+  const timeZone = useNeighborhoodTimeZone();
+  // AdminGuard solo renderiza esto dentro de un barrio; el chequeo angosta el tipo.
+  if (!timeZone) return null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -20,7 +20,7 @@ export function OverstaysView() {
           Personas adentro que pasaron el tiempo de alerta del barrio · se actualiza cada minuto
         </p>
       </header>
-      <OverstaysResult timeZone={session.user.neighborhoodTimezone} />
+      <OverstaysResult timeZone={timeZone} />
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { LoadingState } from "@/common/components/loading-state";
 import { Pagination } from "@/common/components/pagination";
 import { DENIAL_LABELS } from "@/common/denials/data";
 import type { DenialReason } from "@/common/denials/types";
-import { useSessionStore } from "@/modules/auth/session-store";
+import { useNeighborhoodTimeZone } from "@/modules/auth/hooks";
 import { DeniedTable } from "@/modules/denied/components/denied-table";
 import { ReasonList } from "@/modules/denied/components/reason-list";
 import { useDenialCounts, useDeniedLogs } from "@/modules/denied/hooks";
@@ -19,9 +19,9 @@ const INPUT =
   "min-h-12 w-fit rounded-xl border border-border bg-bg-elevated px-4 text-base text-text-primary [color-scheme:dark] focus-visible:outline-2 focus-visible:outline-text-primary";
 
 export function DeniedView() {
-  const session = useSessionStore((state) => state.session);
-  // AdminGuard solo renderiza esto con sesion; el chequeo angosta el tipo.
-  if (session.status !== "signedIn") return null;
+  const timeZone = useNeighborhoodTimeZone();
+  // AdminGuard solo renderiza esto dentro de un barrio; el chequeo angosta el tipo.
+  if (!timeZone) return null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -29,7 +29,7 @@ export function DeniedView() {
         <h1 className="text-2xl font-semibold">Denegados</h1>
         <p className="text-sm text-text-muted">Accesos denegados del día por motivo. Elegí un motivo para ver cada registro.</p>
       </header>
-      <DeniedDay timeZone={session.user.neighborhoodTimezone} />
+      <DeniedDay timeZone={timeZone} />
     </div>
   );
 }

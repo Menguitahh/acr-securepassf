@@ -1,14 +1,16 @@
 import { getQueryClient } from "@/common/api/query-client";
 import { publicApi } from "@/common/api/public-client";
-import { isAdmin } from "@/modules/auth/lib";
+import { canUseDashboard } from "@/modules/auth/lib";
 import {
   clearSession,
   loadAccessToken,
   loadRefreshToken,
   loadSession,
+  loadViewing,
+  saveViewing,
 } from "@/modules/auth/session-storage";
 import { useSessionStore } from "@/modules/auth/session-store";
-import type { SignOutReason, StoredTokens } from "@/modules/auth/types";
+import type { SignOutReason, StoredTokens, Viewing } from "@/modules/auth/types";
 
 // Unico camino de salida de la sesion: storage, cache de queries y store.
 // El guard reacciona al cambio de status y redirige a /login.
@@ -47,10 +49,19 @@ export function restoreSession(): void {
     useSessionStore.getState().signOut(null);
     return;
   }
-  if (!isAdmin(stored.user)) {
+  if (!canUseDashboard(stored.user)) {
     void revokeRemote(stored.tokens);
     endSession("notAdmin");
     return;
   }
-  useSessionStore.getState().signIn(stored.user);
+  useSessionStore.getState().signIn(stored.user, stored.user.kind === "platform" ? loadViewing() : null);
+}
+
+// #229: el duenio de la plataforma entra a ver un barrio o vuelve al panel.
+// El cache se vacia: las consultas del admin no llevan el barrio en la key y
+// mostrarian datos del barrio anterior.
+export function setViewing(viewing: Viewing | null): void {
+  saveViewing(viewing);
+  getQueryClient().clear();
+  useSessionStore.getState().setViewing(viewing);
 }

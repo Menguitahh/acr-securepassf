@@ -6,14 +6,14 @@ import { EmptyState } from "@/common/components/empty-state";
 import { ErrorState } from "@/common/components/error-state";
 import { LoadingState } from "@/common/components/loading-state";
 import { Pagination } from "@/common/components/pagination";
-import { useSessionStore } from "@/modules/auth/session-store";
+import { useNeighborhoodTimeZone } from "@/modules/auth/hooks";
 import { ShiftsTable } from "@/modules/shifts/components/shifts-table";
 import { useShifts } from "@/modules/shifts/hooks";
 
 export function ShiftsView() {
-  const session = useSessionStore((state) => state.session);
-  // AdminGuard solo renderiza esto con sesion; el chequeo angosta el tipo.
-  if (session.status !== "signedIn") return null;
+  const timeZone = useNeighborhoodTimeZone();
+  // AdminGuard solo renderiza esto dentro de un barrio; el chequeo angosta el tipo.
+  if (!timeZone) return null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -23,7 +23,7 @@ export function ShiftsView() {
           Turnos de guardia, más recientes primero · la primera página se actualiza cada minuto
         </p>
       </header>
-      <ShiftsResult timeZone={session.user.neighborhoodTimezone} />
+      <ShiftsResult timeZone={timeZone} />
     </div>
   );
 }
