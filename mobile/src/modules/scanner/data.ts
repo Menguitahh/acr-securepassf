@@ -1,4 +1,7 @@
-import type { DenialReason } from '@/modules/scanner/types';
+import type Ionicons from '@expo/vector-icons/Ionicons';
+import type { ComponentProps } from 'react';
+
+import type { DenialReason, Direction } from '@/modules/scanner/types';
 
 export const TOKEN_PREFIX = 'SP1.';
 
@@ -23,3 +26,20 @@ export const DENIAL_MESSAGES: Record<DenialReason, string> = {
     'Este trabajador todavía no está cargado en este dispositivo. Registrá el ingreso manualmente.',
   UNKNOWN: 'Pase no válido. Registrá el ingreso manualmente o pedí un pase nuevo.',
 };
+
+// Panel del guardia (#232). Celdas iguales de 64 dp: mas que el minimo de
+// 48 dp para tocar con guantes, y entra un texto de 2 lineas.
+export const ACTION_TILE_HEIGHT = 64;
+export const ACTION_GRID_GAP = 8;
+export const PANEL_PADDING = 16;
+// Desde este ancho (tablet, telefono horizontal) las 4 acciones van en una fila.
+export const WIDE_LAYOUT_MIN_WIDTH = 600;
+
+export const DIRECTION_OPTIONS: readonly {
+  value: Direction;
+  label: string;
+  icon: ComponentProps<typeof Ionicons>['name'];
+}[] = [
+  { value: 'IN', label: 'Ingreso', icon: 'enter-outline' },
+  { value: 'OUT', label: 'Egreso', icon: 'exit-outline' },
+];

@@ -1,9 +1,17 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
+import { Pressable, Text } from 'react-native';
 
 import { Button } from '@/common/components/button';
 import { useLogout } from '@/modules/auth/hooks';
 
-export function LogoutButton() {
+type Props = {
+  // #232: en el encabezado del guardia, "Salir" chico con borde, separado
+  // de las acciones operativas.
+  compact?: boolean;
+};
+
+export function LogoutButton({ compact = false }: Props) {
   const logout = useLogout();
   const [isPending, setIsPending] = useState(false);
 
@@ -19,6 +27,22 @@ export function LogoutButton() {
       setIsPending(false);
     }
   };
+
+  if (compact) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Cerrar sesión"
+        accessibilityState={{ disabled: isPending }}
+        disabled={isPending}
+        onPress={() => void onPress()}
+        className="min-h-12 flex-row items-center gap-2 rounded-md border border-border px-3 active:opacity-70 disabled:opacity-40"
+      >
+        <Ionicons name="log-out-outline" size={20} color="#a1a1aa" />
+        <Text className="text-base font-semibold text-text-muted">{isPending ? 'Saliendo...' : 'Salir'}</Text>
+      </Pressable>
+    );
+  }
 
   return (
     <Button

@@ -174,3 +174,6 @@ export type WorkerDocumentEntry = { lots: LotChoice[]; error: string | null };
 export type ValidateWireResponse = Omit<components['schemas']['ValidateAccessResponse'], 'result'> & {
   result?: string;
 };
+
+// US-20 / US-37: que registra el proximo QR escaneado.
+export type Direction = 'IN' | 'OUT';

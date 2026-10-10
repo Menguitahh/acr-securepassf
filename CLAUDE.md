@@ -112,6 +112,7 @@ Excepcion: `else` dentro de loops para control de flujo.
 
 Dark minimalist monocromatico. Tokens en `spec.md` seccion 9.1.
 El color aparece unicamente en el resultado del escaneo. El resto es monocromatico.
+Unica excepcion: el toggle Ingreso/Egreso del escaner (verde/ambar, spec 9.1).
 
 - Inputs `rounded-xl`, cards `rounded-lg`, botones `rounded-md`.
 - Toques minimos 48x48 dp. Se opera con guantes.

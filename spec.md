@@ -1021,6 +1021,8 @@ Estilo: **Dark minimalist monocromático**. La garita se usa de noche; un fondo 
 
 El color aparece **únicamente** en el resultado del escaneo. Toda la interfaz restante es monocromática. Esa restricción es la que hace que el guardia lea el resultado en periferia sin enfocar la pantalla.
 
+**Excepción (#232):** el control Ingreso/Egreso del escáner muestra el modo activo con `allow` (ingreso) o `warn` (egreso) y texto `bg-base`, para que el guardia vea de un vistazo qué va a registrar el próximo QR. Es el único control con color fuera del resultado; también cambia ícono y texto, así no depende solo del color.
+
 ### 9.2 Radios
 
 | Elemento | Token |

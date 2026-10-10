@@ -3,7 +3,12 @@ import { sha512 } from '@noble/hashes/sha2.js';
 
 import type { components } from '@securepass/contracts';
 
-import { DENIAL_MESSAGES, DUPLICATE_WINDOW_MS, TOKEN_PREFIX } from '@/modules/scanner/data';
+import {
+  DENIAL_MESSAGES,
+  DUPLICATE_WINDOW_MS,
+  TOKEN_PREFIX,
+  WIDE_LAYOUT_MIN_WIDTH,
+} from '@/modules/scanner/data';
 import { scheduleContains } from '@/modules/scanner/schedule-window';
 import type {
   AccessDecision,
@@ -418,4 +423,9 @@ export function parseArgentineDni(raw: string): DniData | null {
       : null;
 
   return { document, lastName, firstName, gender, birthDate };
+}
+
+// #232: columnas del panel de acciones del guardia segun el ancho.
+export function actionGridColumns(width: number): 2 | 4 {
+  return width >= WIDE_LAYOUT_MIN_WIDTH ? 4 : 2;
 }

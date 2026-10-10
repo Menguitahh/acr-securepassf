@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { TOKEN_PREFIX } from '@/modules/scanner/data';
 import {
+  actionGridColumns,
   isDenialReason,
   isDuplicateScan,
   isWithinRecurringSchedule,
@@ -960,5 +961,14 @@ describe('validateOfflineExit (US-20 / US-37)', () => {
     expect(validateOfflineExit('garbage', context)).toMatchObject({ status: 'denied', reason: 'INVALID_SIGNATURE' });
     const otraClave = makeToken(basePayload({ k: 'ffffffff' }), secretKey);
     expect(validateOfflineExit(otraClave, context)).toMatchObject({ reason: 'INVALID_SIGNATURE' });
+  });
+});
+
+describe('actionGridColumns (#232)', () => {
+  it('2 columnas en telefono, 4 desde 600 dp', () => {
+    expect(actionGridColumns(320)).toBe(2);
+    expect(actionGridColumns(414)).toBe(2);
+    expect(actionGridColumns(600)).toBe(4);
+    expect(actionGridColumns(768)).toBe(4);
   });
 });

@@ -1,18 +1,22 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/common/components/button';
-import { LogoutButton } from '@/common/components/logout-button';
 import { Spinner } from '@/common/components/spinner';
 import { QueueStatus } from '@/modules/offline/components/queue-status';
 import { useAccessCacheSync, useOutboxSync } from '@/modules/offline/hooks';
 import { EnrollmentScreen } from '@/modules/scanner/components/enrollment-screen';
-import { GuardToolbar } from '@/modules/scanner/components/guard-toolbar';
+import { ActionGrid, type GuardAction } from '@/modules/scanner/components/action-grid';
+import { DirectionToggle } from '@/modules/scanner/components/direction-toggle';
+import { GuardHeader } from '@/modules/scanner/components/guard-header';
 import { LotSelectionScreen } from '@/modules/scanner/components/lot-selection-screen';
 import { QrCamera } from '@/modules/scanner/components/qr-camera';
 import { ScanResultScreen } from '@/modules/scanner/components/scan-result-screen';
 import { useQrScanner, useWorkerDocumentEntry } from '@/modules/scanner/hooks';
+import { PANEL_PADDING } from '@/modules/scanner/data';
+import type { Direction } from '@/modules/scanner/types';
 import { useCurrentShift } from '@/modules/shifts/hooks';
 import { useOpenStays, useSyncStayWarnings } from '@/modules/stays/hooks';
 import { isOpenShift } from '@/modules/shifts/lib';
@@ -20,7 +24,8 @@ import { isOpenShift } from '@/modules/shifts/lib';
 export default function ScannerScreen() {
   const router = useRouter();
   // US-20 / US-37: el mismo QR registra ingreso o egreso segun lo elegido.
-  const [direction, setDirection] = useState<'IN' | 'OUT'>('IN');
+  const [direction, setDirection] = useState<Direction>('IN');
+  const insets = useSafeAreaInsets();
   const {
     result,
     isPending,
@@ -44,25 +49,20 @@ export default function ScannerScreen() {
   const openStays = useOpenStays();
   useSyncStayWarnings(openStays.data);
 
-  const toolbar = (
-    <GuardToolbar>
-      <Button label="Trabajador sin QR" onPress={dniEntry.open} />
-      <Button label="Manual" onPress={() => router.push('/(guard)/manual')} />
-      <Button label="Turno" onPress={() => router.push('/(guard)/shifts')} />
-      <Button label="Presentes" onPress={() => router.push('/(guard)/stays')} />
-      <Button label="Registro" onPress={() => router.push('/(guard)/log')} />
-      <LogoutButton />
-    </GuardToolbar>
-  );
+  // #232: el turno va en el encabezado; estas son las acciones frecuentes.
+  const actions: GuardAction[] = [
+    { label: 'Manual', icon: 'create-outline', onPress: () => router.push('/(guard)/manual') },
+    { label: 'Trabajador sin QR', icon: 'id-card-outline', onPress: dniEntry.open },
+    { label: 'Presentes', icon: 'people-outline', onPress: () => router.push('/(guard)/stays') },
+    { label: 'Registro', icon: 'list-outline', onPress: () => router.push('/(guard)/log') },
+  ];
 
   // #204: sin red y sin turno guardado no se sabe si hay turno. Es un
   // error, no "sin turno": se reintenta.
   if (shift.isError && shift.data === undefined) {
     return (
       <View className="flex-1 bg-bg-base">
-        <GuardToolbar>
-          <LogoutButton />
-        </GuardToolbar>
+        <GuardHeader />
         <View className="flex-1 items-center justify-center gap-4 px-6">
           <Text className="text-center text-2xl font-semibold text-text-primary">
             No se pudo confirmar el turno
@@ -82,9 +82,7 @@ export default function ScannerScreen() {
   if (!shift.isLoading && !isOpenShift(shift.data)) {
     return (
       <View className="flex-1 bg-bg-base">
-        <GuardToolbar>
-          <LogoutButton />
-        </GuardToolbar>
+        <GuardHeader />
         <View className="flex-1 items-center justify-center gap-4 px-6">
           <Text className="text-center text-2xl font-semibold text-text-primary">
             No hay turno abierto
@@ -106,7 +104,7 @@ export default function ScannerScreen() {
   if (dniEntry.entry !== null) {
     return (
       <View className="flex-1 bg-bg-base">
-        {toolbar}
+        <GuardHeader />
         <EnrollmentScreen
           purpose="worker_entry"
           invitationName={null}
@@ -128,7 +126,7 @@ export default function ScannerScreen() {
   if (enrollment !== null) {
     return (
       <View className="flex-1 bg-bg-base">
-        {toolbar}
+        <GuardHeader />
         <EnrollmentScreen
           invitationName={enrollment.invitationName}
           subjectKind={enrollment.subject.kind}
@@ -145,7 +143,7 @@ export default function ScannerScreen() {
   if (lotSelection !== null) {
     return (
       <View className="flex-1 bg-bg-base">
-        {toolbar}
+        <GuardHeader />
         <LotSelectionScreen
           selection={lotSelection}
           isSubmitting={isPending}
@@ -160,18 +158,11 @@ export default function ScannerScreen() {
   // 2.5 s: no lleva toolbar encima.
   if (result !== null) return <ScanResultScreen result={result} onDismiss={dismiss} direction={direction} />;
 
+  // Camara arriba y acciones abajo, al alcance del pulgar con una mano.
   return (
     <View className="flex-1 bg-bg-base">
-      {toolbar}
-      <View className="flex-row gap-2 bg-bg-base px-4 pb-2">
-        <View className="flex-1">
-          <Button label="Ingreso" selected={direction === 'IN'} onPress={() => setDirection('IN')} />
-        </View>
-        <View className="flex-1">
-          <Button label="Egreso" selected={direction === 'OUT'} onPress={() => setDirection('OUT')} />
-        </View>
-      </View>
-      <View className="flex-1">
+      <GuardHeader />
+      <View className="flex-1 overflow-hidden">
         {isPending ? (
           <View className="flex-1 items-center justify-center">
             <Spinner />
@@ -180,6 +171,13 @@ export default function ScannerScreen() {
           <QrCamera onScan={onScan} />
         )}
         <QueueStatus />
+      </View>
+      <View
+        className="gap-3 border-t border-border bg-bg-base pt-3"
+        style={{ paddingHorizontal: PANEL_PADDING, paddingBottom: insets.bottom + 12 }}
+      >
+        <DirectionToggle value={direction} onChange={setDirection} />
+        <ActionGrid actions={actions} horizontalPadding={PANEL_PADDING} />
       </View>
     </View>
   );
