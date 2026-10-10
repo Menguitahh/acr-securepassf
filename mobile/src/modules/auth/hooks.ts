@@ -8,9 +8,9 @@ import { wipeLocalDatabase } from '@/common/db/database';
 import { forgotPasswordError, hasRole, toSessionUser } from '@/modules/auth/lib';
 import { resolveOutboxFlush, type FlushDecision, type LogoutOutcome } from '@/modules/auth/logout';
 import { resolveNeighborhoodSwitch } from '@/modules/auth/reassign';
+import { endSession } from '@/modules/auth/session';
 import { useSessionStore } from '@/modules/auth/session-store';
 import {
-  clearSession,
   loadLastNeighborhood,
   loadTokens,
   saveLastNeighborhood,
@@ -150,14 +150,11 @@ export function useLogout(): () => Promise<LogoutOutcome> {
       if (outcome === 'cancelled') return 'cancelled';
     }
 
-    try {
-      await clearSession();
-    } catch {
-      // Si el storage falla, forzamos signOut en memoria: mejor una sesion
-      // volatil que el guardia trabado. El proximo boot re-hidrata desde
-      // storage — si sigue roto, sale al login por sesion inexistente.
-    }
-    useSessionStore.getState().signOut();
+    // #220: el mismo corte que la sesion vencida. Tambien limpia la cache de
+    // queries: si no, el siguiente usuario del telefono veia los datos del
+    // anterior (p. ej. las estadias de todo el barrio que cargo el guardia).
+    // Si el storage falla, endSession igual corta en memoria.
+    await endSession(null);
     return 'closed';
   }, []);
 }
