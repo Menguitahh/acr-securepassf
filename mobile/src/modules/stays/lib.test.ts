@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { NEAR_EXPIRY_MINUTES, WARNING_LEAD_MINUTES } from '@/modules/stays/data';
 import {
   isResidentDecisionPush,
+  staysSummary,
   parseStoredStays,
   computeWarningSchedule,
   formatRemaining,
@@ -187,5 +188,13 @@ describe('isResidentDecisionPush (#33)', () => {
     expect(isResidentDecisionPush({ type: 'resident-decision', kind: 'EXTENDED' })).toBe(true);
     expect(isResidentDecisionPush({ type: 'stay-warning' })).toBe(false);
     expect(isResidentDecisionPush(null)).toBe(false);
+  });
+});
+
+describe('staysSummary', () => {
+  it('cuenta los que estan adentro y los vencidos', () => {
+    expect(staysSummary([{ minutesRemaining: 30 }, { minutesRemaining: 0 }, {}])).toBe('3 adentro · 1 vencida');
+    expect(staysSummary([{ minutesRemaining: -5 }, { minutesRemaining: -1 }])).toBe('2 adentro · 2 vencidas');
+    expect(staysSummary([{ minutesRemaining: 10 }])).toBe('1 adentro');
   });
 });

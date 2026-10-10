@@ -6,7 +6,7 @@ import { EmptyState } from '@/common/components/empty-state';
 import { ErrorState } from '@/common/components/error-state';
 import { Spinner } from '@/common/components/spinner';
 import { useCloseStay, useNotifyResident, useOpenStays, useSyncStayWarnings } from '@/modules/stays/hooks';
-import { formatEnteredAt, formatRemaining, isNearExpiry, sortByEnteredAtDesc } from '@/modules/stays/lib';
+import { formatEnteredAt, formatRemaining, isNearExpiry, sortByEnteredAtDesc, staysSummary } from '@/modules/stays/lib';
 import { isLocallyWarned } from '@/modules/stays/notifications';
 import { warningStates } from '@/modules/stays/warnings-store';
 import type { Stay } from '@/modules/stays/types';
@@ -102,11 +102,16 @@ export function StaysView() {
       keyExtractor={(item) => item.id ?? ''}
       contentContainerClassName="gap-3 px-6 pb-6"
       ListHeaderComponent={
-        isError ? (
-          <Text className="text-footnote text-text-muted">
-            Sin conexión: es la última lista recibida. Se actualiza sola cuando vuelva la red.
+        <View className="gap-2">
+          <Text accessibilityRole="header" className="text-body font-semibold text-text-primary">
+            {staysSummary(sorted)}
           </Text>
-        ) : null
+          {isError ? (
+            <Text className="text-footnote text-text-muted">
+              Sin conexión: es la última lista recibida. Se actualiza sola cuando vuelva la red.
+            </Text>
+          ) : null}
+        </View>
       }
       renderItem={({ item }) => {
         const locallyWarned = isLocallyWarned(item, local, now);

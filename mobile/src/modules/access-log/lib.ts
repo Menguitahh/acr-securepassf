@@ -20,10 +20,7 @@ export function describeAccessLog(item: AccessLogItem): AccessLogRowText {
   const detail = `${exit ? 'Egreso' : 'Ingreso'}${lot}`;
   if (item.result === 'DENIED') {
     const reason = DENIAL_LABELS[item.denialReason ?? 'UNKNOWN'] ?? DENIAL_LABELS.UNKNOWN ?? '';
-    const title = item.passHolderName
-      ? `Se presentó el pase de ${item.passHolderName}`
-      : 'Se presentó un QR sin pase asociado';
-    return { title, detail, outcome: `Denegado: ${reason}`, denied: true };
+    return { title: deniedTitle(item), detail, outcome: `Denegado: ${reason}`, denied: true };
   }
   return {
     title: item.subjectName ?? item.passHolderName ?? 'Sin nombre',
@@ -31,4 +28,28 @@ export function describeAccessLog(item: AccessLogItem): AccessLogRowText {
     outcome: exit ? 'Salió' : 'Entró',
     denied: false,
   };
+}
+
+// El QR de un trabajador es su credencial: se nombra igual que el pase de un
+// invitado ("el QR de trabajo de Ramon"), no a quien lo presento.
+function deniedTitle(item: AccessLogItem): string {
+  if (item.passHolderName) return `Se presentó el pase de ${item.passHolderName}`;
+  if (item.subjectType === 'SERVICE') {
+    return item.subjectName ? `Se presentó el QR de trabajo de ${item.subjectName}` : 'Se presentó un QR de trabajo';
+  }
+  return 'Se presentó un QR sin pase asociado';
+}
+
+// Resumen arriba del Registro del turno: "5 ingresos · 3 egresos · 1 denegado".
+// Ingresos y egresos cuentan solo los permitidos.
+export function shiftLogSummary(items: readonly AccessLogItem[]): string {
+  const ins = items.filter((i) => i.result === 'ALLOWED' && i.direction !== 'OUT').length;
+  const outs = items.filter((i) => i.result === 'ALLOWED' && i.direction === 'OUT').length;
+  const denied = items.filter((i) => i.result === 'DENIED').length;
+  const parts = [
+    `${ins} ${ins === 1 ? 'ingreso' : 'ingresos'}`,
+    `${outs} ${outs === 1 ? 'egreso' : 'egresos'}`,
+  ];
+  if (denied > 0) parts.push(`${denied} ${denied === 1 ? 'denegado' : 'denegados'}`);
+  return parts.join(' · ');
 }

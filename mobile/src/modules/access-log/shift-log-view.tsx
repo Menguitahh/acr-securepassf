@@ -1,4 +1,4 @@
-import { FlatList, View } from 'react-native';
+import { FlatList, Text, View } from 'react-native';
 
 import { Button } from '@/common/components/button';
 import { EmptyState } from '@/common/components/empty-state';
@@ -6,6 +6,7 @@ import { ErrorState } from '@/common/components/error-state';
 import { Spinner } from '@/common/components/spinner';
 import { AccessLogRow } from '@/modules/access-log/components/access-log-row';
 import { useShiftLog } from '@/modules/access-log/hooks';
+import { shiftLogSummary } from '@/modules/access-log/lib';
 
 // US-72: registro del turno. Hora, nombre, lote, direccion y resultado; los
 // denegados con su motivo.
@@ -39,6 +40,11 @@ export function ShiftLogView() {
       data={data}
       keyExtractor={(item, index) => item.id ?? String(index)}
       contentContainerClassName="gap-3 px-6 pb-6"
+      ListHeaderComponent={
+        <Text accessibilityRole="header" className="text-body font-semibold text-text-primary">
+          {shiftLogSummary(data)}
+        </Text>
+      }
       renderItem={({ item }) => <AccessLogRow item={item} now={now} />}
     />
   );

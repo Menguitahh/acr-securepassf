@@ -141,3 +141,12 @@ export function formatEnteredAt(iso: string | undefined): string {
 export function isResidentDecisionPush(data: unknown): boolean {
   return typeof data === 'object' && data !== null && 'type' in data && data.type === 'resident-decision';
 }
+
+// Resumen arriba de Presentes: "3 adentro · 1 vencida". Vencida es la que ya
+// paso su horario (minutesRemaining <= 0), igual que la etiqueta de la fila.
+export function staysSummary(stays: readonly Stay[]): string {
+  const expired = stays.filter((s) => typeof s.minutesRemaining === 'number' && s.minutesRemaining <= 0).length;
+  const inside = `${stays.length} adentro`;
+  if (expired === 0) return inside;
+  return `${inside} · ${expired} ${expired === 1 ? 'vencida' : 'vencidas'}`;
+}

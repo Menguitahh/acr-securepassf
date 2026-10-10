@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, Text, View } from 'react-native';
 
 import { Button } from '@/common/components/button';
 import { Input } from '@/common/components/input';
@@ -170,8 +170,14 @@ export function EnrollmentScreen({
   const trimmed = document.trim();
   const canSubmit = trimmed.length > 0 && !isSubmitting && lotReady;
 
+  // El teclado numerico empuja el formulario: "Registrar ingreso" queda a la
+  // vista en vez de tapado, y un toque en un boton no cierra solo el teclado.
   return (
-    <View className="flex-1 justify-between gap-6 bg-bg-base p-6">
+    <KeyboardAvoidingView behavior="padding" className="flex-1 bg-bg-base">
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      contentContainerClassName="flex-grow justify-between gap-6 p-6"
+    >
       <View className="gap-4">
         <Text className="text-2xl font-semibold text-text-primary">
           {workerEntry ? 'Ingreso con DNI' : 'Enrolar DNI'}
@@ -187,7 +193,7 @@ export function EnrollmentScreen({
         ) : (
           <Text className="text-body text-text-muted">
             Primera vez que ingresa este {subjectKind === 'worker' ? 'trabajador' : 'invitado'}.
-            Cargá el numero de documento para completar el ingreso.
+            Cargá el número de documento para completar el ingreso.
           </Text>
         )}
         <Input
@@ -231,6 +237,7 @@ export function EnrollmentScreen({
           <Button label="Cancelar" onPress={onCancel} disabled={isSubmitting} />
         </View>
       </View>
-    </View>
+    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
