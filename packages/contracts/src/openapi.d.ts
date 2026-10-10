@@ -788,6 +788,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/access-logs/shift": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["shift"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/activar/{token}": {
         parameters: {
             query?: never;
@@ -893,8 +909,8 @@ export interface components {
             weekdays: number[];
             dailyFrom: string;
             dailyUntil: string;
-            contactPresent?: boolean;
             dailyOrderValid?: boolean;
+            contactPresent?: boolean;
         };
         AddWorkerResponse: {
             /** Format: uuid */
@@ -1345,9 +1361,9 @@ export interface components {
             dailyFrom?: string;
             dailyUntil?: string;
             active?: boolean;
-            dailyOrderValid?: boolean;
-            scheduleBundled?: boolean;
             nonEmpty?: boolean;
+            scheduleBundled?: boolean;
+            dailyOrderValid?: boolean;
         };
         UpdateWorkerResponse: {
             /** Format: uuid */
@@ -2973,6 +2989,28 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": unknown;
+                };
+            };
+        };
+    };
+    shift: {
+        parameters: {
+            query?: {
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AccessLogsResponse"];
                 };
             };
         };

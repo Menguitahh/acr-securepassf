@@ -50,6 +50,7 @@ export default function ScannerScreen() {
       <Button label="Manual" onPress={() => router.push('/(guard)/manual')} />
       <Button label="Turno" onPress={() => router.push('/(guard)/shifts')} />
       <Button label="Presentes" onPress={() => router.push('/(guard)/stays')} />
+      <Button label="Registro" onPress={() => router.push('/(guard)/log')} />
       <LogoutButton />
     </GuardToolbar>
   );
