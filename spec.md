@@ -1277,7 +1277,7 @@ Formato: `US-<n>` → issue. Prioridad: **P0** bloqueante del MVP, **P1** necesa
 |---|---|---|---|
 | US-25 | Como residente quiero recibir un push cuando mi invitado ingresa. | P0 | Push en < 5 s del registro online; incluye nombre del invitado y hora; para eventos sincronizados offline, se envía al sincronizar con la hora real de ingreso. |
 | US-26 | Como residente quiero ver el historial de accesos de mi lote. | P1 | Paginado, últimos 90 días, filtro por tipo; solo accesos de su propio lote. |
-| US-27 | Como residente quiero silenciar notificaciones de un pase recurrente. | P2 | Toggle por invitación; no afecta el registro en bitácora. |
+| US-27 | ~~Como residente quiero silenciar notificaciones de un pase recurrente.~~ | P2 | **Sin objeto** (2026-10-10): el pase recurrente se eliminó (US-74, securepassb) y lo reemplazan los trabajadores. |
 
 ### Épica F — Administración y auditoría
 
